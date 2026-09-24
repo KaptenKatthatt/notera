@@ -532,7 +532,7 @@ const SHORTCUTS = [
   ['Ctrl+Shift+9', 'menu.checkList'], ['Ctrl+Shift+.', 'menu.quote'], ['Ctrl+E', 'menu.code'], ['Ctrl+Shift+E', 'menu.codeBlock'], ['Ctrl+K', 'menu.link'],
   ['Alt+↑ / Alt+↓', 'menu.moveLine'], ['Shift+Alt+↑ / ↓', 'menu.copyLine'], ['Ctrl+L', 'menu.selectLine'],
   ['Ctrl+Shift+K', 'menu.deleteLine'], ['Ctrl+X / Ctrl+C', 'menu.cutCopyLine'], ['Ctrl+Enter', 'menu.insertLineBelow'],
-  ['Ctrl+Shift+Enter', 'menu.insertLineAbove'], ['Ctrl+D', 'menu.selectNextOccurrence'], ['Ctrl+Shift+L', 'menu.selectAllOccurrences'],
+  ['Ctrl+Shift+Enter', 'menu.insertLineAbove'], ['Ctrl+D', 'menu.selectWord'], ['Ctrl+Shift+L', 'menu.selectAllOccurrences'],
   ['Ctrl+Alt+↑ / ↓', 'menu.addCursor'], ['Ctrl+] / Ctrl+[', 'menu.indentBoth'],
   ['Ctrl+Shift+1 / 2 / 3', 'menu.viewModes'], ['Ctrl+Shift+W', 'menu.writingMode'], ['F11', 'menu.fullscreen'], ['Ctrl+= / Ctrl+-', 'menu.zoom'],
   ['Ctrl+0', 'menu.zoomReset'], ['Alt+Z', 'menu.wordWrap'], ['Ctrl+?', 'menu.shortcuts']
@@ -592,7 +592,7 @@ async function handleAction(action, payload) {
     case 'fullscreen': await api.toggleFullscreen(); break;
     case 'shortcuts': openShortcutsDialog(); break;
     case 'moveLineUp': case 'moveLineDown': case 'copyLineUp': case 'copyLineDown': case 'deleteLine': case 'selectLine':
-    case 'insertLineBelow': case 'insertLineAbove': case 'selectNextOccurrence': case 'selectAllOccurrences':
+    case 'insertLineBelow': case 'insertLineAbove': case 'selectWord': case 'selectNextOccurrence': case 'selectAllOccurrences':
     case 'addCursorAbove': case 'addCursorBelow': case 'indentLine': case 'outdentLine':
       ensureEditorVisible(); lineCommands[action](view); view.focus(); break;
     case 'prevTab': cycleTab(-1); break;

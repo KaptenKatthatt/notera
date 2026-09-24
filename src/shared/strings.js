@@ -24,7 +24,7 @@ const en = {
     shortcuts: 'Keyboard shortcuts',
     line: 'Line', moveLineUp: 'Move line up', moveLineDown: 'Move line down', copyLineUp: 'Copy line up',
     copyLineDown: 'Copy line down', selectLine: 'Select line', deleteLine: 'Delete line', insertLineBelow: 'Insert line below',
-    insertLineAbove: 'Insert line above', selectNextOccurrence: 'Add next occurrence', selectAllOccurrences: 'Select all occurrences',
+    insertLineAbove: 'Insert line above', selectWord: 'Select word', selectNextOccurrence: 'Add next occurrence', selectAllOccurrences: 'Select all occurrences',
     addCursorAbove: 'Add cursor above', addCursorBelow: 'Add cursor below', indentLine: 'Indent line', outdentLine: 'Outdent line',
     moveLine: 'Move line up/down', copyLine: 'Copy line up/down', cutCopyLine: 'Cut/copy line (no selection)', addCursor: 'Add cursor above/below', headings: 'Heading 1, 2, 3', indentBoth: 'Indent/outdent line', viewModes: 'Editor, split, preview'
   },
@@ -80,7 +80,7 @@ const sv = {
     shortcuts: 'Kortkommandon',
     line: 'Rad', moveLineUp: 'Flytta rad uppåt', moveLineDown: 'Flytta rad nedåt', copyLineUp: 'Kopiera rad uppåt',
     copyLineDown: 'Kopiera rad nedåt', selectLine: 'Markera rad', deleteLine: 'Radera rad', insertLineBelow: 'Ny rad under',
-    insertLineAbove: 'Ny rad över', selectNextOccurrence: 'Lägg till nästa förekomst', selectAllOccurrences: 'Markera alla förekomster',
+    insertLineAbove: 'Ny rad över', selectWord: 'Markera ord', selectNextOccurrence: 'Lägg till nästa förekomst', selectAllOccurrences: 'Markera alla förekomster',
     addCursorAbove: 'Lägg till markör ovanför', addCursorBelow: 'Lägg till markör nedanför', indentLine: 'Öka indrag', outdentLine: 'Minska indrag',
     moveLine: 'Flytta rad upp/ned', copyLine: 'Kopiera rad upp/ned', cutCopyLine: 'Klipp ut/kopiera rad (utan markering)', addCursor: 'Lägg till markör upp/ned', headings: 'Rubrik 1, 2, 3', indentBoth: 'Öka/minska indrag', viewModes: 'Redigerare, delad, förhandsvisning'
   },
