@@ -5,7 +5,6 @@ import {
 } from '@codemirror/view';
 import { hideMarkers } from './markers.js';
 import { searchCount } from './searchCount.js';
-import { vscodeKeymap } from './lines.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -44,6 +43,19 @@ function themeFor(dark) {
   return EditorView.theme({}, { dark });
 }
 
+// CodeMirror's own bindings for keys that belong to app commands. Those keys are dispatched from
+// the command registry (see keybindings.js), so a shortcut removed in Settings really goes away.
+const TAKEN = new Set([
+  'Alt-ArrowUp', 'Shift-Alt-ArrowUp', 'Alt-ArrowDown', 'Shift-Alt-ArrowDown', 'Mod-Alt-ArrowUp', 'Mod-Alt-ArrowDown',
+  'Mod-Enter', 'Alt-l', 'Mod-i', 'Mod-[', 'Mod-]', 'Shift-Mod-k', 'Mod-a',
+  'Mod-f', 'F3', 'Mod-g', 'Shift-F3', 'Shift-Mod-g', 'Mod-Alt-g', 'Mod-d', 'Mod-Shift-l',
+  'Mod-z', 'Mod-y', 'Mod-Shift-z', 'Ctrl-Shift-z'
+]);
+function editorKeymap() {
+  const keep = (b) => !TAKEN.has(b.key) && !TAKEN.has(b.linux) && !TAKEN.has(b.win);
+  return [...searchKeymap.filter(keep), ...historyKeymap.filter(keep), indentWithTab, ...defaultKeymap.filter(keep)];
+}
+
 export function markdownExtension() {
   return markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true });
 }
@@ -59,7 +71,6 @@ export function baseExtensions(opts) {
     compartments.markers.of(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
     compartments.placeholder.of(placeholder(opts.placeholder || '')),
     searchCount,
-    vscodeKeymap,
     history(),
     drawSelection(),
     dropCursor(),
@@ -72,7 +83,7 @@ export function baseExtensions(opts) {
     syntaxHighlighting(mdHighlight),
     indentUnit.of('  '),
     EditorState.allowMultipleSelections.of(true),
-    keymap.of([...searchKeymap, ...historyKeymap, indentWithTab, ...defaultKeymap]),
+    keymap.of(editorKeymap()),
     EditorView.contentAttributes.of({ spellcheck: 'true', autocapitalize: 'off', autocorrect: 'off' })
   ];
 }

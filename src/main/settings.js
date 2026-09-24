@@ -19,7 +19,9 @@ const DEFAULTS = {
   defaultEncoding: 'utf8',
   writingMode: false,
   autosave: true,
-  hideMarkers: true
+  hideMarkers: true,
+  keybindings: {},
+  checkUpdates: true
 };
 
 class Settings {

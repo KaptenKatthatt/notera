@@ -38,3 +38,10 @@ nsis:
   artifactName: ${productName}-Setup-${version}.${ext}
 portable:
   artifactName: ${productName}-${version}-portable.exe
+# Auto-update feed: the installed app reads latest.yml from this repo's GitHub Releases.
+# Every release must upload Notera-Setup-<version>.exe, its .blockmap and latest.yml.
+publish:
+  provider: github
+  owner: KaptenKatthatt
+  repo: notera
+  releaseType: release

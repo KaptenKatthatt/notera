@@ -2,6 +2,9 @@ import { makeT, LOCALES } from '../shared/strings.js';
 import { createState, reconfigureEffects, EditorView, EditorState } from './editor.js';
 import * as fmt from './format.js';
 import { lineCommands } from './lines.js';
+import { createKeyDispatcher } from './keybindings.js';
+import { createSettingsDialog } from './settingsDialog.js';
+import { COMMANDS, CATEGORIES, display } from '../shared/commands.js';
 import { renderMarkdown, countWords } from './markdown.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
 import { openSearchPanel, findNext, findPrevious, gotoLine } from '@codemirror/search';
@@ -29,27 +32,11 @@ function editorOpts(tab) {
     lineNumbers: !!settings.lineNumbers,
     dark: isDark,
     phrases: LOCALES[locale].search,
-    extraKeys: formatKeymap,
     hideMarkers: settings.hideMarkers !== false,
     placeholder: tab.kind === 'md' ? t('ui.startWriting') : ''
   };
 }
 
-const formatKeymap = [
-  { key: 'Mod-b', run: (v) => runFormat('bold', v) },
-  { key: 'Mod-i', run: (v) => runFormat('italic', v) },
-  { key: 'Mod-Shift-x', run: (v) => runFormat('strikethrough', v) },
-  { key: 'Mod-1', run: (v) => runFormat('heading1', v) },
-  { key: 'Mod-2', run: (v) => runFormat('heading2', v) },
-  { key: 'Mod-3', run: (v) => runFormat('heading3', v) },
-  { key: 'Mod-Shift-8', run: (v) => runFormat('bulletList', v) },
-  { key: 'Mod-Shift-7', run: (v) => runFormat('numberedList', v) },
-  { key: 'Mod-Shift-9', run: (v) => runFormat('checkList', v) },
-  { key: 'Mod-Shift-.', run: (v) => runFormat('quote', v) },
-  { key: 'Mod-e', run: (v) => runFormat('code', v) },
-  { key: 'Mod-Shift-e', run: (v) => runFormat('codeBlock', v) },
-  { key: 'Mod-k', run: (v) => runFormat('link', v) }
-];
 
 function runFormat(action, v = view) {
   if (!active || active.kind !== 'md') return true; // swallow, but do nothing for plain text
@@ -380,6 +367,7 @@ function syncPreviewScroll() {
 // ---------- settings application ----------
 function applySettings(next, prev = {}) {
   settings = next;
+  if (keys) keys.setOverrides(settings.keybindings);
   const root = document.documentElement.style;
   root.setProperty('--zoom-base', String((settings.zoom || 100) / 100));
   document.body.classList.toggle('writing', !!settings.writingMode);
@@ -402,6 +390,8 @@ function applySettings(next, prev = {}) {
     updateTitle();
     renderTabs();
     schedulePreview(0);
+    renderUpdate();
+    if (settingsDialog) settingsDialog.refresh();
   }
 }
 
@@ -483,7 +473,7 @@ async function openFontDialog() {
     const fontSize = Math.max(6, Math.min(72, parseInt(size.value, 10) || 15));
     await api.setSettings({ fontFamily: sel.value, fontSize });
   }
-  view.focus();
+  if (!settingsDialog || !settingsDialog.isOpen()) view.focus();
 }
 
 async function insertLinkSmart() {
@@ -524,28 +514,25 @@ function printCurrent() {
   window.print();
 }
 
-const SHORTCUTS = [
-  ['Ctrl+N', 'menu.new'], ['Ctrl+Shift+N', 'menu.newWindow'], ['Ctrl+O', 'menu.open'], ['Ctrl+S', 'menu.save'], ['Ctrl+Shift+S', 'menu.saveAs'],
-  ['Ctrl+W', 'menu.closeTab'], ['Ctrl+Tab', 'ui.nextTab'], ['Ctrl+P', 'menu.print'], ['Ctrl+F', 'menu.find'], ['F3 / Shift+F3', 'menu.findNext'],
-  ['Ctrl+H', 'menu.replace'], ['Ctrl+G', 'menu.goTo'], ['F5', 'menu.timeDate'], ['Ctrl+B', 'menu.bold'], ['Ctrl+I', 'menu.italic'],
-  ['Ctrl+Shift+X', 'menu.strikethrough'], ['Ctrl+1 / 2 / 3', 'menu.headings'], ['Ctrl+Shift+8', 'menu.bulletList'], ['Ctrl+Shift+7', 'menu.numberedList'],
-  ['Ctrl+Shift+9', 'menu.checkList'], ['Ctrl+Shift+.', 'menu.quote'], ['Ctrl+E', 'menu.code'], ['Ctrl+Shift+E', 'menu.codeBlock'], ['Ctrl+K', 'menu.link'],
-  ['Alt+↑ / Alt+↓', 'menu.moveLine'], ['Shift+Alt+↑ / ↓', 'menu.copyLine'], ['Ctrl+L', 'menu.selectLine'],
-  ['Ctrl+Shift+K', 'menu.deleteLine'], ['Ctrl+X / Ctrl+C', 'menu.cutCopyLine'], ['Ctrl+Enter', 'menu.insertLineBelow'],
-  ['Ctrl+Shift+Enter', 'menu.insertLineAbove'], ['Ctrl+D', 'menu.selectNextOccurrence'], ['Ctrl+Shift+L', 'menu.selectAllOccurrences'],
-  ['Ctrl+Alt+↑ / ↓', 'menu.addCursor'], ['Ctrl+] / Ctrl+[', 'menu.indentBoth'],
-  ['Ctrl+Shift+1 / 2 / 3', 'menu.viewModes'], ['Ctrl+Shift+W', 'menu.writingMode'], ['F11', 'menu.fullscreen'], ['Ctrl+= / Ctrl+-', 'menu.zoom'],
-  ['Ctrl+0', 'menu.zoomReset'], ['Alt+Z', 'menu.wordWrap'], ['Ctrl+?', 'menu.shortcuts']
-];
-
+// The shortcut reference is generated from the live bindings, so it shows the user's own keys.
 function openShortcutsDialog() {
   const tables = [$('#keys-table'), $('#keys-table-2')];
   tables.forEach((tb) => { tb.innerHTML = ''; });
-  const half = Math.ceil(SHORTCUTS.length / 2);
-  SHORTCUTS.forEach(([keys, label], i) => {
+  const bindings = keys.bindings();
+  const rows = [];
+  for (const cat of CATEGORIES) {
+    for (const c of COMMANDS.filter((x) => x.cat === cat && bindings[x.id].length)) {
+      if (/^goToTab[2-9]$/.test(c.id)) continue;
+      if (c.id === 'goToTab1') { rows.push([`${display(bindings.goToTab1[0])} … ${display((bindings.goToTab9 || [])[0] || '')}`, t('menu.goToTab')]); continue; }
+      rows.push([bindings[c.id].slice(0, 2).map(display).join(' / '), t(c.label).replace('&', '').replace(/…$/, '')]);
+    }
+  }
+  rows.push(['Ctrl+X / Ctrl+C', t('menu.cutCopyLine')]);
+  const half = Math.ceil(rows.length / 2);
+  rows.forEach(([k, label], i) => {
     const tr = document.createElement('tr');
-    const a = document.createElement('td'); a.textContent = keys;
-    const b = document.createElement('td'); b.textContent = t(label).replace('&', '').replace(/…$/, '');
+    const a = document.createElement('td'); a.textContent = k;
+    const b = document.createElement('td'); b.textContent = label;
     tr.append(a, b); tables[i < half ? 0 : 1].appendChild(tr);
   });
   const dlg = $('#dlg-keys');
@@ -596,6 +583,26 @@ async function handleAction(action, payload) {
     case 'addCursorAbove': case 'addCursorBelow': case 'indentLine': case 'outdentLine':
       ensureEditorVisible(); lineCommands[action](view); view.focus(); break;
     case 'prevTab': cycleTab(-1); break;
+    case 'newWindow': api.newWindow(); break;
+    case 'goToTab1': case 'goToTab2': case 'goToTab3': case 'goToTab4': case 'goToTab5':
+    case 'goToTab6': case 'goToTab7': case 'goToTab8': case 'goToTab9': {
+      const tab = tabs[Number(action.slice(-1)) - 1];
+      if (tab && tab !== active) activateTab(tab);
+      break;
+    }
+    case 'exit': await api.quit(); break;
+    case 'settings': settingsDialog.open('general'); break;
+    case 'keyboardSettings': settingsDialog.open('keyboard'); break;
+    case 'viewEditor': await api.setSettings({ viewMode: 'editor' }); break;
+    case 'viewSplit': await api.setSettings({ viewMode: 'split' }); break;
+    case 'viewPreview': await api.setSettings({ viewMode: 'preview' }); break;
+    case 'wordWrap': case 'lineNumbers': case 'formattingBar': case 'statusBar':
+      await api.setSettings({ [action]: !settings[action] }); break;
+    case 'hideMarkers': case 'autosave':
+      await api.setSettings({ [action]: settings[action] === false }); break;
+    case 'cut': case 'copy': case 'paste': await api.nativeEdit(action); break;
+    case 'checkForUpdates': await api.checkForUpdates(true); break;
+    case 'about': await api.about(); break;
     default:
       if (!runFormat(action)) console.warn('unknown action', action);
   }
@@ -635,11 +642,7 @@ function bindUi() {
     view.focus();
   });
 
-  // Global shortcuts that the native menu does not register.
-  window.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'Tab') { e.preventDefault(); cycleTab(e.shiftKey ? -1 : 1); }
-    else if (e.key === 'Escape') hidePopup();
-  });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePopup(); });
 
   // Ctrl+wheel zoom like Notepad.
   window.addEventListener('wheel', (e) => {
@@ -680,6 +683,63 @@ function bindUi() {
   api.onSettingsChanged((next) => applySettings(next, settings));
 }
 
+// ---------- updates ----------
+let update = { state: 'idle' };
+let updateHidden = false;
+function renderUpdate() {
+  const box = $('#update-toast');
+  if (!box) return;
+  const st = update.state;
+  const visible = !updateHidden && ['available', 'downloading', 'downloaded', 'error'].includes(st);
+  box.hidden = !visible;
+  if (!visible) return;
+  const go = $('#update-go'), later = $('#update-later'), bar = $('#update-bar');
+  later.textContent = t('update.later');
+  go.hidden = st === 'downloading';
+  later.hidden = st === 'downloading';
+  bar.hidden = st !== 'downloading';
+  bar.firstElementChild.style.width = `${update.percent || 0}%`;
+  box.dataset.state = st;
+  if (st === 'available') { $('#update-text').textContent = t('update.available', { version: update.version }); go.textContent = t('update.download'); }
+  else if (st === 'downloading') { $('#update-text').textContent = t('update.downloading', { version: update.version, percent: update.percent || 0 }); }
+  else if (st === 'downloaded') { $('#update-text').textContent = t('update.ready', { version: update.version }); go.textContent = t('update.restart'); }
+  else if (st === 'error') { $('#update-text').textContent = t('update.downloadError'); go.textContent = t('update.download'); }
+}
+function onUpdateStatus(next) {
+  if (next.state !== update.state) updateHidden = false;
+  update = next;
+  renderUpdate();
+}
+async function onUpdateGo() {
+  if (update.state === 'available' || update.state === 'error') await api.downloadUpdate();
+  else if (update.state === 'downloaded') await api.installUpdate();
+}
+async function onUpdateLater() {
+  if (update.state === 'available') await api.dismissUpdate();
+  updateHidden = true;
+  renderUpdate();
+}
+
+// Before an update restarts the app: save or keep everything. Named files are saved (or the user
+// is asked, when autosave is off); untitled text is kept as a draft and comes back after restart.
+async function prepareQuit(id) {
+  let ok = true;
+  try {
+    if (active) active.state = view.state;
+    for (const tab of [...tabs]) await flushPending(tab);
+    for (const tab of [...tabs]) if (!tab.path && tab.dirty) await writeDraft(tab);
+    for (const tab of [...tabs]) {
+      if (!tab.path || !tab.dirty) continue;
+      activateTab(tab);
+      const answer = await api.confirmUnsaved(tabTitle(tab));
+      if (answer === 'cancel') { ok = false; break; }
+      if (answer === 'save' && !(await saveTab(tab))) { ok = false; break; }
+    }
+  } finally {
+    api.prepareQuitResult(id, ok);
+  }
+}
+
 function applyTheme(dark) {
   isDark = !!dark;
   document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
@@ -694,8 +754,11 @@ function markDirty() {
 
 // ---------- boot ----------
 let bootLocale = 'en';
+let keys = null;
+let settingsDialog = null;
 async function boot() {
   const b = await api.bootstrap();
+  keys = createKeyDispatcher({ run: (id) => void handleAction(id) });
   bootLocale = b.locale;
   locale = b.locale;
   applyTheme(b.dark);
@@ -716,13 +779,22 @@ async function boot() {
     }
   });
   view.scrollDOM.addEventListener('scroll', syncPreviewScroll, { passive: true });
+  settingsDialog = createSettingsDialog({
+    t: (...a) => t(...a), api, getSettings: () => settings, openFontDialog, version: b.version,
+    onClose: () => view.focus()
+  });
   bindUi();
+  $('#update-go').addEventListener('click', () => void onUpdateGo());
+  $('#update-later').addEventListener('click', () => void onUpdateLater());
+  api.onUpdateStatus(onUpdateStatus);
+  api.onPrepareQuit((id) => void prepareQuit(id));
   applySettings(b.settings, { __locale: b.locale });
-  const restored = await restoreDrafts();
+  if (b.update) onUpdateStatus(b.update);
+  const restored = b.restoreDrafts ? await restoreDrafts() : 0;
   if (b.filesToOpen.length) { await openPaths(b.filesToOpen); if (!tabs.length) newTab(); }
   else if (restored) activateTab(tabs[0]);
   else newTab();
-  window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, handleAction, openPaths };
+  window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, get update() { return update; }, handleAction, openPaths, keys };
 }
 
 void boot();

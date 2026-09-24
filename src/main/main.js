@@ -5,6 +5,8 @@ const fs = require('fs/promises');
 const { Settings } = require('./settings');
 const files = require('./files');
 const { resolveLocale, makeT } = require('../shared/strings');
+const commands = require('../shared/commands');
+const { createUpdater } = require('./updater');
 
 const isDev = !app.isPackaged;
 // Tests point this at a scratch directory so they never touch real settings.
@@ -13,6 +15,8 @@ let settings;
 let t;
 let locale;
 const pendingFiles = new Map(); // webContents.id -> string[]
+let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
+let updater;
 
 function parseFileArgs(argv, cwd) {
   const args = process.defaultApp ? argv.slice(2) : argv.slice(1);
@@ -44,6 +48,7 @@ function updateSettings(patch) {
   if ('theme' in patch) { nativeTheme.themeSource = next.theme; broadcast('theme:changed', nativeTheme.shouldUseDarkColors); }
   if ('language' in patch) refreshLocale();
   if ('writingMode' in patch) for (const w of BrowserWindow.getAllWindows()) applyMenuBar(w, next.writingMode);
+  if ('checkUpdates' in patch && next.checkUpdates && updater) void updater.check();
   broadcast('settings:changed', next);
   buildMenu();
   return next;
@@ -117,7 +122,61 @@ function fileFilters(kind) {
 ipcMain.handle('app:bootstrap', (e) => {
   const list = pendingFiles.get(e.sender.id) || [];
   pendingFiles.delete(e.sender.id);
-  return { settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, platform: process.platform, isDev, dark: nativeTheme.shouldUseDarkColors };
+  const restoreDrafts = !draftsClaimed;
+  draftsClaimed = true;
+  return {
+    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, platform: process.platform, isDev,
+    dark: nativeTheme.shouldUseDarkColors, restoreDrafts, update: updater ? { ...updater.getState(), reason: updater.reason() } : null
+  };
+});
+
+// ---------- App-level commands the renderer asks for ----------
+function quitAll() { for (const w of BrowserWindow.getAllWindows()) w.close(); }
+function toggleFullscreen(win) { if (win) win.setFullScreen(!win.isFullScreen()); return win ? win.isFullScreen() : false; }
+function showAbout(win) {
+  return dialog.showMessageBox(win || focusedWindow(), { type: 'info', title: t('menu.about'), message: t('dialog.aboutMessage', { version: app.getVersion() }) });
+}
+
+async function manualUpdateCheck(win) {
+  const r = await updater.check({ manual: true });
+  const box = (message, type = 'info') => dialog.showMessageBox(win || focusedWindow(), { type, title: t('appName'), message, buttons: [t('dialog.ok')] });
+  if (r.status === 'latest') await box(t('update.latest', { version: app.getVersion() }));
+  else if (r.status === 'unsupported') await box(t('update.unsupported', { reason: t(r.reason === 'portable' ? 'update.reasonPortable' : 'update.reasonDev') }));
+  else if (r.status === 'error') await box(t('update.error') + (r.message ? '\n\n' + r.message : ''), 'warning');
+  return r;
+}
+
+// Before installing an update every window saves or keeps its work. Untitled text is kept as a
+// draft and comes back after the restart.
+const prepareWaiters = new Map();
+let prepareSeq = 0;
+function prepareAllForQuit() {
+  const wins = BrowserWindow.getAllWindows();
+  return Promise.all(wins.map((w) => new Promise((resolve) => {
+    const id = ++prepareSeq;
+    prepareWaiters.set(id, resolve);
+    w.webContents.send('window:prepareQuit', id);
+  }))).then((results) => results.every(Boolean));
+}
+ipcMain.on('window:prepareQuitResult', (_e, id, ok) => {
+  const r = prepareWaiters.get(id);
+  if (r) { prepareWaiters.delete(id); r(!!ok); }
+});
+
+ipcMain.handle('app:quit', () => quitAll());
+ipcMain.handle('app:about', (e) => showAbout(BrowserWindow.fromWebContents(e.sender)));
+ipcMain.handle('edit:native', (e, op) => {
+  if (['cut', 'copy', 'paste', 'undo', 'redo', 'selectAll', 'delete'].includes(op)) e.sender[op]();
+});
+ipcMain.handle('update:check', (e, { manual } = {}) => (manual ? manualUpdateCheck(BrowserWindow.fromWebContents(e.sender)) : updater.check()));
+ipcMain.handle('update:download', () => updater.download());
+ipcMain.handle('update:dismiss', () => updater.dismiss());
+ipcMain.handle('update:install', async () => {
+  if (updater.getState().state !== 'downloaded') return false;
+  const ok = await prepareAllForQuit();
+  if (!ok) return false;
+  for (const w of BrowserWindow.getAllWindows()) w._closeConfirmed = true;
+  return updater.install();
 });
 ipcMain.handle('settings:get', () => settings.get());
 ipcMain.handle('settings:set', (_e, patch) => updateSettings(patch));
@@ -228,11 +287,7 @@ ipcMain.handle('window:print', async (e) => {
 });
 
 ipcMain.handle('clipboard:readText', () => clipboard.readText());
-ipcMain.handle('window:toggleFullscreen', (e) => {
-  const w = BrowserWindow.fromWebContents(e.sender);
-  if (w) w.setFullScreen(!w.isFullScreen());
-  return w ? w.isFullScreen() : false;
-});
+ipcMain.handle('window:toggleFullscreen', (e) => toggleFullscreen(BrowserWindow.fromWebContents(e.sender)));
 
 // Drafts: crash recovery for untitled tabs, one JSON file per draft.
 ipcMain.handle('draft:list', async () => {
@@ -267,23 +322,33 @@ ipcMain.on('window:new', () => createWindow());
 ipcMain.on('shell:openExternal', (_e, url) => { if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url); });
 
 // ---------- Menu ----------
+// Built from the command registry, so a shortcut changed in Settings shows up here too.
+// Accelerators are labels only (registerAccelerator: false): the renderer dispatches every key.
 function buildMenu() {
   const s = settings.get();
-  const item = (label, action, accelerator, extra = {}) => ({ label, accelerator, click: () => send(action), ...extra });
-  // Shown with a shortcut but not registered globally: CodeMirror/Chromium handle the key itself,
-  // so the shortcut keeps working inside dialogs and search fields too.
-  const local = (label, action, accelerator) => item(label, action, accelerator, { registerAccelerator: false });
-  const check = (label, key, accelerator) => ({ label, type: 'checkbox', checked: !!s[key], accelerator, click: (mi) => updateSettings({ [key]: mi.checked }) });
-  const radio = (label, key, value, accelerator) => ({ label, type: 'radio', checked: s[key] === value, accelerator, click: () => updateSettings({ [key]: value }) });
+  const bindings = commands.effectiveBindings(s.keybindings);
+  const accel = (id) => commands.toAccelerator((bindings[id] || [])[0]);
+  const label = (id) => t(commands.BY_ID[id].label);
+  const cmd = (id, extra = {}) => ({ label: label(id), accelerator: accel(id), registerAccelerator: false, click: () => send(id), ...extra });
+  const check = (id, key = id) => ({
+    label: label(id), type: 'checkbox', checked: !!s[key], accelerator: accel(id), registerAccelerator: false,
+    click: (mi) => updateSettings({ [key]: mi.checked })
+  });
+  const viewRadio = (id, value) => ({
+    label: label(id), type: 'radio', checked: s.viewMode === value, accelerator: accel(id), registerAccelerator: false,
+    click: () => updateSettings({ viewMode: value })
+  });
+  const radio = (text, key, value) => ({ label: text, type: 'radio', checked: s[key] === value, click: () => updateSettings({ [key]: value }) });
   const recent = (s.recentFiles || []).map((f) => ({ label: f, click: () => send('openPaths', [f]) }));
+  const exitAccel = accel('exit') || (process.platform === 'win32' ? 'Alt+F4' : undefined);
 
   const template = [
     {
       label: t('menu.file'),
       submenu: [
-        item(t('menu.new'), 'new', 'CmdOrCtrl+N'),
-        { label: t('menu.newWindow'), accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow() },
-        item(t('menu.open'), 'open', 'CmdOrCtrl+O'),
+        cmd('new'),
+        cmd('newWindow', { click: () => createWindow() }),
+        cmd('open'),
         {
           label: t('menu.openRecent'),
           submenu: recent.length
@@ -291,109 +356,81 @@ function buildMenu() {
             : [{ label: '—', enabled: false }]
         },
         { type: 'separator' },
-        item(t('menu.save'), 'save', 'CmdOrCtrl+S'),
-        item(t('menu.saveAs'), 'saveAs', 'CmdOrCtrl+Shift+S'),
-        item(t('menu.saveAll'), 'saveAll', 'CmdOrCtrl+Alt+S'),
+        cmd('save'),
+        cmd('saveAs'),
+        cmd('saveAll'),
         { type: 'separator' },
-        item(t('menu.closeTab'), 'closeTab', 'CmdOrCtrl+W'),
-        item(t('menu.print'), 'print', 'CmdOrCtrl+P'),
+        cmd('closeTab'),
+        cmd('nextTab'),
+        cmd('prevTab'),
+        { label: t('menu.goToTab'), submenu: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => cmd(`goToTab${n}`)) },
         { type: 'separator' },
-        { label: t('menu.exit'), accelerator: process.platform === 'win32' ? 'Alt+F4' : 'CmdOrCtrl+Q', click: () => { for (const w of BrowserWindow.getAllWindows()) w.close(); } }
+        cmd('print'),
+        { type: 'separator' },
+        cmd('settings'),
+        { type: 'separator' },
+        { label: label('exit'), accelerator: exitAccel, registerAccelerator: false, click: () => quitAll() }
       ]
     },
     {
       label: t('menu.edit'),
       submenu: [
-        local(t('menu.undo'), 'undo', 'CmdOrCtrl+Z'),
-        local(t('menu.redo'), 'redo', 'CmdOrCtrl+Y'),
+        cmd('undo'),
+        cmd('redo'),
         { type: 'separator' },
-        { label: t('menu.cut'), role: 'cut', accelerator: 'CmdOrCtrl+X', registerAccelerator: false },
-        { label: t('menu.copy'), role: 'copy', accelerator: 'CmdOrCtrl+C', registerAccelerator: false },
-        { label: t('menu.paste'), role: 'paste', accelerator: 'CmdOrCtrl+V', registerAccelerator: false },
-        local(t('menu.delete'), 'delete'),
+        { label: label('cut'), role: 'cut', accelerator: accel('cut'), registerAccelerator: false },
+        { label: label('copy'), role: 'copy', accelerator: accel('copy'), registerAccelerator: false },
+        { label: label('paste'), role: 'paste', accelerator: accel('paste'), registerAccelerator: false },
+        { label: t('menu.delete'), click: () => send('delete') },
         { type: 'separator' },
-        item(t('menu.find'), 'find', 'CmdOrCtrl+F'),
-        item(t('menu.findNext'), 'findNext', 'F3'),
-        item(t('menu.findPrevious'), 'findPrevious', 'Shift+F3'),
-        item(t('menu.replace'), 'replace', 'CmdOrCtrl+H'),
-        item(t('menu.goTo'), 'goTo', 'CmdOrCtrl+G'),
+        cmd('find'),
+        cmd('findNext'),
+        cmd('findPrevious'),
+        cmd('replace'),
+        cmd('goTo'),
         { type: 'separator' },
-        local(t('menu.selectAll'), 'selectAll', 'CmdOrCtrl+A'),
+        cmd('selectAll'),
         {
           label: t('menu.line'),
           submenu: [
-            local(t('menu.moveLineUp'), 'moveLineUp', 'Alt+Up'),
-            local(t('menu.moveLineDown'), 'moveLineDown', 'Alt+Down'),
-            local(t('menu.copyLineUp'), 'copyLineUp', 'Shift+Alt+Up'),
-            local(t('menu.copyLineDown'), 'copyLineDown', 'Shift+Alt+Down'),
+            cmd('moveLineUp'), cmd('moveLineDown'), cmd('copyLineUp'), cmd('copyLineDown'),
             { type: 'separator' },
-            local(t('menu.selectLine'), 'selectLine', 'CmdOrCtrl+L'),
-            local(t('menu.deleteLine'), 'deleteLine', 'CmdOrCtrl+Shift+K'),
-            local(t('menu.insertLineBelow'), 'insertLineBelow', 'CmdOrCtrl+Enter'),
-            local(t('menu.insertLineAbove'), 'insertLineAbove', 'CmdOrCtrl+Shift+Enter'),
+            cmd('selectLine'), cmd('deleteLine'), cmd('insertLineBelow'), cmd('insertLineAbove'),
             { type: 'separator' },
-            local(t('menu.selectNextOccurrence'), 'selectNextOccurrence', 'CmdOrCtrl+D'),
-            local(t('menu.selectAllOccurrences'), 'selectAllOccurrences', 'CmdOrCtrl+Shift+L'),
-            local(t('menu.addCursorAbove'), 'addCursorAbove', 'CmdOrCtrl+Alt+Up'),
-            local(t('menu.addCursorBelow'), 'addCursorBelow', 'CmdOrCtrl+Alt+Down'),
+            cmd('selectNextOccurrence'), cmd('selectAllOccurrences'), cmd('addCursorAbove'), cmd('addCursorBelow'),
             { type: 'separator' },
-            local(t('menu.indentLine'), 'indentLine', 'CmdOrCtrl+]'),
-            local(t('menu.outdentLine'), 'outdentLine', 'CmdOrCtrl+[')
+            cmd('indentLine'), cmd('outdentLine')
           ]
         },
-        item(t('menu.timeDate'), 'timeDate', 'F5'),
+        cmd('timeDate'),
         { type: 'separator' },
-        item(t('menu.font'), 'font')
+        cmd('font')
       ]
     },
     {
       label: t('menu.format'),
       submenu: [
-        local(t('menu.bold'), 'bold', 'CmdOrCtrl+B'),
-        local(t('menu.italic'), 'italic', 'CmdOrCtrl+I'),
-        local(t('menu.strikethrough'), 'strikethrough', 'CmdOrCtrl+Shift+X'),
+        cmd('bold'), cmd('italic'), cmd('strikethrough'),
         { type: 'separator' },
-        local(t('menu.heading1'), 'heading1', 'CmdOrCtrl+1'),
-        local(t('menu.heading2'), 'heading2', 'CmdOrCtrl+2'),
-        local(t('menu.heading3'), 'heading3', 'CmdOrCtrl+3'),
+        cmd('heading1'), cmd('heading2'), cmd('heading3'),
         { type: 'separator' },
-        local(t('menu.bulletList'), 'bulletList', 'CmdOrCtrl+Shift+8'),
-        local(t('menu.numberedList'), 'numberedList', 'CmdOrCtrl+Shift+7'),
-        local(t('menu.checkList'), 'checkList', 'CmdOrCtrl+Shift+9'),
-        local(t('menu.quote'), 'quote', 'CmdOrCtrl+Shift+.'),
+        cmd('bulletList'), cmd('numberedList'), cmd('checkList'), cmd('quote'),
         { type: 'separator' },
-        local(t('menu.code'), 'code', 'CmdOrCtrl+E'),
-        local(t('menu.codeBlock'), 'codeBlock', 'CmdOrCtrl+Shift+E'),
-        local(t('menu.link'), 'link', 'CmdOrCtrl+K'),
-        item(t('menu.horizontalRule'), 'horizontalRule'),
-        item(t('menu.table'), 'table')
+        cmd('code'), cmd('codeBlock'), cmd('link'), cmd('horizontalRule'), cmd('table')
       ]
     },
     {
       label: t('menu.view'),
       submenu: [
-        {
-          label: t('menu.zoom'),
-          submenu: [
-            item(t('menu.zoomIn'), 'zoomIn', 'CmdOrCtrl+='),
-            item(t('menu.zoomOut'), 'zoomOut', 'CmdOrCtrl+-'),
-            item(t('menu.zoomReset'), 'zoomReset', 'CmdOrCtrl+0')
-          ]
-        },
+        { label: t('menu.zoom'), submenu: [cmd('zoomIn'), cmd('zoomOut'), cmd('zoomReset')] },
         { type: 'separator' },
-        radio(t('menu.editorOnly'), 'viewMode', 'editor', 'CmdOrCtrl+Shift+1'),
-        radio(t('menu.split'), 'viewMode', 'split', 'CmdOrCtrl+Shift+2'),
-        radio(t('menu.previewOnly'), 'viewMode', 'preview', 'CmdOrCtrl+Shift+3'),
+        viewRadio('viewEditor', 'editor'), viewRadio('viewSplit', 'split'), viewRadio('viewPreview', 'preview'),
         { type: 'separator' },
-        check(t('menu.wordWrap'), 'wordWrap', 'Alt+Z'),
-        check(t('menu.lineNumbers'), 'lineNumbers'),
-        check(t('menu.hideMarkers'), 'hideMarkers'),
-        check(t('menu.formattingBar'), 'formattingBar'),
-        check(t('menu.statusBar'), 'statusBar'),
+        check('wordWrap'), check('lineNumbers'), check('hideMarkers'), check('formattingBar'), check('statusBar'),
         { type: 'separator' },
-        check(t('menu.writingMode'), 'writingMode', 'CmdOrCtrl+Shift+W'),
-        { label: t('menu.fullscreen'), accelerator: 'F11', click: () => { const w = focusedWindow(); if (w) w.setFullScreen(!w.isFullScreen()); } },
-        check(t('menu.autosave'), 'autosave'),
+        check('writingMode'),
+        cmd('fullscreen', { click: () => toggleFullscreen(focusedWindow()) }),
+        check('autosave'),
         { type: 'separator' },
         {
           label: t('menu.theme'),
@@ -408,11 +445,10 @@ function buildMenu() {
     {
       label: t('menu.help'),
       submenu: [
-        item(t('menu.shortcuts'), 'shortcuts', 'CmdOrCtrl+Shift+/'),
-        {
-          label: t('menu.about'),
-          click: () => dialog.showMessageBox(focusedWindow(), { type: 'info', title: t('menu.about'), message: t('dialog.aboutMessage', { version: app.getVersion() }) })
-        },
+        cmd('shortcuts'),
+        cmd('checkForUpdates', { click: () => void manualUpdateCheck(focusedWindow()) }),
+        { type: 'separator' },
+        cmd('about', { click: () => showAbout(focusedWindow()) }),
         ...(isDev ? [{ label: t('menu.toggleDevTools'), role: 'toggleDevTools', accelerator: 'F12' }] : [])
       ]
     }
@@ -440,8 +476,10 @@ if (!gotLock) {
     refreshLocale();
     nativeTheme.themeSource = settings.get('theme') || 'system';
     nativeTheme.on('updated', () => broadcast('theme:changed', nativeTheme.shouldUseDarkColors));
+    updater = createUpdater({ broadcast, getSettings: () => settings.get() });
     buildMenu();
     createWindow(parseFileArgs(process.argv, process.cwd()));
+    updater.start();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   });
 

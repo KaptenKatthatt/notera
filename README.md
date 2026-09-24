@@ -22,13 +22,16 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Inline Markdown markers (`**`, `*`, `~~`, backticks, the `[]()` of a link) are hidden except on the line you are editing. View > Hide Markdown markers turns that off.
 - Enter continues a list or quote, an empty item ends it. Pasting a URL over selected text makes a link, and Ctrl+K uses a URL from the clipboard directly.
 - Writing mode (Ctrl+Shift+W), full screen (F11), and a shortcut reference (Ctrl+?).
+- Settings (File > Settings, Ctrl+,): theme, language, font, autosave, markers, word wrap, line numbers, update checks, and every keyboard shortcut in the app. Each command can have several keys; a key already in use asks before moving it, and plain letters are refused so typing keeps working. Changes show up in the menu and the shortcut reference immediately, and "Reset" puts a command (or all of them) back to its defaults.
+- Automatic updates in the installed version: shortly after start and every six hours Notera checks GitHub Releases. When a newer version exists it offers to download and install it, shows the download progress, and restarts into the new version. Named files are saved first (or you are asked, when autosave is off) and untitled text comes back as a draft. The portable exe and source checkouts don't update themselves. Turn the check off in Settings; Help > Check for updates checks right away.
 - VS Code line editing with VS Code's keys, also under Edit > Line: move, copy, select and delete whole lines, cut or copy the current line when nothing is selected, open a line above or below, add the next occurrence to the selection, and add cursors above or below.
 
 ## Shortcuts
 
 | Action | Keys |
 | --- | --- |
-| New tab / new window | Ctrl+N / Ctrl+Shift+N |
+| New tab / new window | Ctrl+T / Ctrl+N (also Ctrl+Shift+N) |
+| Go to tab 1 … 9 | Alt+1 … Alt+9 |
 | Open / Save / Save as | Ctrl+O / Ctrl+S / Ctrl+Shift+S |
 | Close tab | Ctrl+W |
 | Next / previous tab | Ctrl+Tab / Ctrl+Shift+Tab |
@@ -51,7 +54,8 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 | Add next occurrence / select all occurrences | Ctrl+D / Ctrl+Shift+L |
 | Add cursor above / below | Ctrl+Alt+Up / Ctrl+Alt+Down |
 | Indent / outdent line | Ctrl+] / Ctrl+[ |
-| Keyboard shortcuts | Ctrl+? |
+| Keyboard shortcuts | Ctrl+? / F1 |
+| Settings | Ctrl+, |
 | Zoom in / out / reset | Ctrl+= / Ctrl+- / Ctrl+0 |
 | Word wrap | Alt+Z |
 
@@ -67,6 +71,8 @@ npm test           # unit tests (encoding, line endings, strings)
 npm run e2e        # drives the real app with Playwright; on Linux: xvfb-run -a npm run e2e
 node test/e2e/writing.mjs   # writing mode, hidden markers, autosave, draft recovery
 node test/e2e/lines.mjs     # VS Code line editing, driven with real key presses
+node test/e2e/settings.mjs  # Settings: rebinding, conflicts, persistence, menu labels, Ctrl+T/Ctrl+N/Alt+digit
+node test/e2e/update.mjs    # update flow against a local feed (NOTERA_UPDATE_FEED), up to the installer step
 npm run icon       # regenerate build/icon.png + icon.ico from the SVG in scripts/make-icon.js
 ```
 
@@ -76,7 +82,9 @@ npm run icon       # regenerate build/icon.png + icon.ico from the SVG in script
 npm run dist:win
 ```
 
-Writes `release/Notera-Setup-<version>.exe` (installer, registers `.md`, `.markdown` and `.txt`) and `release/Notera-<version>-portable.exe`. Building the installer on Linux needs 32-bit wine (`wine32:i386`, plus a `wine` launcher on PATH) because electron-builder runs the NSIS setup once to generate its uninstaller. The `portable` and `zip` targets build without wine.
+Writes `release/Notera-Setup-<version>.exe` (installer, registers `.md`, `.markdown` and `.txt`) and `release/Notera-<version>-portable.exe`.
+
+To ship an update, bump `version` in `package.json`, build, and upload three files to a GitHub release tagged `v<version>`: `Notera-Setup-<version>.exe`, `Notera-Setup-<version>.exe.blockmap` and `latest.yml`. Installed copies find it through `latest.yml`. The release feed has to be readable without a login, so the repository (or at least its releases) must be public. Building the installer on Linux needs 32-bit wine (`wine32:i386`, plus a `wine` launcher on PATH) because electron-builder runs the NSIS setup once to generate its uninstaller. The `portable` and `zip` targets build without wine.
 
 ## Layout
 
@@ -87,7 +95,11 @@ src/main/       Electron main process: window, native menu, dialogs, file IO
 src/renderer/   UI: tabs, CodeMirror 6 editor, formatting, preview, status bar
   markers.js    hides inline Markdown markers off the cursor line
   searchCount.js  match counter + jump-to-first-match for the search card
-  lines.js      VS Code line-editing keymap (highest precedence) and Edit > Line commands
+  lines.js      VS Code line-editing commands
+  keybindings.js  dispatches every shortcut from the command registry
+  settingsDialog.js  Settings: General and Keyboard shortcuts
+src/shared/commands.js  every command with its default keys; key names are matched on the Windows virtual key
+src/main/updater.js     update checks and install via electron-updater
 fonts/          iA Writer Mono S (SIL Open Font License, see fonts/OFL.txt)
 src/shared/     English + Swedish strings used by both processes
 scripts/        esbuild bundle + icon generator

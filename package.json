@@ -1,7 +1,7 @@
 {
   "name": "notera",
   "productName": "Notera",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A streamlined Markdown and plain-text notepad for Windows",
   "author": "Jonas Olson",
   "license": "MIT",
@@ -12,17 +12,12 @@
     "watch": "node scripts/build.mjs --watch",
     "start": "npm run build:renderer && electron .",
     "test": "node --test \"test/unit/**/*.test.js\"",
-    "e2e": "node scripts/build.mjs && node test/e2e/smoke.mjs",
+    "e2e": "node scripts/build.mjs && node test/e2e/smoke.mjs && node test/e2e/writing.mjs && node test/e2e/lines.mjs && node test/e2e/settings.mjs && node test/e2e/update.mjs",
     "icon": "electron scripts/make-icon.js",
-    "dist:win": "node scripts/build.mjs --prod && electron-builder --win --x64",
-    "dist:dir": "node scripts/build.mjs --prod && electron-builder --dir"
+    "dist:win": "node scripts/build.mjs --prod && electron-builder --win --x64 --publish never",
+    "dist:dir": "node scripts/build.mjs --prod && electron-builder --dir --publish never"
   },
   "devDependencies": {
-    "electron": "^44.4.5",
-    "electron-builder": "^26.15.3",
-    "esbuild": "^0.28.2",
-    "playwright": "^1.63.0",
-    "png-to-ico": "^3.0.2",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/language": "^6.12.4",
@@ -33,7 +28,15 @@
     "@lezer/highlight": "^1.2.4",
     "codemirror": "^6.0.2",
     "dompurify": "^3.4.16",
-    "marked": "^18.0.14"
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "marked": "^18.0.14",
+    "playwright": "^1.63.0",
+    "png-to-ico": "^3.0.2"
   },
-  "homepage": "https://github.com/KaptenKatthatt/notera"
+  "homepage": "https://github.com/KaptenKatthatt/notera",
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
 }

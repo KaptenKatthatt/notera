@@ -1,7 +1,6 @@
 // VS Code line editing. Bound at high precedence so these keys mean what they mean in VS Code,
 // whatever CodeMirror's defaults happen to be.
-import { Prec, EditorSelection } from '@codemirror/state';
-import { keymap } from '@codemirror/view';
+import { EditorSelection } from '@codemirror/state';
 import {
   moveLineUp, moveLineDown, copyLineUp, copyLineDown, deleteLine, insertBlankLine,
   addCursorAbove, addCursorBelow, indentMore, indentLess
@@ -46,20 +45,3 @@ export const lineCommands = {
   insertLineBelow: insertBlankLine, insertLineAbove, selectNextOccurrence, selectAllOccurrences: selectSelectionMatches,
   addCursorAbove, addCursorBelow, indentLine: indentMore, outdentLine: indentLess
 };
-
-export const vscodeKeymap = Prec.highest(keymap.of([
-  { key: 'Alt-ArrowUp', run: moveLineUp, preventDefault: true },
-  { key: 'Alt-ArrowDown', run: moveLineDown, preventDefault: true },
-  { key: 'Shift-Alt-ArrowUp', run: copyLineUp, preventDefault: true },
-  { key: 'Shift-Alt-ArrowDown', run: copyLineDown, preventDefault: true },
-  { key: 'Mod-l', run: selectLineVS, preventDefault: true },
-  { key: 'Mod-Shift-k', run: deleteLine, preventDefault: true },
-  { key: 'Mod-Enter', run: insertBlankLine, preventDefault: true },
-  { key: 'Mod-Shift-Enter', run: insertLineAbove, preventDefault: true },
-  { key: 'Mod-d', run: selectNextOccurrence, preventDefault: true },
-  { key: 'Mod-Shift-l', run: selectSelectionMatches, preventDefault: true },
-  { key: 'Mod-Alt-ArrowUp', run: addCursorAbove, preventDefault: true },
-  { key: 'Mod-Alt-ArrowDown', run: addCursorBelow, preventDefault: true },
-  { key: 'Mod-]', run: indentMore, preventDefault: true },
-  { key: 'Mod-[', run: indentLess, preventDefault: true }
-]));

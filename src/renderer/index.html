@@ -129,6 +129,34 @@
     </form>
   </dialog>
 
+  <dialog id="dlg-settings" class="settings" aria-labelledby="set-title" tabindex="-1">
+    <div class="set-shell">
+      <nav class="set-nav">
+        <h2 id="set-title">Settings</h2>
+        <button type="button" data-pane="general" class="active">General</button>
+        <button type="button" data-pane="keyboard">Keyboard shortcuts</button>
+      </nav>
+      <section class="set-pane" data-pane="general"><div id="set-general"></div></section>
+      <section class="set-pane" data-pane="keyboard" hidden>
+        <div class="kb-head">
+          <input id="kb-search" type="search" autocomplete="off" spellcheck="false" />
+          <button type="button" id="kb-reset-all">Reset all shortcuts</button>
+        </div>
+        <div id="kb-list" class="kb-list"></div>
+      </section>
+      <button type="button" id="set-close" class="set-close">×</button>
+    </div>
+  </dialog>
+
+  <div id="update-toast" role="status" aria-live="polite" hidden>
+    <span id="update-text"></span>
+    <div id="update-bar" class="ut-bar" hidden><i></i></div>
+    <div class="ut-actions">
+      <button type="button" id="update-later">Later</button>
+      <button type="button" id="update-go" class="primary">Download and install</button>
+    </div>
+  </div>
+
   <div id="drop-overlay" hidden><span data-i18n="ui.dropHint">Drop files to open them</span></div>
   <div id="print-area" aria-hidden="true"></div>
 
