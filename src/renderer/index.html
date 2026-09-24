@@ -66,6 +66,20 @@
   <main id="main" data-view="editor">
     <div id="editor"></div>
     <div id="preview-pane"><article id="preview" class="preview"></article></div>
+    <div id="footer">
+      <button class="ft-btn" data-action="save" data-i18n-title="ui.save" title="Save">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 2.5h8l3 3v8h-11z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5 2.5v4h5v-4M5 13.5v-4h6v4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="ft-btn" data-action="open" data-i18n-title="ui.open" title="Open">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M1.5 4.5h4l1.5 1.5h7.5v7h-13z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="ft-btn" data-action="writingMode" data-i18n-title="ui.exitWriting" title="Back to the full view">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
+      <span class="ft-status" id="ft-status"></span>
+      <span class="spacer"></span>
+      <span class="ft-words" id="ft-words"></span>
+    </div>
   </main>
 
   <footer id="statusbar">
@@ -104,6 +118,14 @@
         <button value="cancel" data-i18n="ui.cancel">Cancel</button>
         <button value="ok" class="primary" data-i18n="ui.insert">Insert</button>
       </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-keys">
+    <form method="dialog">
+      <h2 data-i18n="ui.shortcutsTitle">Keyboard shortcuts</h2>
+      <div class="keys-grid"><table id="keys-table" class="keys"></table><table id="keys-table-2" class="keys"></table></div>
+      <div class="dlg-actions"><button value="ok" class="primary" data-i18n="ui.close">Close</button></div>
     </form>
   </dialog>
 

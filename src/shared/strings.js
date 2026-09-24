@@ -19,7 +19,9 @@ const en = {
     statusBar: 'Status bar', wordWrap: 'Word wrap', lineNumbers: 'Line numbers', formattingBar: 'Formatting toolbar',
     editorOnly: 'Editor', split: 'Split view', previewOnly: 'Preview', theme: 'Theme', themeSystem: 'Use system setting',
     themeLight: 'Light', themeDark: 'Dark', language: 'Language', langAuto: 'Automatic', langEn: 'English', langSv: 'Svenska',
-    help: '&Help', about: 'About Notera', toggleDevTools: 'Developer tools'
+    help: '&Help', about: 'About Notera', toggleDevTools: 'Developer tools',
+    writingMode: 'Writing mode', fullscreen: 'Full screen', autosave: 'Autosave', hideMarkers: 'Hide Markdown markers',
+    shortcuts: 'Keyboard shortcuts'
   },
   dialog: {
     openTitle: 'Open', saveTitle: 'Save as', markdownFiles: 'Markdown files', textFiles: 'Text files', allFiles: 'All files',
@@ -38,7 +40,9 @@ const en = {
     heading: 'Heading', headingLevel: 'Heading {n}', list: 'List', more: 'More', view: 'View',
     editor: 'Editor', split: 'Split', preview: 'Preview', switchToMarkdown: 'Treat as Markdown', switchToText: 'Treat as plain text',
     emptyPreview: 'Nothing to preview yet.', toggleEol: 'Click to switch line endings', toggleEncoding: 'Click to change encoding',
-    toggleZoom: 'Click to reset zoom', dropHint: 'Drop files to open them', menuEol: 'Line endings', menuEncoding: 'Encoding'
+    toggleZoom: 'Click to reset zoom', dropHint: 'Drop files to open them', menuEol: 'Line endings', menuEncoding: 'Encoding',
+    startWriting: '# Start writing', unsaved: 'unsaved', saved: 'saved', recovered: 'recovered draft',
+    exitWriting: 'Back to the full view', nextTab: 'Next tab', shortcutsTitle: 'Keyboard shortcuts', close: 'Close', save: 'Save', open: 'Open'
   },
   search: {
     'Find': 'Find', 'Replace': 'Replace', 'next': 'Next', 'previous': 'Previous', 'all': 'All', 'match case': 'Match case',
@@ -66,7 +70,9 @@ const sv = {
     statusBar: 'Statusfält', wordWrap: 'Radbyte', lineNumbers: 'Radnummer', formattingBar: 'Formateringsfält',
     editorOnly: 'Redigerare', split: 'Delad vy', previewOnly: 'Förhandsvisning', theme: 'Tema', themeSystem: 'Följ systemet',
     themeLight: 'Ljust', themeDark: 'Mörkt', language: 'Språk', langAuto: 'Automatiskt', langEn: 'English', langSv: 'Svenska',
-    help: '&Hjälp', about: 'Om Notera', toggleDevTools: 'Utvecklarverktyg'
+    help: '&Hjälp', about: 'Om Notera', toggleDevTools: 'Utvecklarverktyg',
+    writingMode: 'Skrivläge', fullscreen: 'Helskärm', autosave: 'Spara automatiskt', hideMarkers: 'Dölj Markdown-tecken',
+    shortcuts: 'Kortkommandon'
   },
   dialog: {
     openTitle: 'Öppna', saveTitle: 'Spara som', markdownFiles: 'Markdown-filer', textFiles: 'Textfiler', allFiles: 'Alla filer',
@@ -85,7 +91,9 @@ const sv = {
     heading: 'Rubrik', headingLevel: 'Rubrik {n}', list: 'Lista', more: 'Mer', view: 'Vy',
     editor: 'Redigerare', split: 'Delad', preview: 'Förhandsvisning', switchToMarkdown: 'Behandla som Markdown', switchToText: 'Behandla som text',
     emptyPreview: 'Inget att förhandsvisa ännu.', toggleEol: 'Klicka för att byta radslut', toggleEncoding: 'Klicka för att byta teckenkodning',
-    toggleZoom: 'Klicka för att återställa zoom', dropHint: 'Släpp filer här för att öppna dem', menuEol: 'Radslut', menuEncoding: 'Teckenkodning'
+    toggleZoom: 'Klicka för att återställa zoom', dropHint: 'Släpp filer här för att öppna dem', menuEol: 'Radslut', menuEncoding: 'Teckenkodning',
+    startWriting: '# Börja skriva', unsaved: 'osparad', saved: 'sparad', recovered: 'återställt utkast',
+    exitWriting: 'Tillbaka till hela vyn', nextTab: 'Nästa flik', shortcutsTitle: 'Kortkommandon', close: 'Stäng', save: 'Spara', open: 'Öppna'
   },
   search: {
     'Find': 'Sök', 'Replace': 'Ersätt', 'next': 'Nästa', 'previous': 'Föregående', 'all': 'Alla', 'match case': 'Matcha skiftläge',

@@ -4,6 +4,8 @@ A Windows notepad for Markdown and plain text. It keeps the shape of Windows Not
 
 Swedish UI when Windows runs in Swedish, English otherwise. Switch under View > Language.
 
+The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite), the writing app DHH ships with Omarchy: one column of iA Writer Mono, Markdown markers dimmed and inline markers hidden until the cursor reaches them, a floating search card with a match counter, autosave as you type, and draft recovery after a crash. View > Writing mode (Ctrl+Shift+W) drops every piece of Notepad chrome and leaves that column, a footer with the file name and word count, and nothing else. Alt still shows the menu.
+
 ## What it does
 
 - Opens and saves `.md` and `.txt` files. The file extension decides the mode; the status bar button switches it by hand.
@@ -16,6 +18,10 @@ Swedish UI when Windows runs in Swedish, English otherwise. Switch under View > 
 - Zoom (Ctrl+wheel too), font family and size, word wrap, line numbers, light/dark/system theme.
 - Opening a file from Explorer reuses the running window as a new tab.
 - Print: rendered Markdown for `.md`, plain text for `.txt`.
+- Autosave (View > Autosave, on by default): a file with a name is written 0.8 s after you stop typing. Untitled tabs are kept as drafts under `%APPDATA%\Notera\drafts` and come back on the next start.
+- Inline Markdown markers (`**`, `*`, `~~`, backticks, the `[]()` of a link) are hidden except on the line you are editing. View > Hide Markdown markers turns that off.
+- Enter continues a list or quote, an empty item ends it. Pasting a URL over selected text makes a link, and Ctrl+K uses a URL from the clipboard directly.
+- Writing mode (Ctrl+Shift+W), full screen (F11), and a shortcut reference (Ctrl+?).
 
 ## Shortcuts
 
@@ -34,6 +40,8 @@ Swedish UI when Windows runs in Swedish, English otherwise. Switch under View > 
 | Quote | Ctrl+Shift+. |
 | Code / code block / link | Ctrl+E / Ctrl+Shift+E / Ctrl+K |
 | Editor / split / preview | Ctrl+Shift+1 / 2 / 3 |
+| Writing mode / full screen | Ctrl+Shift+W / F11 |
+| Keyboard shortcuts | Ctrl+? |
 | Zoom in / out / reset | Ctrl+= / Ctrl+- / Ctrl+0 |
 | Word wrap | Alt+Z |
 
@@ -47,6 +55,7 @@ npm start          # build renderer + run Electron
 npm run watch      # rebuild renderer on change (run Electron separately)
 npm test           # unit tests (encoding, line endings, strings)
 npm run e2e        # drives the real app with Playwright; on Linux: xvfb-run -a npm run e2e
+node test/e2e/writing.mjs   # writing mode, hidden markers, autosave, draft recovery
 npm run icon       # regenerate build/icon.png + icon.ico from the SVG in scripts/make-icon.js
 ```
 
@@ -65,6 +74,9 @@ src/main/       Electron main process: window, native menu, dialogs, file IO
   files.js      encoding detection/encoding + line endings (unit tested)
   settings.js   settings.json in %APPDATA%\Notera
 src/renderer/   UI: tabs, CodeMirror 6 editor, formatting, preview, status bar
+  markers.js    hides inline Markdown markers off the cursor line
+  searchCount.js  match counter + jump-to-first-match for the search card
+fonts/          iA Writer Mono S (SIL Open Font License, see fonts/OFL.txt)
 src/shared/     English + Swedish strings used by both processes
 scripts/        esbuild bundle + icon generator
 test/           node:test unit tests, Playwright smoke test

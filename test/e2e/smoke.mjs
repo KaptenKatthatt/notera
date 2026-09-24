@@ -118,7 +118,7 @@ assert.ok(s.status.includes('150 %'));
 const fontSize = await win.evaluate(() => getComputedStyle(document.querySelector('.cm-editor')).fontSize);
 assert.equal(fontSize, '22.5px', 'zoom 150% of 15px');
 const bg = await win.evaluate(() => getComputedStyle(document.body).backgroundColor);
-assert.equal(bg, 'rgb(31, 31, 31)', 'dark background');
+assert.equal(bg, 'rgb(16, 16, 16)', 'dark background');
 await win.evaluate(() => window.__notera.handleAction('prevTab'));
 await win.waitForFunction(() => window.__notera.active.name === 'Anteckningar.md');
 await win.waitForTimeout(200);

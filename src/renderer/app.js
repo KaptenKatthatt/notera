@@ -28,7 +28,9 @@ function editorOpts(tab) {
     lineNumbers: !!settings.lineNumbers,
     dark: isDark,
     phrases: LOCALES[locale].search,
-    extraKeys: formatKeymap
+    extraKeys: formatKeymap,
+    hideMarkers: settings.hideMarkers !== false,
+    placeholder: tab.kind === 'md' ? t('ui.startWriting') : ''
   };
 }
 
@@ -65,7 +67,7 @@ function runFormat(action, v = view) {
     case 'codeBlock': return fmt.toggleCodeBlock(v);
     case 'horizontalRule': fmt.insertBlock(v, '---'); return true;
     case 'table': fmt.insertBlock(v, fmt.TABLE_TEMPLATE); return true;
-    case 'link': openLinkDialog(); return true;
+    case 'link': void insertLinkSmart(); return true;
     default: return false;
   }
 }
@@ -97,7 +99,10 @@ function makeTab(init = {}) {
     mtimeMs: init.mtimeMs || null,
     dirty: false,
     state: null,
-    savedDoc: null
+    savedDoc: null,
+    draftId: init.draftId || null,
+    autosaveTimer: null,
+    draftTimer: null
   };
   tab.state = createState(init.text || '', editorOpts(tab));
   tab.savedDoc = tab.state.doc;
@@ -106,7 +111,7 @@ function makeTab(init = {}) {
 }
 
 function activateTab(tab) {
-  if (active && active !== tab) active.state = view.state;
+  if (active && active !== tab) { active.state = view.state; void flushPending(active); }
   active = tab;
   view.setState(tab.state);
   // A fresh state may have stale compartment config if settings changed while inactive.
@@ -167,6 +172,8 @@ async function closeTab(tab) {
     if (answer === 'cancel') return false;
     if (answer === 'save') { const ok = await saveTab(tab); if (!ok) return false; }
   }
+  clearTimeout(tab.autosaveTimer);
+  await dropDraft(tab);
   const idx = tabs.indexOf(tab);
   tabs.splice(idx, 1);
   if (tabs.length === 0) newTab();
@@ -201,13 +208,27 @@ async function openDialog() {
   if (paths && paths.length) await openPaths(paths);
 }
 
+function docFor(tab) { return tab === active ? view.state.doc : tab.state.doc; }
+
+/** Write a tab that already has a path, without touching which tab is active. */
+async function writeTab(tab) {
+  clearTimeout(tab.autosaveTimer); tab.autosaveTimer = null;
+  const doc = docFor(tab);
+  const r = await api.writeFile({ path: tab.path, text: doc.toString(), encoding: tab.encoding, eol: tab.eol });
+  if (!r.ok) { await api.showError({ kind: 'write', name: r.name, detail: r.error }); return false; }
+  tab.name = r.name; tab.mtimeMs = r.mtimeMs;
+  tab.savedDoc = doc;
+  tab.dirty = !docFor(tab).eq(doc);
+  tab.lastSavedAt = Date.now();
+  renderTabs(); updateTitle(); updateStatus();
+  return true;
+}
+
 async function saveTab(tab, forceAs = false) {
+  if (tab.path && !forceAs) return writeTab(tab);
   if (tab !== active) activateTab(tab);
-  let target = tab.path;
-  if (!target || forceAs) {
-    target = await api.saveAsDialog({ currentPath: tab.path, suggestedName: suggestedName(tab), kind: tab.kind });
-    if (!target) return false;
-  }
+  const target = await api.saveAsDialog({ currentPath: tab.path, suggestedName: suggestedName(tab), kind: tab.kind });
+  if (!target) return false;
   const text = view.state.doc.toString();
   const r = await api.writeFile({ path: target, text, encoding: tab.encoding, eol: tab.eol });
   if (!r.ok) { await api.showError({ kind: 'write', name: r.name, detail: r.error }); return false; }
@@ -215,9 +236,54 @@ async function saveTab(tab, forceAs = false) {
   tab.path = r.path; tab.name = r.name; tab.kind = r.kind; tab.mtimeMs = r.mtimeMs;
   tab.savedDoc = view.state.doc;
   tab.dirty = false;
+  tab.lastSavedAt = Date.now();
+  void dropDraft(tab);
   if (kindChanged) { view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) }); applyKindUi(); }
   renderTabs(); updateTitle(); updateStatus();
   return true;
+}
+
+// ---------- autosave + drafts (Omawrite: it saves as you type, and recovers unsaved text) ----------
+function scheduleAutosave(tab) {
+  if (tab.path) {
+    if (settings.autosave === false) return;
+    clearTimeout(tab.autosaveTimer);
+    tab.autosaveTimer = setTimeout(() => { if (tab.dirty) void writeTab(tab); }, 800);
+  } else {
+    clearTimeout(tab.draftTimer);
+    tab.draftTimer = setTimeout(() => void writeDraft(tab), 1000);
+  }
+}
+
+async function writeDraft(tab) {
+  const text = docFor(tab).toString();
+  if (!text.trim()) { await dropDraft(tab); return; }
+  if (!tab.draftId) tab.draftId = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  await api.writeDraft({ id: tab.draftId, text, kind: tab.kind });
+}
+
+async function dropDraft(tab) {
+  clearTimeout(tab.draftTimer); tab.draftTimer = null;
+  if (!tab.draftId) return;
+  const id = tab.draftId; tab.draftId = null;
+  await api.deleteDraft(id);
+}
+
+async function flushPending(tab) {
+  if (tab.autosaveTimer && tab.path && tab.dirty) await writeTab(tab);
+  if (tab.draftTimer && !tab.path) await writeDraft(tab);
+}
+
+async function restoreDrafts() {
+  const drafts = await api.listDrafts();
+  for (const d of drafts) {
+    if (!d.text || !d.text.trim()) { await api.deleteDraft(d.id); continue; }
+    const tab = makeTab({ text: d.text, kind: d.kind || 'md', draftId: d.id });
+    tab.savedDoc = tab.state.doc.slice(0, 0); // never saved: stays dirty
+    tab.dirty = true;
+    tab.recovered = true;
+  }
+  return drafts.length;
 }
 
 async function saveAll() {
@@ -242,6 +308,7 @@ async function checkExternalChange() {
 }
 
 async function requestClose() {
+  for (const tab of [...tabs]) await flushPending(tab);
   for (const tab of [...tabs]) {
     if (!tab.dirty) continue;
     activateTab(tab);
@@ -268,13 +335,17 @@ function updateStatus() {
   $('#st-enc').textContent = encodingLabel(active.encoding);
   $('#st-kind').textContent = active.kind === 'md' ? t('ui.markdown') : t('ui.plainText');
   $('#st-kind').title = active.kind === 'md' ? t('ui.switchToText') : t('ui.switchToMarkdown');
+  const words = countWords(s.doc.toString());
+  $('#ft-words').textContent = t('ui.words', { n: words });
+  const state = active.recovered && active.dirty ? t('ui.recovered') : active.dirty ? t('ui.unsaved') : (active.path ? t('ui.saved') : '');
+  $('#ft-status').textContent = [tabTitle(active), state].filter(Boolean).join(' · ');
 }
 
 function applyKindUi() {
   const md = active && active.kind === 'md';
   document.body.classList.toggle('no-formatting', !md);
   $('#view-mode').hidden = !md;
-  const mode = md ? settings.viewMode || 'editor' : 'editor';
+  const mode = md && !settings.writingMode ? settings.viewMode || 'editor' : 'editor';
   $('#main').dataset.view = mode;
   for (const b of $$('#view-mode button')) b.classList.toggle('active', b.dataset.mode === mode);
 }
@@ -309,7 +380,8 @@ function syncPreviewScroll() {
 function applySettings(next, prev = {}) {
   settings = next;
   const root = document.documentElement.style;
-  root.setProperty('--zoom', String((settings.zoom || 100) / 100));
+  root.setProperty('--zoom-base', String((settings.zoom || 100) / 100));
+  document.body.classList.toggle('writing', !!settings.writingMode);
   root.setProperty('--editor-font', `"${settings.fontFamily || 'Consolas'}", Consolas, "Cascadia Mono", monospace`);
   root.setProperty('--editor-size', `${settings.fontSize || 15}px`);
   document.body.classList.toggle('no-statusbar', settings.statusBar === false);
@@ -322,7 +394,7 @@ function applySettings(next, prev = {}) {
   t = makeT(locale);
   applyI18n();
   if (view) {
-    const reconfigure = prev.wordWrap !== settings.wordWrap || prev.lineNumbers !== settings.lineNumbers || prev.language !== settings.language;
+    const reconfigure = prev.wordWrap !== settings.wordWrap || prev.lineNumbers !== settings.lineNumbers || prev.language !== settings.language || prev.hideMarkers !== settings.hideMarkers;
     if (reconfigure) reconfigureAll();
     applyKindUi();
     updateStatus();
@@ -413,12 +485,20 @@ async function openFontDialog() {
   view.focus();
 }
 
-async function openLinkDialog() {
+async function insertLinkSmart() {
+  const clip = ((await api.clipboardText()) || '').trim();
+  const range = view.state.selection.main;
+  const selected = view.state.doc.sliceString(range.from, range.to).trim();
+  if (/^https?:\/\/\S+$/i.test(clip) && selected) { fmt.insertLink(view, selected, clip); return; }
+  await openLinkDialog(/^https?:\/\/\S+$/i.test(clip) ? clip : '');
+}
+
+async function openLinkDialog(prefillUrl = '') {
   const dlg = $('#dlg-link');
   const text = $('#link-text'), url = $('#link-url');
   const range = view.state.selection.main;
   const selected = view.state.doc.sliceString(range.from, range.to);
-  if (/^https?:\/\//i.test(selected)) { text.value = ''; url.value = selected; } else { text.value = selected; url.value = ''; }
+  if (/^https?:\/\//i.test(selected)) { text.value = ''; url.value = selected; } else { text.value = selected; url.value = prefillUrl; }
   dlg.returnValue = '';
   dlg.showModal();
   (text.value ? url : text).focus();
@@ -441,6 +521,31 @@ function printCurrent() {
   if (active.kind === 'md') { area.className = 'preview'; area.innerHTML = renderMarkdown(text); }
   else { area.className = ''; area.innerHTML = ''; const pre = document.createElement('pre'); pre.textContent = text; area.appendChild(pre); }
   window.print();
+}
+
+const SHORTCUTS = [
+  ['Ctrl+N', 'menu.new'], ['Ctrl+Shift+N', 'menu.newWindow'], ['Ctrl+O', 'menu.open'], ['Ctrl+S', 'menu.save'], ['Ctrl+Shift+S', 'menu.saveAs'],
+  ['Ctrl+W', 'menu.closeTab'], ['Ctrl+Tab', 'ui.nextTab'], ['Ctrl+P', 'menu.print'], ['Ctrl+F', 'menu.find'], ['F3 / Shift+F3', 'menu.findNext'],
+  ['Ctrl+H', 'menu.replace'], ['Ctrl+G', 'menu.goTo'], ['F5', 'menu.timeDate'], ['Ctrl+B', 'menu.bold'], ['Ctrl+I', 'menu.italic'],
+  ['Ctrl+Shift+X', 'menu.strikethrough'], ['Ctrl+1 / 2 / 3', 'menu.heading1'], ['Ctrl+Shift+8', 'menu.bulletList'], ['Ctrl+Shift+7', 'menu.numberedList'],
+  ['Ctrl+Shift+9', 'menu.checkList'], ['Ctrl+Shift+.', 'menu.quote'], ['Ctrl+E', 'menu.code'], ['Ctrl+Shift+E', 'menu.codeBlock'], ['Ctrl+K', 'menu.link'],
+  ['Ctrl+Shift+1 / 2 / 3', 'menu.view'], ['Ctrl+Shift+W', 'menu.writingMode'], ['F11', 'menu.fullscreen'], ['Ctrl+= / Ctrl+-', 'menu.zoom'],
+  ['Ctrl+0', 'menu.zoomReset'], ['Alt+Z', 'menu.wordWrap'], ['Ctrl+?', 'menu.shortcuts']
+];
+
+function openShortcutsDialog() {
+  const tables = [$('#keys-table'), $('#keys-table-2')];
+  tables.forEach((tb) => { tb.innerHTML = ''; });
+  const half = Math.ceil(SHORTCUTS.length / 2);
+  SHORTCUTS.forEach(([keys, label], i) => {
+    const tr = document.createElement('tr');
+    const a = document.createElement('td'); a.textContent = keys;
+    const b = document.createElement('td'); b.textContent = t(label).replace('&', '').replace(/…$/, '');
+    tr.append(a, b); tables[i < half ? 0 : 1].appendChild(tr);
+  });
+  const dlg = $('#dlg-keys');
+  dlg.showModal();
+  dlg.addEventListener('close', () => view.focus(), { once: true });
 }
 
 function ensureEditorVisible() {
@@ -478,6 +583,9 @@ async function handleAction(action, payload) {
     case 'zoomOut': setZoom((settings.zoom || 100) - 10); break;
     case 'zoomReset': setZoom(100); break;
     case 'nextTab': cycleTab(1); break;
+    case 'writingMode': await api.setSettings({ writingMode: !settings.writingMode }); break;
+    case 'fullscreen': await api.toggleFullscreen(); break;
+    case 'shortcuts': openShortcutsDialog(); break;
     case 'prevTab': cycleTab(-1); break;
     default:
       if (!runFormat(action)) console.warn('unknown action', action);
@@ -501,6 +609,7 @@ function bindUi() {
     });
   }
   for (const b of $$('#view-mode button')) b.addEventListener('click', () => api.setSettings({ viewMode: b.dataset.mode }));
+  for (const b of $$('#footer [data-action]')) b.addEventListener('click', () => void handleAction(b.dataset.action));
 
   $('#st-zoom').addEventListener('click', () => setZoom(100));
   $('#st-eol').addEventListener('click', (e) => showPopup(e.currentTarget, [
@@ -591,6 +700,7 @@ async function boot() {
       if (docChanged) {
         const dirty = !v.state.doc.eq(active.savedDoc);
         if (dirty !== active.dirty) { active.dirty = dirty; renderTabs(); updateTitle(); }
+        if (dirty) scheduleAutosave(active);
         schedulePreview();
       }
       if (docChanged || trs.some((tr) => tr.selection)) updateStatus();
@@ -599,7 +709,9 @@ async function boot() {
   view.scrollDOM.addEventListener('scroll', syncPreviewScroll, { passive: true });
   bindUi();
   applySettings(b.settings, { __locale: b.locale });
+  const restored = await restoreDrafts();
   if (b.filesToOpen.length) { await openPaths(b.filesToOpen); if (!tabs.length) newTab(); }
+  else if (restored) activateTab(tabs[0]);
   else newTab();
   window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, handleAction, openPaths };
 }

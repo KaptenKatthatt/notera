@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DEFAULTS = {
-  fontFamily: 'Consolas',
+  fontFamily: 'iA Writer Mono S',
   fontSize: 15,
   wordWrap: true,
   statusBar: true,
@@ -16,7 +16,10 @@ const DEFAULTS = {
   lastDir: null,
   recentFiles: [],
   windowBounds: null,
-  defaultEncoding: 'utf8'
+  defaultEncoding: 'utf8',
+  writingMode: false,
+  autosave: true,
+  hideMarkers: true
 };
 
 class Settings {

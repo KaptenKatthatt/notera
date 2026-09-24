@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell, nativeTheme, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const { Settings } = require('./settings');
@@ -43,10 +43,19 @@ function updateSettings(patch) {
   const next = settings.set(patch);
   if ('theme' in patch) { nativeTheme.themeSource = next.theme; broadcast('theme:changed', nativeTheme.shouldUseDarkColors); }
   if ('language' in patch) refreshLocale();
+  if ('writingMode' in patch) for (const w of BrowserWindow.getAllWindows()) applyMenuBar(w, next.writingMode);
   broadcast('settings:changed', next);
   buildMenu();
   return next;
 }
+
+// Writing mode hides the menu bar; Alt still reveals it.
+function applyMenuBar(win, writing) {
+  win.autoHideMenuBar = !!writing;
+  win.setMenuBarVisibility(!writing);
+}
+
+function draftsDir() { return path.join(app.getPath('userData'), 'drafts'); }
 
 function createWindow(filesToOpen = []) {
   const bounds = settings.get('windowBounds') || {};
@@ -70,6 +79,7 @@ function createWindow(filesToOpen = []) {
     }
   });
   if (bounds.maximized) win.maximize();
+  applyMenuBar(win, settings.get('writingMode'));
   pendingFiles.set(win.webContents.id, filesToOpen);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -217,6 +227,37 @@ ipcMain.handle('window:print', async (e) => {
   return new Promise((resolve) => win.webContents.print({}, (ok, reason) => resolve({ ok, reason })));
 });
 
+ipcMain.handle('clipboard:readText', () => clipboard.readText());
+ipcMain.handle('window:toggleFullscreen', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w) w.setFullScreen(!w.isFullScreen());
+  return w ? w.isFullScreen() : false;
+});
+
+// Drafts: crash recovery for untitled tabs, one JSON file per draft.
+ipcMain.handle('draft:list', async () => {
+  try {
+    const dir = draftsDir();
+    const names = (await fs.readdir(dir)).filter((n) => n.endsWith('.json'));
+    const out = [];
+    for (const n of names) {
+      try { out.push({ id: n.slice(0, -5), ...JSON.parse(await fs.readFile(path.join(dir, n), 'utf8')) }); } catch { /* skip broken draft */ }
+    }
+    return out;
+  } catch { return []; }
+});
+ipcMain.handle('draft:write', async (_e, { id, text, kind }) => {
+  if (!/^[\w-]+$/.test(id)) return false;
+  await fs.mkdir(draftsDir(), { recursive: true });
+  await fs.writeFile(path.join(draftsDir(), id + '.json'), JSON.stringify({ text, kind, savedAt: Date.now() }), 'utf8');
+  return true;
+});
+ipcMain.handle('draft:delete', async (_e, id) => {
+  if (!/^[\w-]+$/.test(id)) return false;
+  try { await fs.unlink(path.join(draftsDir(), id + '.json')); } catch { /* already gone */ }
+  return true;
+});
+
 ipcMain.on('window:setTitle', (e, title) => { const w = BrowserWindow.fromWebContents(e.sender); if (w) w.setTitle(title); });
 ipcMain.on('window:closeConfirmed', (e) => {
   const w = BrowserWindow.fromWebContents(e.sender);
@@ -324,8 +365,13 @@ function buildMenu() {
         { type: 'separator' },
         check(t('menu.wordWrap'), 'wordWrap', 'Alt+Z'),
         check(t('menu.lineNumbers'), 'lineNumbers'),
+        check(t('menu.hideMarkers'), 'hideMarkers'),
         check(t('menu.formattingBar'), 'formattingBar'),
         check(t('menu.statusBar'), 'statusBar'),
+        { type: 'separator' },
+        check(t('menu.writingMode'), 'writingMode', 'CmdOrCtrl+Shift+W'),
+        { label: t('menu.fullscreen'), accelerator: 'F11', click: () => { const w = focusedWindow(); if (w) w.setFullScreen(!w.isFullScreen()); } },
+        check(t('menu.autosave'), 'autosave'),
         { type: 'separator' },
         {
           label: t('menu.theme'),
@@ -340,6 +386,7 @@ function buildMenu() {
     {
       label: t('menu.help'),
       submenu: [
+        item(t('menu.shortcuts'), 'shortcuts', 'CmdOrCtrl+Shift+/'),
         {
           label: t('menu.about'),
           click: () => dialog.showMessageBox(focusedWindow(), { type: 'info', title: t('menu.about'), message: t('dialog.aboutMessage', { version: app.getVersion() }) })

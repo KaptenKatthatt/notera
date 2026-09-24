@@ -1,8 +1,10 @@
 import { EditorState, Compartment } from '@codemirror/state';
 import {
   EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, dropCursor,
-  rectangularSelection, crosshairCursor, highlightSpecialChars
+  rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder
 } from '@codemirror/view';
+import { hideMarkers } from './markers.js';
+import { searchCount } from './searchCount.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -16,23 +18,21 @@ export const compartments = {
   gutter: new Compartment(),
   theme: new Compartment(),
   phrases: new Compartment(),
-  extraKeys: new Compartment()
+  extraKeys: new Compartment(),
+  markers: new Compartment(),
+  placeholder: new Compartment()
 };
 
 const mdHighlight = HighlightStyle.define([
-  { tag: t.heading1, fontWeight: '700', fontSize: '1.5em', color: 'var(--md-h)' },
-  { tag: t.heading2, fontWeight: '700', fontSize: '1.3em', color: 'var(--md-h)' },
-  { tag: t.heading3, fontWeight: '700', fontSize: '1.15em', color: 'var(--md-h)' },
-  { tag: [t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--md-h)' },
+  { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--fg)' },
   { tag: t.strong, fontWeight: '700' },
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, textDecoration: 'line-through' },
   { tag: t.link, color: 'var(--md-link)', textDecoration: 'underline' },
-  { tag: t.url, color: 'var(--md-link)' },
-  { tag: t.monospace, color: 'var(--md-code)', fontFamily: 'var(--editor-font)' },
+  { tag: t.url, color: 'var(--md-meta)' },
+  { tag: t.monospace, backgroundColor: 'var(--code-bg)', borderRadius: '3px' },
   { tag: t.quote, color: 'var(--md-quote)', fontStyle: 'italic' },
   { tag: [t.processingInstruction, t.meta, t.labelName, t.contentSeparator], color: 'var(--md-meta)' },
-  { tag: t.list, color: 'var(--md-h)' },
   { tag: t.keyword, color: 'var(--md-h)' },
   { tag: t.comment, color: 'var(--md-meta)', fontStyle: 'italic' },
   { tag: [t.string, t.special(t.string)], color: 'var(--md-code)' },
@@ -55,6 +55,9 @@ export function baseExtensions(opts) {
     compartments.theme.of(themeFor(opts.dark)),
     compartments.phrases.of(EditorState.phrases.of(opts.phrases || {})),
     compartments.extraKeys.of(keymap.of(opts.extraKeys || [])),
+    compartments.markers.of(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
+    compartments.placeholder.of(placeholder(opts.placeholder || '')),
+    searchCount,
     history(),
     drawSelection(),
     dropCursor(),
@@ -88,7 +91,9 @@ export function reconfigureEffects(opts) {
     compartments.gutter.reconfigure(opts.lineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
     compartments.theme.reconfigure(themeFor(opts.dark)),
     compartments.phrases.reconfigure(EditorState.phrases.of(opts.phrases || {})),
-    compartments.extraKeys.reconfigure(keymap.of(opts.extraKeys || []))
+    compartments.extraKeys.reconfigure(keymap.of(opts.extraKeys || [])),
+    compartments.markers.reconfigure(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
+    compartments.placeholder.reconfigure(placeholder(opts.placeholder || ''))
   ];
 }
 
