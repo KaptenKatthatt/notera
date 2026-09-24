@@ -56,7 +56,7 @@ npm run icon       # regenerate build/icon.png + icon.ico from the SVG in script
 npm run dist:win
 ```
 
-Writes `release/Notera-Setup-<version>.exe` (installer, registers `.md`, `.markdown` and `.txt`) and `release/Notera-<version>-portable.exe`. Building on Linux needs `wine64` for the exe metadata step.
+Writes `release/Notera-Setup-<version>.exe` (installer, registers `.md`, `.markdown` and `.txt`) and `release/Notera-<version>-portable.exe`. Building the installer on Linux needs 32-bit wine (`wine32:i386`, plus a `wine` launcher on PATH) because electron-builder runs the NSIS setup once to generate its uninstaller. The `portable` and `zip` targets build without wine.
 
 ## Layout
 
