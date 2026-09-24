@@ -45,6 +45,7 @@ function createUpdater({ broadcast, getSettings }) {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.allowPrerelease = false;
+    autoUpdater.disableWebInstaller = true; // we ship a full installer, never a web installer
     if (testFeed) {
       // Unpackaged runs have no app-update.yml, so write the one electron-builder would have made.
       const cfg = path.join(app.getPath('userData'), 'test-app-update.yml');
