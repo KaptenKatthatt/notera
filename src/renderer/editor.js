@@ -5,6 +5,7 @@ import {
 } from '@codemirror/view';
 import { hideMarkers } from './markers.js';
 import { searchCount } from './searchCount.js';
+import { vscodeKeymap } from './lines.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -58,6 +59,7 @@ export function baseExtensions(opts) {
     compartments.markers.of(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
     compartments.placeholder.of(placeholder(opts.placeholder || '')),
     searchCount,
+    vscodeKeymap,
     history(),
     drawSelection(),
     dropCursor(),

@@ -319,6 +319,28 @@ function buildMenu() {
         item(t('menu.goTo'), 'goTo', 'CmdOrCtrl+G'),
         { type: 'separator' },
         local(t('menu.selectAll'), 'selectAll', 'CmdOrCtrl+A'),
+        {
+          label: t('menu.line'),
+          submenu: [
+            local(t('menu.moveLineUp'), 'moveLineUp', 'Alt+Up'),
+            local(t('menu.moveLineDown'), 'moveLineDown', 'Alt+Down'),
+            local(t('menu.copyLineUp'), 'copyLineUp', 'Shift+Alt+Up'),
+            local(t('menu.copyLineDown'), 'copyLineDown', 'Shift+Alt+Down'),
+            { type: 'separator' },
+            local(t('menu.selectLine'), 'selectLine', 'CmdOrCtrl+L'),
+            local(t('menu.deleteLine'), 'deleteLine', 'CmdOrCtrl+Shift+K'),
+            local(t('menu.insertLineBelow'), 'insertLineBelow', 'CmdOrCtrl+Enter'),
+            local(t('menu.insertLineAbove'), 'insertLineAbove', 'CmdOrCtrl+Shift+Enter'),
+            { type: 'separator' },
+            local(t('menu.selectNextOccurrence'), 'selectNextOccurrence', 'CmdOrCtrl+D'),
+            local(t('menu.selectAllOccurrences'), 'selectAllOccurrences', 'CmdOrCtrl+Shift+L'),
+            local(t('menu.addCursorAbove'), 'addCursorAbove', 'CmdOrCtrl+Alt+Up'),
+            local(t('menu.addCursorBelow'), 'addCursorBelow', 'CmdOrCtrl+Alt+Down'),
+            { type: 'separator' },
+            local(t('menu.indentLine'), 'indentLine', 'CmdOrCtrl+]'),
+            local(t('menu.outdentLine'), 'outdentLine', 'CmdOrCtrl+[')
+          ]
+        },
         item(t('menu.timeDate'), 'timeDate', 'F5'),
         { type: 'separator' },
         item(t('menu.font'), 'font')

@@ -1,6 +1,7 @@
 import { makeT, LOCALES } from '../shared/strings.js';
 import { createState, reconfigureEffects, EditorView, EditorState } from './editor.js';
 import * as fmt from './format.js';
+import { lineCommands } from './lines.js';
 import { renderMarkdown, countWords } from './markdown.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
 import { openSearchPanel, findNext, findPrevious, gotoLine } from '@codemirror/search';
@@ -527,9 +528,13 @@ const SHORTCUTS = [
   ['Ctrl+N', 'menu.new'], ['Ctrl+Shift+N', 'menu.newWindow'], ['Ctrl+O', 'menu.open'], ['Ctrl+S', 'menu.save'], ['Ctrl+Shift+S', 'menu.saveAs'],
   ['Ctrl+W', 'menu.closeTab'], ['Ctrl+Tab', 'ui.nextTab'], ['Ctrl+P', 'menu.print'], ['Ctrl+F', 'menu.find'], ['F3 / Shift+F3', 'menu.findNext'],
   ['Ctrl+H', 'menu.replace'], ['Ctrl+G', 'menu.goTo'], ['F5', 'menu.timeDate'], ['Ctrl+B', 'menu.bold'], ['Ctrl+I', 'menu.italic'],
-  ['Ctrl+Shift+X', 'menu.strikethrough'], ['Ctrl+1 / 2 / 3', 'menu.heading1'], ['Ctrl+Shift+8', 'menu.bulletList'], ['Ctrl+Shift+7', 'menu.numberedList'],
+  ['Ctrl+Shift+X', 'menu.strikethrough'], ['Ctrl+1 / 2 / 3', 'menu.headings'], ['Ctrl+Shift+8', 'menu.bulletList'], ['Ctrl+Shift+7', 'menu.numberedList'],
   ['Ctrl+Shift+9', 'menu.checkList'], ['Ctrl+Shift+.', 'menu.quote'], ['Ctrl+E', 'menu.code'], ['Ctrl+Shift+E', 'menu.codeBlock'], ['Ctrl+K', 'menu.link'],
-  ['Ctrl+Shift+1 / 2 / 3', 'menu.view'], ['Ctrl+Shift+W', 'menu.writingMode'], ['F11', 'menu.fullscreen'], ['Ctrl+= / Ctrl+-', 'menu.zoom'],
+  ['Alt+↑ / Alt+↓', 'menu.moveLine'], ['Shift+Alt+↑ / ↓', 'menu.copyLine'], ['Ctrl+L', 'menu.selectLine'],
+  ['Ctrl+Shift+K', 'menu.deleteLine'], ['Ctrl+X / Ctrl+C', 'menu.cutCopyLine'], ['Ctrl+Enter', 'menu.insertLineBelow'],
+  ['Ctrl+Shift+Enter', 'menu.insertLineAbove'], ['Ctrl+D', 'menu.selectNextOccurrence'], ['Ctrl+Shift+L', 'menu.selectAllOccurrences'],
+  ['Ctrl+Alt+↑ / ↓', 'menu.addCursor'], ['Ctrl+] / Ctrl+[', 'menu.indentBoth'],
+  ['Ctrl+Shift+1 / 2 / 3', 'menu.viewModes'], ['Ctrl+Shift+W', 'menu.writingMode'], ['F11', 'menu.fullscreen'], ['Ctrl+= / Ctrl+-', 'menu.zoom'],
   ['Ctrl+0', 'menu.zoomReset'], ['Alt+Z', 'menu.wordWrap'], ['Ctrl+?', 'menu.shortcuts']
 ];
 
@@ -586,6 +591,10 @@ async function handleAction(action, payload) {
     case 'writingMode': await api.setSettings({ writingMode: !settings.writingMode }); break;
     case 'fullscreen': await api.toggleFullscreen(); break;
     case 'shortcuts': openShortcutsDialog(); break;
+    case 'moveLineUp': case 'moveLineDown': case 'copyLineUp': case 'copyLineDown': case 'deleteLine': case 'selectLine':
+    case 'insertLineBelow': case 'insertLineAbove': case 'selectNextOccurrence': case 'selectAllOccurrences':
+    case 'addCursorAbove': case 'addCursorBelow': case 'indentLine': case 'outdentLine':
+      ensureEditorVisible(); lineCommands[action](view); view.focus(); break;
     case 'prevTab': cycleTab(-1); break;
     default:
       if (!runFormat(action)) console.warn('unknown action', action);

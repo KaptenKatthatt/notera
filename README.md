@@ -22,6 +22,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Inline Markdown markers (`**`, `*`, `~~`, backticks, the `[]()` of a link) are hidden except on the line you are editing. View > Hide Markdown markers turns that off.
 - Enter continues a list or quote, an empty item ends it. Pasting a URL over selected text makes a link, and Ctrl+K uses a URL from the clipboard directly.
 - Writing mode (Ctrl+Shift+W), full screen (F11), and a shortcut reference (Ctrl+?).
+- VS Code line editing with VS Code's keys, also under Edit > Line: move, copy, select and delete whole lines, cut or copy the current line when nothing is selected, open a line above or below, add the next occurrence to the selection, and add cursors above or below.
 
 ## Shortcuts
 
@@ -41,6 +42,15 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 | Code / code block / link | Ctrl+E / Ctrl+Shift+E / Ctrl+K |
 | Editor / split / preview | Ctrl+Shift+1 / 2 / 3 |
 | Writing mode / full screen | Ctrl+Shift+W / F11 |
+| Move line up / down | Alt+Up / Alt+Down |
+| Copy line up / down | Shift+Alt+Up / Shift+Alt+Down |
+| Select line (again: add the next line) | Ctrl+L |
+| Delete line | Ctrl+Shift+K |
+| Cut / copy line (nothing selected) | Ctrl+X / Ctrl+C |
+| New line below / above | Ctrl+Enter / Ctrl+Shift+Enter |
+| Add next occurrence / select all occurrences | Ctrl+D / Ctrl+Shift+L |
+| Add cursor above / below | Ctrl+Alt+Up / Ctrl+Alt+Down |
+| Indent / outdent line | Ctrl+] / Ctrl+[ |
 | Keyboard shortcuts | Ctrl+? |
 | Zoom in / out / reset | Ctrl+= / Ctrl+- / Ctrl+0 |
 | Word wrap | Alt+Z |
@@ -56,6 +66,7 @@ npm run watch      # rebuild renderer on change (run Electron separately)
 npm test           # unit tests (encoding, line endings, strings)
 npm run e2e        # drives the real app with Playwright; on Linux: xvfb-run -a npm run e2e
 node test/e2e/writing.mjs   # writing mode, hidden markers, autosave, draft recovery
+node test/e2e/lines.mjs     # VS Code line editing, driven with real key presses
 npm run icon       # regenerate build/icon.png + icon.ico from the SVG in scripts/make-icon.js
 ```
 
@@ -76,6 +87,7 @@ src/main/       Electron main process: window, native menu, dialogs, file IO
 src/renderer/   UI: tabs, CodeMirror 6 editor, formatting, preview, status bar
   markers.js    hides inline Markdown markers off the cursor line
   searchCount.js  match counter + jump-to-first-match for the search card
+  lines.js      VS Code line-editing keymap (highest precedence) and Edit > Line commands
 fonts/          iA Writer Mono S (SIL Open Font License, see fonts/OFL.txt)
 src/shared/     English + Swedish strings used by both processes
 scripts/        esbuild bundle + icon generator
