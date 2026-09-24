@@ -26,24 +26,6 @@ export function selectLineVS(view) {
   return true;
 }
 
-/**
- * Ctrl+D: select the word under each cursor. A range that already has a selection is left alone,
- * so pressing it again does nothing.
- */
-export function selectWord(view) {
-  const { state } = view;
-  let changed = false;
-  const ranges = state.selection.ranges.map((range) => {
-    if (!range.empty) return range;
-    const word = state.wordAt(range.head);
-    if (!word) return range;
-    changed = true;
-    return EditorSelection.range(word.from, word.to);
-  });
-  if (changed) view.dispatch({ selection: EditorSelection.create(ranges, state.selection.mainIndex), userEvent: 'select' });
-  return true;
-}
-
 /** Ctrl+Shift+Enter: open an empty line above the cursor, keeping the line's indentation. */
 export function insertLineAbove(view) {
   if (view.state.readOnly) return false;
@@ -61,7 +43,7 @@ export function insertLineAbove(view) {
 
 export const lineCommands = {
   moveLineUp, moveLineDown, copyLineUp, copyLineDown, deleteLine, selectLine: selectLineVS,
-  insertLineBelow: insertBlankLine, insertLineAbove, selectWord, selectNextOccurrence, selectAllOccurrences: selectSelectionMatches,
+  insertLineBelow: insertBlankLine, insertLineAbove, selectNextOccurrence, selectAllOccurrences: selectSelectionMatches,
   addCursorAbove, addCursorBelow, indentLine: indentMore, outdentLine: indentLess
 };
 
@@ -74,7 +56,7 @@ export const vscodeKeymap = Prec.highest(keymap.of([
   { key: 'Mod-Shift-k', run: deleteLine, preventDefault: true },
   { key: 'Mod-Enter', run: insertBlankLine, preventDefault: true },
   { key: 'Mod-Shift-Enter', run: insertLineAbove, preventDefault: true },
-  { key: 'Mod-d', run: selectWord, preventDefault: true },
+  { key: 'Mod-d', run: selectNextOccurrence, preventDefault: true },
   { key: 'Mod-Shift-l', run: selectSelectionMatches, preventDefault: true },
   { key: 'Mod-Alt-ArrowUp', run: addCursorAbove, preventDefault: true },
   { key: 'Mod-Alt-ArrowDown', run: addCursorBelow, preventDefault: true },

@@ -22,7 +22,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Inline Markdown markers (`**`, `*`, `~~`, backticks, the `[]()` of a link) are hidden except on the line you are editing. View > Hide Markdown markers turns that off.
 - Enter continues a list or quote, an empty item ends it. Pasting a URL over selected text makes a link, and Ctrl+K uses a URL from the clipboard directly.
 - Writing mode (Ctrl+Shift+W), full screen (F11), and a shortcut reference (Ctrl+?).
-- VS Code line editing with VS Code's keys, also under Edit > Line: move, copy, select and delete whole lines, cut or copy the current line when nothing is selected, open a line above or below, select all occurrences, and add cursors above or below. Ctrl+D selects the word under the cursor; unlike VS Code it does not add the next occurrence (that command is still in Edit > Line, without a shortcut).
+- VS Code line editing with VS Code's keys, also under Edit > Line: move, copy, select and delete whole lines, cut or copy the current line when nothing is selected, open a line above or below, add the next occurrence to the selection, and add cursors above or below.
 
 ## Shortcuts
 
@@ -48,8 +48,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 | Delete line | Ctrl+Shift+K |
 | Cut / copy line (nothing selected) | Ctrl+X / Ctrl+C |
 | New line below / above | Ctrl+Enter / Ctrl+Shift+Enter |
-| Select the word under the cursor | Ctrl+D |
-| Select all occurrences | Ctrl+Shift+L |
+| Add next occurrence / select all occurrences | Ctrl+D / Ctrl+Shift+L |
 | Add cursor above / below | Ctrl+Alt+Up / Ctrl+Alt+Down |
 | Indent / outdent line | Ctrl+] / Ctrl+[ |
 | Keyboard shortcuts | Ctrl+? |
