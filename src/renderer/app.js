@@ -584,6 +584,7 @@ async function handleAction(action, payload) {
       ensureEditorVisible(); lineCommands[action](view); view.focus(); break;
     case 'prevTab': cycleTab(-1); break;
     case 'newWindow': api.newWindow(); break;
+    case 'closeWindow': await api.closeWindow(); break;
     case 'goToTab1': case 'goToTab2': case 'goToTab3': case 'goToTab4': case 'goToTab5':
     case 'goToTab6': case 'goToTab7': case 'goToTab8': case 'goToTab9': {
       const tab = tabs[Number(action.slice(-1)) - 1];

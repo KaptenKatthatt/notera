@@ -22,7 +22,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Inline Markdown markers (`**`, `*`, `~~`, backticks, the `[]()` of a link) are hidden except on the line you are editing. View > Hide Markdown markers turns that off.
 - Enter continues a list or quote, an empty item ends it. Pasting a URL over selected text makes a link, and Ctrl+K uses a URL from the clipboard directly.
 - Writing mode (Ctrl+Shift+W), full screen (F11), and a shortcut reference (Ctrl+?).
-- Settings (File > Settings, Ctrl+,): theme, language, font, autosave, markers, word wrap, line numbers, update checks, and every keyboard shortcut in the app. Each command can have several keys; a key already in use asks before moving it, and plain letters are refused so typing keeps working. Changes show up in the menu and the shortcut reference immediately, and "Reset" puts a command (or all of them) back to its defaults.
+- Settings (File > Settings, Ctrl+,): theme, language, font, autosave, markers, word wrap, line numbers, update checks, and every keyboard shortcut in the app. Settings > General also chooses whether Ctrl+W closes the tab or the whole window. Each command can have several keys; a key already in use asks before moving it, and plain letters are refused so typing keeps working. Changes show up in the menu and the shortcut reference immediately, and "Reset" puts a command (or all of them) back to its defaults.
 - Automatic updates in the installed version: shortly after start and every six hours Notera checks GitHub Releases. When a newer version exists it offers to download and install it, shows the download progress, and restarts into the new version. Named files are saved first (or you are asked, when autosave is off) and untitled text comes back as a draft. The portable exe and source checkouts don't update themselves. Turn the check off in Settings; Help > Check for updates checks right away.
 - VS Code line editing with VS Code's keys, also under Edit > Line: move, copy, select and delete whole lines, cut or copy the current line when nothing is selected, open a line above or below, add the next occurrence to the selection, and add cursors above or below.
 
@@ -31,6 +31,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 | Action | Keys |
 | --- | --- |
 | New tab / new window | Ctrl+T / Ctrl+N (also Ctrl+Shift+N) |
+| Close tab (or the window, see Settings) | Ctrl+W |
 | Go to tab 1 … 9 | Alt+1 … Alt+9 |
 | Open / Save / Save as | Ctrl+O / Ctrl+S / Ctrl+Shift+S |
 | Close tab | Ctrl+W |

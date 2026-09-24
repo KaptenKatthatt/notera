@@ -63,6 +63,31 @@ export function createSettingsDialog(ctx) {
     toggle('wordWrap', t('settings.wordWrap'), true);
     toggle('lineNumbers', t('settings.lineNumbers'));
 
+    // Ctrl+W: the same thing as moving the key between Close tab and Close window under Keyboard shortcuts.
+    section(t('settings.tabsWindows'));
+    const bindings = effectiveBindings(overrides());
+    const ctrlW = bindings.closeWindow.includes('Ctrl+W') ? 'window' : bindings.closeTab.includes('Ctrl+W') ? 'tab' : 'other';
+    const opts = [['tab', t('settings.ctrlWTab')], ['window', t('settings.ctrlWWindow')]];
+    if (ctrlW === 'other') opts.push(['other', t('settings.ctrlWOther')]);
+    const wSel = document.createElement('select');
+    wSel.id = 'set-ctrlw';
+    for (const [value, text] of opts) { const o = document.createElement('option'); o.value = value; o.textContent = text; wSel.appendChild(o); }
+    wSel.value = ctrlW;
+    wSel.addEventListener('change', async () => {
+      if (wSel.value === 'other') return;
+      const b = effectiveBindings(overrides());
+      const without = (id) => b[id].filter((k) => k !== 'Ctrl+W');
+      const owner = conflict(b, 'Ctrl+W', null);
+      let o = overrides();
+      if (owner && owner !== 'closeTab' && owner !== 'closeWindow') o = withBinding(o, owner, without(owner));
+      const to = wSel.value === 'window' ? 'closeWindow' : 'closeTab';
+      const from = to === 'closeWindow' ? 'closeTab' : 'closeWindow';
+      o = withBinding(o, from, without(from));
+      o = withBinding(o, to, ['Ctrl+W', ...without(to)]);
+      await ctx.api.setSettings({ keybindings: o });
+    });
+    row(t('settings.ctrlW'), wSel);
+
     section(t('settings.updates'));
     toggle('checkUpdates', t('settings.checkUpdates'), true);
     const upd = document.createElement('div'); upd.className = 'set-inline';

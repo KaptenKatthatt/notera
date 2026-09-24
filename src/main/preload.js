@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('notera', {
   clipboardText: () => ipcRenderer.invoke('clipboard:readText'),
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
   quit: () => ipcRenderer.invoke('app:quit'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
   about: () => ipcRenderer.invoke('app:about'),
   nativeEdit: (op) => ipcRenderer.invoke('edit:native', op),
   checkForUpdates: (manual) => ipcRenderer.invoke('update:check', { manual }),

@@ -19,6 +19,7 @@ const COMMANDS = [
   { id: 'saveAs', cat: 'file', label: 'menu.saveAs', keys: ['Ctrl+Shift+S'], global: true },
   { id: 'saveAll', cat: 'file', label: 'menu.saveAll', keys: ['Ctrl+Alt+S'], global: true },
   { id: 'closeTab', cat: 'file', label: 'menu.closeTab', keys: ['Ctrl+W', 'Ctrl+F4'], global: true },
+  { id: 'closeWindow', cat: 'file', label: 'menu.closeWindow', keys: [], global: true },
   { id: 'nextTab', cat: 'file', label: 'menu.nextTab', keys: ['Ctrl+Tab', 'Ctrl+PageDown'], global: true },
   { id: 'prevTab', cat: 'file', label: 'menu.prevTab', keys: ['Ctrl+Shift+Tab', 'Ctrl+PageUp'], global: true },
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({ id: `goToTab${n}`, cat: 'file', label: `menu.goToTab${n}`, keys: [`Alt+${n}`], global: true })),

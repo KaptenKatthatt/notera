@@ -164,6 +164,8 @@ ipcMain.on('window:prepareQuitResult', (_e, id, ok) => {
 });
 
 ipcMain.handle('app:quit', () => quitAll());
+// Goes through the window's close handler, so unsaved tabs still ask first.
+ipcMain.handle('window:close', (e) => { const w = BrowserWindow.fromWebContents(e.sender); if (w) w.close(); });
 ipcMain.handle('app:about', (e) => showAbout(BrowserWindow.fromWebContents(e.sender)));
 ipcMain.handle('edit:native', (e, op) => {
   if (['cut', 'copy', 'paste', 'undo', 'redo', 'selectAll', 'delete'].includes(op)) e.sender[op]();
@@ -361,6 +363,7 @@ function buildMenu() {
         cmd('saveAll'),
         { type: 'separator' },
         cmd('closeTab'),
+        cmd('closeWindow', { click: () => { const w = focusedWindow(); if (w) w.close(); } }),
         cmd('nextTab'),
         cmd('prevTab'),
         { label: t('menu.goToTab'), submenu: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => cmd(`goToTab${n}`)) },

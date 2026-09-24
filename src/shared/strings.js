@@ -26,7 +26,7 @@ const en = {
     copyLineDown: 'Copy line down', selectLine: 'Select line', deleteLine: 'Delete line', insertLineBelow: 'Insert line below',
     insertLineAbove: 'Insert line above', selectNextOccurrence: 'Add next occurrence', selectAllOccurrences: 'Select all occurrences',
     addCursorAbove: 'Add cursor above', addCursorBelow: 'Add cursor below', indentLine: 'Indent line', outdentLine: 'Outdent line',
-    nextTab: 'Next tab', prevTab: 'Previous tab', settings: 'Settings…', checkForUpdates: 'Check for updates…',
+    closeWindow: 'Close window', nextTab: 'Next tab', prevTab: 'Previous tab', settings: 'Settings…', checkForUpdates: 'Check for updates…',
     moveLine: 'Move line up/down', copyLine: 'Copy line up/down', cutCopyLine: 'Cut/copy line (no selection)', addCursor: 'Add cursor above/below', headings: 'Heading 1, 2, 3', indentBoth: 'Indent/outdent line', viewModes: 'Editor, split, preview'
   },
   dialog: {
@@ -54,7 +54,8 @@ const en = {
     title: 'Settings', general: 'General', keyboard: 'Keyboard shortcuts', close: 'Close',
     appearance: 'Appearance', theme: 'Theme', language: 'Language', font: 'Editor font', fontChange: 'Change…',
     editing: 'Editing', autosave: 'Save files automatically while typing', hideMarkers: 'Hide Markdown markers off the cursor line',
-    wordWrap: 'Word wrap', lineNumbers: 'Line numbers', updates: 'Updates', checkUpdates: 'Check for updates automatically',
+    wordWrap: 'Word wrap', lineNumbers: 'Line numbers', updates: 'Updates',
+    tabsWindows: 'Tabs and windows', ctrlW: 'Ctrl+W closes', ctrlWTab: 'the tab', ctrlWWindow: 'the window', ctrlWOther: 'another command (see Keyboard shortcuts)', checkUpdates: 'Check for updates automatically',
     checkNow: 'Check now', version: 'Version {version}',
     searchPlaceholder: 'Search commands or keys', command: 'Command', keys: 'Keys', add: 'Add shortcut', remove: 'Remove {key}',
     reset: 'Reset', resetAll: 'Reset all shortcuts', resetAllConfirm: 'Reset every keyboard shortcut to its default?',
@@ -104,7 +105,7 @@ const sv = {
     copyLineDown: 'Kopiera rad nedåt', selectLine: 'Markera rad', deleteLine: 'Radera rad', insertLineBelow: 'Ny rad under',
     insertLineAbove: 'Ny rad över', selectNextOccurrence: 'Lägg till nästa förekomst', selectAllOccurrences: 'Markera alla förekomster',
     addCursorAbove: 'Lägg till markör ovanför', addCursorBelow: 'Lägg till markör nedanför', indentLine: 'Öka indrag', outdentLine: 'Minska indrag',
-    nextTab: 'Nästa flik', prevTab: 'Föregående flik', settings: 'Inställningar…', checkForUpdates: 'Sök efter uppdateringar…',
+    closeWindow: 'Stäng fönster', nextTab: 'Nästa flik', prevTab: 'Föregående flik', settings: 'Inställningar…', checkForUpdates: 'Sök efter uppdateringar…',
     moveLine: 'Flytta rad upp/ned', copyLine: 'Kopiera rad upp/ned', cutCopyLine: 'Klipp ut/kopiera rad (utan markering)', addCursor: 'Lägg till markör upp/ned', headings: 'Rubrik 1, 2, 3', indentBoth: 'Öka/minska indrag', viewModes: 'Redigerare, delad, förhandsvisning'
   },
   dialog: {
@@ -132,7 +133,8 @@ const sv = {
     title: 'Inställningar', general: 'Allmänt', keyboard: 'Kortkommandon', close: 'Stäng',
     appearance: 'Utseende', theme: 'Tema', language: 'Språk', font: 'Teckensnitt i editorn', fontChange: 'Ändra…',
     editing: 'Redigering', autosave: 'Spara filer automatiskt medan du skriver', hideMarkers: 'Dölj Markdown-tecken utanför markörens rad',
-    wordWrap: 'Radbyte', lineNumbers: 'Radnummer', updates: 'Uppdateringar', checkUpdates: 'Sök efter uppdateringar automatiskt',
+    wordWrap: 'Radbyte', lineNumbers: 'Radnummer', updates: 'Uppdateringar',
+    tabsWindows: 'Flikar och fönster', ctrlW: 'Ctrl+W stänger', ctrlWTab: 'fliken', ctrlWWindow: 'fönstret', ctrlWOther: 'ett annat kommando (se Kortkommandon)', checkUpdates: 'Sök efter uppdateringar automatiskt',
     checkNow: 'Sök nu', version: 'Version {version}',
     searchPlaceholder: 'Sök kommando eller tangent', command: 'Kommando', keys: 'Tangenter', add: 'Lägg till kortkommando', remove: 'Ta bort {key}',
     reset: 'Återställ', resetAll: 'Återställ alla kortkommandon', resetAllConfirm: 'Återställa alla kortkommandon till standard?',
