@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;" />
+  <title>Notera</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header id="tabbar" role="tablist" aria-label="Tabs">
+    <div id="tabs"></div>
+    <button id="tab-add" class="icon-btn" data-i18n-title="ui.newTab" title="New tab" aria-label="New tab">+</button>
+  </header>
+
+  <div id="toolbar" role="toolbar" aria-label="Formatting">
+    <div class="tb-group" id="format-group">
+      <button class="tb-btn" data-action="bold" data-i18n-title="menu.bold" title="Bold"><b>B</b></button>
+      <button class="tb-btn" data-action="italic" data-i18n-title="menu.italic" title="Italic"><i>I</i></button>
+      <button class="tb-btn" data-action="strikethrough" data-i18n-title="menu.strikethrough" title="Strikethrough"><s>S</s></button>
+      <span class="tb-sep"></span>
+      <div class="tb-menu">
+        <button class="tb-btn tb-drop" data-menu="heading" data-i18n-title="ui.heading" title="Heading"><span class="hd">H</span><span class="caret">▾</span></button>
+        <div class="tb-popup" data-popup="heading">
+          <button data-action="heading1"><span class="h1">Heading 1</span></button>
+          <button data-action="heading2"><span class="h2">Heading 2</span></button>
+          <button data-action="heading3"><span class="h3">Heading 3</span></button>
+        </div>
+      </div>
+      <span class="tb-sep"></span>
+      <button class="tb-btn" data-action="bulletList" data-i18n-title="menu.bulletList" title="Bulleted list">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="2.5" cy="4" r="1.3" fill="currentColor"/><circle cx="2.5" cy="8" r="1.3" fill="currentColor"/><circle cx="2.5" cy="12" r="1.3" fill="currentColor"/><path d="M6 4h8M6 8h8M6 12h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+      <button class="tb-btn" data-action="numberedList" data-i18n-title="menu.numberedList" title="Numbered list">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><text x="1" y="5.5" font-size="5" fill="currentColor" font-family="sans-serif">1</text><text x="1" y="9.5" font-size="5" fill="currentColor" font-family="sans-serif">2</text><text x="1" y="13.5" font-size="5" fill="currentColor" font-family="sans-serif">3</text><path d="M6 4h8M6 8h8M6 12h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+      <button class="tb-btn" data-action="checkList" data-i18n-title="menu.checkList" title="Task list">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2.3 4.6l1.2 1.2 2-2.3" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 4.5h7M8 11.5h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+      <span class="tb-sep"></span>
+      <button class="tb-btn" data-action="quote" data-i18n-title="menu.quote" title="Quote">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 5h7M7 8h7M7 11h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+      <button class="tb-btn" data-action="code" data-i18n-title="menu.code" title="Code">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5.5 4L2 8l3.5 4M10.5 4L14 8l-3.5 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tb-btn" data-action="link" data-i18n-title="menu.link" title="Link">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.5 2.5 0 013.5 3.5L10.5 8M9 11.5l-1.2 1.2a2.5 2.5 0 01-3.5-3.5L5.5 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="tb-menu">
+        <button class="tb-btn tb-drop" data-menu="more" data-i18n-title="ui.more" title="More">···</button>
+        <div class="tb-popup" data-popup="more">
+          <button data-action="codeBlock" data-i18n="menu.codeBlock">Code block</button>
+          <button data-action="horizontalRule" data-i18n="menu.horizontalRule">Horizontal rule</button>
+          <button data-action="table" data-i18n="menu.table">Table</button>
+        </div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="segmented" id="view-mode" role="radiogroup" data-i18n-title="ui.view" title="View">
+      <button data-mode="editor" data-i18n="ui.editor">Editor</button>
+      <button data-mode="split" data-i18n="ui.split">Split</button>
+      <button data-mode="preview" data-i18n="ui.preview">Preview</button>
+    </div>
+  </div>
+
+  <main id="main" data-view="editor">
+    <div id="editor"></div>
+    <div id="preview-pane"><article id="preview" class="preview"></article></div>
+  </main>
+
+  <footer id="statusbar">
+    <span id="st-pos">Ln 1, Col 1</span>
+    <span id="st-sel"></span>
+    <span class="spacer"></span>
+    <span id="st-words"></span>
+    <span id="st-chars">0 characters</span>
+    <button id="st-zoom" class="st-btn" data-i18n-title="ui.toggleZoom" title="Click to reset zoom">100%</button>
+    <button id="st-eol" class="st-btn" data-i18n-title="ui.toggleEol" title="Click to switch line endings">Windows (CRLF)</button>
+    <button id="st-enc" class="st-btn" data-i18n-title="ui.toggleEncoding" title="Click to change encoding">UTF-8</button>
+    <button id="st-kind" class="st-btn">Markdown</button>
+  </footer>
+
+  <div id="popup-menu" class="popup-menu" hidden></div>
+
+  <dialog id="dlg-font">
+    <form method="dialog">
+      <h2 data-i18n="ui.fontTitle">Font</h2>
+      <label><span data-i18n="ui.fontFamily">Family</span><select id="font-family"></select></label>
+      <label><span data-i18n="ui.fontSize">Size</span><input id="font-size" type="number" min="6" max="72" step="1" autocomplete="off" /></label>
+      <div id="font-preview" class="font-preview" data-i18n="ui.fontPreview">The quick brown fox jumps over the lazy dog</div>
+      <div class="dlg-actions">
+        <button value="cancel" data-i18n="ui.cancel">Cancel</button>
+        <button value="ok" class="primary" data-i18n="ui.apply">Apply</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-link">
+    <form method="dialog">
+      <h2 data-i18n="ui.linkTitle">Insert link</h2>
+      <label><span data-i18n="ui.linkText">Text</span><input id="link-text" type="text" autocomplete="off" /></label>
+      <label><span data-i18n="ui.linkUrl">Address</span><input id="link-url" type="url" placeholder="https://" autocomplete="off" /></label>
+      <div class="dlg-actions">
+        <button value="cancel" data-i18n="ui.cancel">Cancel</button>
+        <button value="ok" class="primary" data-i18n="ui.insert">Insert</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="drop-overlay" hidden><span data-i18n="ui.dropHint">Drop files to open them</span></div>
+  <div id="print-area" aria-hidden="true"></div>
+
+  <script src="../../dist/renderer.js"></script>
+</body>
+</html>

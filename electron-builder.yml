@@ -1,0 +1,39 @@
+appId: se.jonasolson.notera
+productName: Notera
+copyright: Copyright © 2026 Jonas Olson
+directories:
+  output: release
+  buildResources: build
+files:
+  - src/**/*
+  - dist/**/*
+  - package.json
+asar: true
+win:
+  target:
+    - nsis
+    - portable
+  icon: build/icon.ico
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  fileAssociations:
+    - ext: md
+      name: Markdown
+      description: Markdown document
+      role: Editor
+    - ext: markdown
+      name: Markdown
+      description: Markdown document
+      role: Editor
+    - ext: txt
+      name: Text
+      description: Text document
+      role: Editor
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Notera
+  artifactName: ${productName}-Setup-${version}.${ext}
+portable:
+  artifactName: ${productName}-${version}-portable.exe
