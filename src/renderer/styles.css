@@ -111,6 +111,14 @@ button { font: inherit; color: inherit; }
 }
 .tab .close:hover { background: var(--bg-hover); color: var(--fg); }
 .tab.active .close:hover { background: var(--bg-chrome); }
+.tab { user-select: none; }
+.tab.dragging {
+  position: relative;
+  z-index: 5;
+  opacity: 0.9;
+  cursor: grabbing;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
 .icon-btn {
   border: none; background: transparent; border-radius: 6px; width: 30px; height: 30px; margin-bottom: 2px;
   font-size: 18px; color: var(--fg-muted); cursor: default;

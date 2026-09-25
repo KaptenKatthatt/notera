@@ -4,6 +4,7 @@ import * as fmt from './format.js';
 import { lineCommands } from './lines.js';
 import { createKeyDispatcher } from './keybindings.js';
 import { createSettingsDialog } from './settingsDialog.js';
+import { attachTabDrag } from './tabdrag.js';
 import { COMMANDS, CATEGORIES, display } from '../shared/commands.js';
 import { renderMarkdown, countWords } from './markdown.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
@@ -147,6 +148,17 @@ function renderTabs() {
   if (activeEl) activeEl.scrollIntoView({ inline: 'nearest', block: 'nearest' });
 }
 
+attachTabDrag($('#tabbar'), {
+  onReorder: (order) => {
+    const byId = new Map(tabs.map((tb) => [String(tb.id), tb]));
+    const next = order.map((id) => byId.get(id)).filter(Boolean);
+    if (next.length !== tabs.length) return; // tabelländring mitt i draget — ignora
+    tabs = next;
+    renderTabs();
+  },
+  onDetach: (tabId) => void detachTabToWindow(tabs.find((tb) => String(tb.id) === String(tabId)))
+});
+
 function newTab(init) {
   const tab = makeTab(init);
   activateTab(tab);
@@ -174,6 +186,29 @@ function cycleTab(delta) {
   if (tabs.length < 2) return;
   const idx = tabs.indexOf(active);
   activateTab(tabs[(idx + delta + tabs.length) % tabs.length]);
+}
+
+/** Lossa en flik till ett eget fönster. Sparad fil: öppnas via path i nytt
+ * fönster. Osparad text: flyttas via draft-systemet (draftId ägs över). */
+async function detachTabToWindow(tab) {
+  if (!tab) return;
+  if (tab === active) { tab.state = view.state; void flushPending(tab); }
+  if (tab.dirty && tab.path) {
+    activateTab(tab);
+    const answer = await api.confirmUnsaved(tabTitle(tab));
+    if (answer === 'cancel') return;
+    if (answer === 'save' && !(await saveTab(tab))) return;
+  }
+  if (!tab.path) { await flushPending(tab); await writeDraft(tab); }
+  api.detachTab({ path: tab.path || null, draftId: tab.draftId || null });
+  clearTimeout(tab.autosaveTimer); tab.autosaveTimer = null;
+  clearTimeout(tab.draftTimer); tab.draftTimer = null;
+  if (tab.path) void dropDraft(tab); // sparad fil: draften ska bort; draft-fallet ägs av nya fönstret
+  const idx = tabs.indexOf(tab);
+  tabs.splice(idx, 1);
+  if (tabs.length === 0) newTab();
+  else if (tab === active) activateTab(tabs[Math.min(idx, tabs.length - 1)]);
+  else renderTabs();
 }
 
 // ---------- files ----------
@@ -796,6 +831,12 @@ async function boot() {
   if (b.update) onUpdateStatus(b.update);
   const restored = b.restoreDrafts ? await restoreDrafts() : 0;
   if (b.filesToOpen.length) { await openPaths(b.filesToOpen); if (!tabs.length) newTab(); }
+  else if (b.pendingTab) {
+    const drafts = await api.listDrafts();
+    const d = drafts.find((x) => x.id === b.pendingTab);
+    if (d && d.text && d.text.trim()) newTab({ text: d.text, kind: d.kind || 'md', draftId: d.id });
+    else newTab();
+  }
   else if (restored) activateTab(tabs[0]);
   else newTab();
   window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, get update() { return update; }, handleAction, openPaths, keys };
