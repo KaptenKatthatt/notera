@@ -233,7 +233,9 @@ ipcMain.handle('file:saveAsDialog', async (e, { currentPath, suggestedName, kind
   const defaultPath = currentPath
     ? currentPath
     : path.join(settings.get('lastDir') || app.getPath('documents'), (suggestedName || t('untitled')) + ext);
-  const r = await dialog.showSaveDialog(win, {
+  // Fix: dialog utan parent-fönster (non-modal) — med parent försvinner muspekaren
+  // över dialogen på Windows (Electron 44, known issue med modal + cursor).
+  const r = await dialog.showSaveDialog({
     title: t('dialog.saveTitle'),
     defaultPath,
     filters: fileFilters(kind)

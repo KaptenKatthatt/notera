@@ -215,7 +215,10 @@ async function writeTab(tab) {
 async function saveTab(tab, forceAs = false) {
   if (tab.path && !forceAs) return writeTab(tab);
   if (tab !== active) activateTab(tab);
+  // Fix: Windows kan lämna cursorn gömd efter native-dialog — återställ den.
+  document.body.style.cursor = 'auto';
   const target = await api.saveAsDialog({ currentPath: tab.path, suggestedName: suggestedName(tab), kind: tab.kind });
+  document.body.style.cursor = '';
   if (!target) return false;
   const text = view.state.doc.toString();
   const r = await api.writeFile({ path: target, text, encoding: tab.encoding, eol: tab.eol });
