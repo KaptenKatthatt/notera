@@ -463,10 +463,33 @@ function buildMenu() {
 
 // ---------- App lifecycle ----------
 const gotLock = app.requestSingleInstanceLock();
+// JumpList: "Nytt fönster" i taskbar-högerklicket (Windows). Nytt fönster — på
+// aktuellt skrivbord via flaggan i second-instance/startflödet.
+let jumplistTask = null;
+function setJumplist() {
+  if (process.platform !== 'win32' || jumplistTask) return;
+  jumplistTask = [
+    {
+      type: 'tasks',
+      items: [{
+        type: 'task',
+        program: process.execPath,
+        args: '--new-window',
+        iconPath: process.execPath,
+        iconIndex: 0,
+        title: t('menu.newWindow'),
+        description: t('menu.newWindow')
+      }]
+    },
+    { type: 'recent' }
+  ];
+  try { app.setJumpList(jumplistTask); } catch { /* jumplist ej tillgänglig */ }
+}
 if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', (_e, argv, cwd) => {
+    if (argv.some((a) => a === '--new-window')) { createWindow(); return; }
     const list = parseFileArgs(argv, cwd);
     const win = focusedWindow();
     if (win) {
@@ -483,7 +506,9 @@ if (!gotLock) {
     nativeTheme.on('updated', () => broadcast('theme:changed', nativeTheme.shouldUseDarkColors));
     updater = createUpdater({ broadcast, getSettings: () => settings.get() });
     buildMenu();
-    createWindow(parseFileArgs(process.argv, process.cwd()));
+    setJumplist();
+    if (process.argv.some((a) => a === '--new-window')) createWindow();
+    else createWindow(parseFileArgs(process.argv, process.cwd()));
     updater.start();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   });
