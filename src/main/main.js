@@ -7,6 +7,7 @@ const files = require('./files');
 const { resolveLocale, makeT } = require('../shared/strings');
 const commands = require('../shared/commands');
 const { createUpdater } = require('./updater');
+const templates = require('../shared/templates');
 
 const isDev = !app.isPackaged;
 // Tests point this at a scratch directory so they never touch real settings.
@@ -369,6 +370,16 @@ function buildMenu() {
         cmd('new'),
         cmd('newWindow', { click: () => createWindow() }),
         cmd('open'),
+        {
+          label: t('menu.newFromTemplate'),
+          submenu: templates.TEMPLATES.map((tpl) => ({ label: t(tpl.menu), click: () => send('newFromTemplate', tpl.id) })),
+          enabled: templates.TEMPLATES.length > 0
+        },
+        {
+          label: t('menu.applyTemplate'),
+          submenu: templates.TEMPLATES.map((tpl) => ({ label: t(tpl.menu), click: () => send('applyTemplate', tpl.id) })),
+          enabled: templates.TEMPLATES.length > 0
+        },
         {
           label: t('menu.openRecent'),
           submenu: recent.length

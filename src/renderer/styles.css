@@ -374,3 +374,5 @@ body.writing #update-toast { bottom: 44px; }
   #print-area { display: block; color: #000; background: #fff; }
   #print-area pre { white-space: pre-wrap; font-family: var(--editor-font); font-size: 11pt; }
 }
+
+#preview input[type="checkbox"], .preview input[type="checkbox"] { cursor: pointer; }

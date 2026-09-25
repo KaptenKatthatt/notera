@@ -115,5 +115,7 @@ await win.evaluate(() => window.__notera.handleAction('closeTab'));
 await win.waitForFunction(() => window.__notera.tabs.length === 1 && window.__notera.active.state.doc.length === 0);
 await win.waitForTimeout(300);
 assert.equal(fs.readdirSync(path.join(userData, 'drafts')).length, 0, 'draft deleted after discard');
+// stang appen (och rensa dirty sa dialoger inte blockar) — annars hangde nsta svit i electron.launch
+await win.evaluate(() => { for (const t of window.__notera.tabs) { t.dirty = false; t.savedDoc = t.state.doc; } });
 await app.close();
 console.log('writing OK');

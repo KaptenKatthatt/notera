@@ -13,6 +13,8 @@ const MODS = ['Ctrl', 'Shift', 'Alt', 'Meta'];
 const COMMANDS = [
   // File
   { id: 'new', cat: 'file', label: 'menu.new', keys: ['Ctrl+T'], global: true },
+  { id: 'newFromTemplate', cat: 'file', label: 'menu.newFromTemplate', keys: [], global: true },
+  { id: 'applyTemplate', cat: 'file', label: 'menu.applyTemplate', keys: [], global: true },
   { id: 'newWindow', cat: 'file', label: 'menu.newWindow', keys: ['Ctrl+N', 'Ctrl+Shift+N'], global: true },
   { id: 'open', cat: 'file', label: 'menu.open', keys: ['Ctrl+O'], global: true },
   { id: 'save', cat: 'file', label: 'menu.save', keys: ['Ctrl+S'], global: true },

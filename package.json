@@ -12,7 +12,7 @@
     "watch": "node scripts/build.mjs --watch",
     "start": "npm run build:renderer && electron .",
     "test": "node --test \"test/unit/**/*.test.js\"",
-    "e2e": "node scripts/build.mjs && node test/e2e/smoke.mjs && node test/e2e/tabs.mjs && node test/e2e/writing.mjs && node test/e2e/lines.mjs && node test/e2e/settings.mjs && node test/e2e/update.mjs",
+    "e2e": "node scripts/build.mjs && node test/e2e/smoke.mjs && node test/e2e/tabs.mjs && node test/e2e/writing.mjs && node test/e2e/abc.mjs && node test/e2e/lines.mjs && node test/e2e/settings.mjs && node test/e2e/update.mjs",
     "icon": "electron scripts/make-icon.js",
     "dist:win": "node scripts/build.mjs --prod && electron-builder --win --x64 --publish never",
     "dist:dir": "node scripts/build.mjs --prod && electron-builder --dir --publish never"

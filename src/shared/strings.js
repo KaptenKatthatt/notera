@@ -6,6 +6,8 @@ const en = {
   untitled: 'Untitled',
   menu: {
     file: '&File', new: 'New tab', newWindow: 'New window', open: 'Open…', openRecent: 'Open recent',
+    newFromTemplate: 'New from template…', standup: 'Standup notes',
+    applyTemplate: 'Apply template…',
     clearRecent: 'Clear list', save: 'Save', saveAs: 'Save as…', saveAll: 'Save all', closeTab: 'Close tab',
     print: 'Print…', exit: 'Exit',
     edit: '&Edit', undo: 'Undo', redo: 'Redo', cut: 'Cut', copy: 'Copy', paste: 'Paste', delete: 'Delete',
@@ -85,6 +87,8 @@ const sv = {
   untitled: 'Namnlös',
   menu: {
     file: '&Arkiv', new: 'Ny flik', newWindow: 'Nytt fönster', open: 'Öppna…', openRecent: 'Öppna senaste',
+    newFromTemplate: 'Ny från mall…', standup: 'Standup-anteckningar',
+    applyTemplate: 'Applicera mall…',
     clearRecent: 'Rensa listan', save: 'Spara', saveAs: 'Spara som…', saveAll: 'Spara alla', closeTab: 'Stäng flik',
     print: 'Skriv ut…', exit: 'Avsluta',
     edit: '&Redigera', undo: 'Ångra', redo: 'Gör om', cut: 'Klipp ut', copy: 'Kopiera', paste: 'Klistra in', delete: 'Ta bort',
@@ -166,6 +170,9 @@ for (let n = 1; n <= 9; n++) {
   en.menu[`goToTab${n}`] = `Go to tab ${n}`;
   sv.menu[`goToTab${n}`] = `Gå till flik ${n}`;
 }
+
+en.templates = { standupTitle: 'Standup', doneLast: 'Done since last', blockers: 'Blockers', nextUp: 'To do for next meeting' };
+sv.templates = { standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 'Blockers', nextUp: 'Göra till nästa möte' };
 
 const LOCALES = { en, sv };
 

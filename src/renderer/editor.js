@@ -6,6 +6,7 @@ import {
 import { hideMarkers } from './markers.js';
 import { searchCount } from './searchCount.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
@@ -53,7 +54,7 @@ const TAKEN = new Set([
 ]);
 function editorKeymap() {
   const keep = (b) => !TAKEN.has(b.key) && !TAKEN.has(b.linux) && !TAKEN.has(b.win);
-  return [...searchKeymap.filter(keep), ...historyKeymap.filter(keep), indentWithTab, ...defaultKeymap.filter(keep)];
+  return [...closeBracketsKeymap.filter(keep), ...searchKeymap.filter(keep), ...historyKeymap.filter(keep), indentWithTab, ...defaultKeymap.filter(keep)];
 }
 
 export function markdownExtension() {
@@ -72,6 +73,7 @@ export function baseExtensions(opts) {
     compartments.placeholder.of(placeholder(opts.placeholder || '')),
     searchCount,
     history(),
+    closeBrackets(),
     drawSelection(),
     dropCursor(),
     highlightSpecialChars(),
