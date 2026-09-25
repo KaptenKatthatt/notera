@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('notera', {
   deleteDraft: (id) => ipcRenderer.invoke('draft:delete', id),
   closeConfirmed: () => ipcRenderer.send('window:closeConfirmed'),
   newWindow: () => ipcRenderer.send('window:new'),
+  detachTab: (args) => ipcRenderer.send('tab:detach', args),
   print: () => ipcRenderer.invoke('window:print'),
   openExternal: (url) => ipcRenderer.send('shell:openExternal', url),
   setMenuState: (state) => ipcRenderer.send('menu:state', state),

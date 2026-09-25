@@ -15,6 +15,7 @@ let settings;
 let t;
 let locale;
 const pendingFiles = new Map(); // webContents.id -> string[]
+const pendingTabs = new Map(); // webContents.id -> draftId (flik lossad till nytt fönster)
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
 let updater;
 
@@ -62,8 +63,11 @@ function applyMenuBar(win, writing) {
 
 function draftsDir() { return path.join(app.getPath('userData'), 'drafts'); }
 
-function createWindow(filesToOpen = []) {
-  const bounds = settings.get('windowBounds') || {};
+function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null) {
+  const srcBounds = sourceWin && !sourceWin.isDestroyed() ? sourceWin.getNormalBounds() : null;
+  const bounds = srcBounds
+    ? { x: srcBounds.x + 32, y: srcBounds.y + 32, width: srcBounds.width, height: srcBounds.height }
+    : (settings.get('windowBounds') || {});
   const win = new BrowserWindow({
     width: bounds.width || 1000,
     height: bounds.height || 700,
@@ -86,6 +90,7 @@ function createWindow(filesToOpen = []) {
   if (bounds.maximized) win.maximize();
   applyMenuBar(win, settings.get('writingMode'));
   pendingFiles.set(win.webContents.id, filesToOpen);
+  if (pendingDraftId) pendingTabs.set(win.webContents.id, pendingDraftId);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url);
@@ -122,10 +127,12 @@ function fileFilters(kind) {
 ipcMain.handle('app:bootstrap', (e) => {
   const list = pendingFiles.get(e.sender.id) || [];
   pendingFiles.delete(e.sender.id);
+  const pendingTab = pendingTabs.get(e.sender.id) || null;
+  pendingTabs.delete(e.sender.id);
   const restoreDrafts = !draftsClaimed;
   draftsClaimed = true;
   return {
-    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, platform: process.platform, isDev,
+    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, pendingTab, platform: process.platform, isDev,
     dark: nativeTheme.shouldUseDarkColors, restoreDrafts, update: updater ? { ...updater.getState(), reason: updater.reason() } : null
   };
 });
@@ -323,6 +330,12 @@ ipcMain.on('window:closeConfirmed', (e) => {
   if (w) { w._closeConfirmed = true; w.close(); }
 });
 ipcMain.on('window:new', () => createWindow());
+ipcMain.on('tab:detach', (e, p = {}) => {
+  const src = BrowserWindow.fromWebContents(e.sender);
+  const files = typeof p.path === 'string' && p.path ? [p.path] : [];
+  const draftId = typeof p.draftId === 'string' && p.draftId ? p.draftId : null;
+  createWindow(files, draftId, src);
+});
 ipcMain.on('shell:openExternal', (_e, url) => { if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url); });
 
 // ---------- Menu ----------
@@ -463,10 +476,33 @@ function buildMenu() {
 
 // ---------- App lifecycle ----------
 const gotLock = app.requestSingleInstanceLock();
+// JumpList: "Nytt fönster" i taskbar-högerklicket (Windows). Nytt fönster — på
+// aktuellt skrivbord via flaggan i second-instance/startflödet.
+let jumplistTask = null;
+function setJumplist() {
+  if (process.platform !== 'win32' || jumplistTask) return;
+  jumplistTask = [
+    {
+      type: 'tasks',
+      items: [{
+        type: 'task',
+        program: process.execPath,
+        args: '--new-window',
+        iconPath: process.execPath,
+        iconIndex: 0,
+        title: t('menu.newWindow'),
+        description: t('menu.newWindow')
+      }]
+    },
+    { type: 'recent' }
+  ];
+  try { app.setJumpList(jumplistTask); } catch { /* jumplist ej tillgänglig */ }
+}
 if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', (_e, argv, cwd) => {
+    if (argv.some((a) => a === '--new-window')) { createWindow(); return; }
     const list = parseFileArgs(argv, cwd);
     const win = focusedWindow();
     if (win) {
@@ -483,7 +519,9 @@ if (!gotLock) {
     nativeTheme.on('updated', () => broadcast('theme:changed', nativeTheme.shouldUseDarkColors));
     updater = createUpdater({ broadcast, getSettings: () => settings.get() });
     buildMenu();
-    createWindow(parseFileArgs(process.argv, process.cwd()));
+    setJumplist();
+    if (process.argv.some((a) => a === '--new-window')) createWindow();
+    else createWindow(parseFileArgs(process.argv, process.cwd()));
     updater.start();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   });
