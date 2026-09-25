@@ -337,9 +337,11 @@ async function dropDraft(tab) {
   await api.deleteDraft(id);
 }
 
+/** Write what a pending autosave or draft timer would write. False when the save failed. */
 async function flushPending(tab) {
-  if (tab.autosaveTimer && tab.path && tab.dirty) await writeTab(tab);
+  if (tab.autosaveTimer && tab.path && tab.dirty && !(await writeTab(tab))) return false;
   if (tab.draftTimer && !tab.path) await writeDraft(tab);
+  return true;
 }
 
 async function restoreDrafts() {
@@ -495,7 +497,8 @@ async function maybeRenameNote(tab) {
   if (tab.renaming) { tab.renameAgain = true; return; }
   tab.renaming = true;
   try {
-    await flushPending(tab);
+    // Never rename a file whose new text did not reach the disk.
+    if (!(await flushPending(tab))) return;
     const r = await api.notes.call('renameForTitle', tab.path, title);
     if (r && !r.error) {
       tab.lastTitle = title;

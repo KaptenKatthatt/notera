@@ -64,7 +64,6 @@ const titlesIn = (folder) => win.evaluate((f) => {
 }, folder);
 const activePath = () => win.evaluate(() => window.__notera.active.path);
 const activeText = () => win.evaluate(() => window.__notera.view.state.doc.toString());
-const toast = () => win.textContent('#notes-toast .msg');
 const settle = () => win.waitForTimeout(350);
 
 // 1. The tree
@@ -117,12 +116,13 @@ await win.mouse.up();
 await win.waitForFunction(() => /Notera[\\/]2026-09-21 Sprintplanering v39\.md$/.test(window.__notera.active.path));
 assert.match(read('Notera', '2026-09-21 Sprintplanering v39.md'), /^# Sprintplanering v39\nProjekt: Notera · Skapad: 2026-09-21 08:30\n/);
 assert.match((await activeText()).split('\n')[1], /^Projekt: Notera/, 'the open tab shows the new header');
-assert.equal(await toast(), 'Flyttad till Notera');
+await win.waitForFunction(() => document.querySelector('#notes-toast .msg')?.textContent === 'Flyttad till Notera');
 await win.click('#notes-toast button');
 await win.waitForFunction(() => /Enlantis[\\/]2026-09-21 Sprintplanering v39\.md$/.test(window.__notera.active.path));
 assert.match(read('Enlantis', '2026-09-21 Sprintplanering v39.md'), /Projekt: Enlantis/);
 
 // 5. Reorder within a project by drag
+await win.waitForFunction(() => /Ångrat/.test(document.querySelector('#notes-toast .msg')?.textContent || ''));
 await settle();
 const a = await noteRow('Sprintplanering').boundingBox();
 const b = await noteRow('PBI-1234').boundingBox();

@@ -255,3 +255,38 @@ test('a new note lands on top even when the index has never seen the folder', as
   assert.equal(names[0], path.basename(r.path));
   assert.equal(names.length, 3);
 });
+
+test('undo after the note was renamed follows the new name; a failed undo keeps the index', async () => {
+  const { store, ls, read, root } = setup();
+  await store.createProject('A');
+  await store.createProject('B');
+  const n = await store.createNote('A');
+  const m = await store.moveNote(n.path, 'B');
+  const r = await store.renameForTitle(m.path, 'Named later');
+  const u = await store.undo(m.undoId);
+  assert.equal(u.ok, true);
+  assert.deepEqual(u.moved, [{ from: r.path, to: path.join(root, 'A', path.basename(r.path)) }]);
+  assert.deepEqual(ls('A'), [path.basename(r.path)]);
+  assert.match(read('A', path.basename(r.path)), /Projekt: A/);
+  // A file deleted behind Notera's back: undo reports failure and leaves the index alone.
+  const m2 = await store.moveNote(path.join(root, 'A', path.basename(r.path)), 'B');
+  await store.setPinned(m2.path, true);
+  fs.unlinkSync(m2.path);
+  const before = read('.notera.json');
+  const u2 = await store.undo(m2.undoId);
+  assert.equal(u2.ok, false);
+  assert.equal(read('.notera.json'), before);
+});
+
+test('a reorder does not drag a note back after it moved elsewhere', async () => {
+  const { store, ls } = setup();
+  await store.createProject('A');
+  await store.createProject('B');
+  const x = await store.createNote('A', { text: '# X\n' });
+  const y = await store.createNote('A', { text: '# Y\n' });
+  const moved = store.moveNote(x.path, 'B');
+  const reorder = store.reorderNote(x.path, path.basename(y.path), true);
+  await Promise.all([moved, reorder]);
+  assert.deepEqual(ls('B'), [path.basename(x.path)]);
+  assert.deepEqual(ls('A'), [path.basename(y.path)]);
+});

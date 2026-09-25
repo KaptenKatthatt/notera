@@ -36,9 +36,13 @@ async function moveFile(from, to) {
   await fsp.mkdir(path.dirname(to), { recursive: true });
   try { await fsp.rename(from, to); } catch (err) {
     if (err.code !== 'EXDEV') throw err;
-    // Different drive: copy, then remove the original.
+    // Different drive: copy, then remove the original. If the original cannot be removed, the
+    // copy goes again, so a failed move never leaves the note in two places.
     await fsp.cp(from, to, { recursive: true, errorOnExist: true, force: false });
-    await fsp.rm(from, { recursive: true });
+    try { await fsp.rm(from, { recursive: true }); } catch (rmErr) {
+      await fsp.rm(to, { recursive: true, force: true }).catch(() => {});
+      throw rmErr;
+    }
   }
 }
 
@@ -173,6 +177,16 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     if (journals.size > MAX_UNDO) journals.delete(journals.keys().next().value);
     return id;
   }
+  /** A file renamed outside a journal: pending undos follow it to its new name. */
+  function retargetJournals(from, to) {
+    for (const j of journals.values()) {
+      for (const e of j.entries) {
+        // Undo brings the file back under its new name, which is what its heading says now.
+        if (e.t === 'move' && e.to === from) { e.to = to; e.from = path.join(path.dirname(e.from), path.basename(to)); }
+        if (e.t === 'write' && e.path === from) e.path = to;
+      }
+    }
+  }
   async function jMove(j, from, to) {
     await moveFile(from, to);
     j.entries.push({ t: 'move', from, to });
@@ -207,9 +221,11 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const j = journals.get(id);
       if (!j) return { ok: false, moved: [] };
       journals.delete(id);
+      let failed = false;
+      const moved = [];
       for (const e of [...j.entries].reverse()) {
         try {
-          if (e.t === 'move') await moveFile(e.to, e.from);
+          if (e.t === 'move') { await moveFile(e.to, e.from); moved.push({ from: e.to, to: e.from }); }
           else if (e.t === 'mkdir') await fsp.rmdir(e.dir).catch(() => {});
           else if (e.t === 'rmdir') await fsp.mkdir(e.dir, { recursive: true });
           else if (e.t === 'write') {
@@ -221,10 +237,11 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
               await fsp.writeFile(e.path, files.writeBuffer(H.setProject(r.text, e.oldProject), r.encoding, r.eol));
             }
           }
-        } catch { /* best effort: a file moved away since the operation stays where it is */ }
+        } catch { failed = true; /* a file changed or moved away since: it stays where it is */ }
       }
-      await saveIndex(JSON.parse(j.idxBefore));
-      return { ok: true, moved: j.moved.map((m) => ({ from: m.to, to: m.from })).reverse() };
+      // The old index only fits when every step went back; otherwise keep the current one.
+      if (!failed) await saveIndex(JSON.parse(j.idxBefore));
+      return { ok: !failed, moved };
     });
   }
 
@@ -359,6 +376,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
         await fsp.rename(p, tmp);
         await fsp.rename(tmp, to);
       } else await moveFile(p, to);
+      retargetJournals(p, to);
       // Same place in the list, same pin: only the name changes.
       const at = list.indexOf(loc.file);
       if (at >= 0) list[at] = name; else list.unshift(name);
@@ -373,10 +391,12 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
    * Move a note (active, archived or outside the notes folder) into a project folder, rewriting
    * the project in its header. Within the same project this only changes the order.
    */
-  async function moveNote(p, toFolder, { before = null, after = false } = {}) {
+  async function moveNote(p, toFolder, { before = null, after = false, reorderOnly = false } = {}) {
     return run(async () => {
       const idx = await ensure();
       const loc = locate(idx, p);
+      // A reorder whose note has meanwhile left the folder (another window moved it) does nothing.
+      if (reorderOnly && (!loc || loc.archived || loc.folder !== toFolder)) return { path: p, moved: [], undoId: null };
       const destDir = dirOf(toFolder);
       if (!(await exists(destDir))) throw new Error(`No such project: ${toFolder}`);
       if (loc && !loc.archived && loc.folder === toFolder) {
@@ -417,10 +437,9 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   async function reorderNote(p, target, after) {
-    const idx = await loadIndex();
-    const loc = locate(idx, p);
-    if (!loc || loc.archived) return { path: p };
-    return moveNote(p, loc.folder, { before: target, after });
+    const loc = locate(await loadIndex(), p);
+    if (!loc || loc.archived) return { path: p, moved: [] };
+    return moveNote(p, loc.folder, { before: target, after, reorderOnly: true });
   }
 
   async function setPinned(p, pinned) {
