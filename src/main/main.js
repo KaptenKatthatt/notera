@@ -376,6 +376,11 @@ function buildMenu() {
           enabled: templates.TEMPLATES.length > 0
         },
         {
+          label: t('menu.applyTemplate'),
+          submenu: templates.TEMPLATES.map((tpl) => ({ label: t(tpl.menu), click: () => send('applyTemplate', tpl.id) })),
+          enabled: templates.TEMPLATES.length > 0
+        },
+        {
           label: t('menu.openRecent'),
           submenu: recent.length
             ? [...recent, { type: 'separator' }, { label: t('menu.clearRecent'), click: () => updateSettings({ recentFiles: [] }) }]

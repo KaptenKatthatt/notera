@@ -23,3 +23,9 @@ test('standup-mallen på engelska', () => {
   assert.ok(text.includes('## Blockers'));
   assert.ok(text.includes('## To do for next meeting'));
 });
+
+test('standup-header för applicera-på-dokument: # Titel: + datum/tid', () => {
+  const tpl = TEMPLATES.find((x) => x.id === 'standup');
+  const head = tpl.header(makeT('sv'));
+  assert.match(head, /^# Titel:\n\d{4}-\d{2}-\d{2} \d{2}:\d{2}\n\n$/);
+});

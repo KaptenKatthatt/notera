@@ -594,6 +594,19 @@ async function handleAction(action, payload) {
       if (tpl) newTab({ text: tpl.text(t) });
       break;
     }
+    case 'applyTemplate': {
+      // Gör om påbörjat dokument: sidhuvud ('# Titel:' + genererad datum/tid)
+      // ovanför befintlig text; caret hamnar direkt efter 'Titel:'. Idempotent:
+      // ett dokument som redan börjar med '# Titel:' lämnas orörd.
+      const mtpl = TEMPLATES.find((x) => x.id === payload);
+      if (mtpl && mtpl.header && !view.state.doc.toString().startsWith('# Titel:')) {
+        const head = mtpl.header(t);
+        view.dispatch({ changes: { from: 0, insert: head }, selection: { anchor: head.indexOf('\n') } });
+        view.focus();
+        schedulePreview(0);
+      }
+      break;
+    }
     case 'open': await openDialog(); break;
     case 'openPaths': await openPaths(payload || []); break;
     case 'save': await saveTab(active); break;

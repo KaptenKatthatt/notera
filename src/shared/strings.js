@@ -7,6 +7,7 @@ const en = {
   menu: {
     file: '&File', new: 'New tab', newWindow: 'New window', open: 'Open…', openRecent: 'Open recent',
     newFromTemplate: 'New from template…', standup: 'Standup notes',
+    applyTemplate: 'Apply template…',
     clearRecent: 'Clear list', save: 'Save', saveAs: 'Save as…', saveAll: 'Save all', closeTab: 'Close tab',
     print: 'Print…', exit: 'Exit',
     edit: '&Edit', undo: 'Undo', redo: 'Redo', cut: 'Cut', copy: 'Copy', paste: 'Paste', delete: 'Delete',
@@ -87,6 +88,7 @@ const sv = {
   menu: {
     file: '&Arkiv', new: 'Ny flik', newWindow: 'Nytt fönster', open: 'Öppna…', openRecent: 'Öppna senaste',
     newFromTemplate: 'Ny från mall…', standup: 'Standup-anteckningar',
+    applyTemplate: 'Applicera mall…',
     clearRecent: 'Rensa listan', save: 'Spara', saveAs: 'Spara som…', saveAll: 'Spara alla', closeTab: 'Stäng flik',
     print: 'Skriv ut…', exit: 'Avsluta',
     edit: '&Redigera', undo: 'Ångra', redo: 'Gör om', cut: 'Klipp ut', copy: 'Kopiera', paste: 'Klistra in', delete: 'Ta bort',

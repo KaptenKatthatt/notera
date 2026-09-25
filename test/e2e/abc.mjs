@@ -62,6 +62,27 @@ await boxes.nth(0).click();
 await win.waitForFunction(() => window.__notera.view.state.doc.toString().includes('- [x] Oklar'), undefined, { timeout: 5000 });
 assert.ok((await win.evaluate(() => window.__notera.view.state.doc.toString())).includes('- [x] Oklar'), 'klick togglade raden i dokumentet');
 
+// D) Applicera mall pa paborjat dokument: sidhuvud + idempotens
+await win.evaluate(() => window.__notera.handleAction('new'));
+await win.waitForFunction(() => window.__notera.tabs.length === 4, undefined, { timeout: 5000 });
+await win.evaluate(() => {
+  const v = window.__notera.view;
+  v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: 'Min paborjade text' } });
+});
+await win.evaluate(() => window.__notera.handleAction('applyTemplate', 'standup'));
+const headDoc = await win.evaluate(() => window.__notera.view.state.doc.toString());
+assert.ok(headDoc.startsWith('# Titel:' + String.fromCharCode(10)), 'sidhuvud forst');
+const re = new RegExp('# Titel:' + String.fromCharCode(92) + 'n' + String.fromCharCode(92) + 'd{4}' + String.fromCharCode(92) + '-');
+assert.ok(re.test(headDoc), 'datumtid genererad');
+assert.ok(headDoc.endsWith('Min paborjade text'), 'text bevarad under sidhuvudet');
+const caret = await win.evaluate(() => window.__notera.view.state.selection.main.anchor);
+assert.equal(caret, 8, 'caret efter Titel:');
+const before = await win.evaluate(() => window.__notera.view.state.doc.toString());
+await win.evaluate(() => window.__notera.handleAction('applyTemplate', 'standup'));
+await win.waitForTimeout(150);
+const after = await win.evaluate(() => window.__notera.view.state.doc.toString());
+assert.equal(before, after, 'andra appliceringen andrar inget');
+console.log('D: applicera-mall OK');
 console.log('B: klar, stanger app');
 // nolla dirty pa ALLA flikar — annars blockeras nasta svits app.close() av
 // 'osparat?'-dialogen (smoke.mjs-konventionen: t.dirty=false + savedDoc=state)
