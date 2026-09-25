@@ -21,7 +21,12 @@ const DEFAULTS = {
   autosave: true,
   hideMarkers: true,
   keybindings: {},
-  checkUpdates: true
+  checkUpdates: true,
+  notesRoot: null,              // folder with one subfolder per project; null until chosen
+  sidebarOpen: false,           // closed until a notes folder is chosen
+  sidebarWidth: 264,
+  confirmDelete: true,
+  notesBannerDismissed: false
 };
 
 class Settings {

@@ -26,11 +26,31 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Automatic updates in the installed version: shortly after start and every six hours Notera checks GitHub Releases. When a newer version exists it offers to download and install it, shows the download progress, and restarts into the new version. Named files are saved first (or you are asked, when autosave is off) and untitled text comes back as a draft. The portable exe and source checkouts don't update themselves. Turn the check off in Settings; Help > Check for updates checks right away.
 - VS Code line editing with VS Code's keys, also under Edit > Line: move, copy, select and delete whole lines, cut or copy the current line when nothing is selected, open a line above or below, add the next occurrence to the selection, and add cursors above or below.
 
+## Projects in the sidebar
+
+Notera can keep your notes in one folder, sorted into projects. Choose the folder once (the sidebar, File > Notes folder…, or Settings > General). Notera makes one subfolder per project in it, plus `Osorterat` (Unsorted) and `Arkiv` (Archive), named in the UI language at the time. A folder in OneDrive gets you a backup for free. The files stay ordinary Markdown files, so Explorer, OneDrive and other editors see the same thing.
+
+- **Sidebar** (Ctrl+Shift+B or the button left of the tabs): Unsorted at the top, then your projects, then the archive. Drag notes to reorder them or to move them to another project, and drag projects to reorder them. The order, pinned notes and collapsed projects are kept in `.notera.json` in the notes folder. Hidden in writing mode.
+- **New note**: the + on a project creates a note in it straight away, with the cursor on the heading. Ctrl+T writes to Unsorted and Ctrl+Alt+N to the project you are in. Every note starts with a header line:
+
+  ```markdown
+  # Login error
+  Projekt: Enlantis · Skapad: 2026-09-25 14:32
+  ```
+
+  Enter on the heading jumps past the header line to the text. When the cursor leaves the heading, the file is renamed after it: `2026-09-25 Login error.md`. A new note closed before anything was written leaves no file behind.
+- **Moving** a note (drag, or ⋯ > Move to) moves the file and rewrites the project in its header line. The creation time never changes. Renaming a project renames its folder and rewrites every header in it. A file from outside the notes folder or an untitled draft moves in from the tab's right-click menu.
+- **Archive** hides a note (or a whole project) from the list but keeps it in search. Archived notes open read-only. Restore puts a note back into its project and re-creates the project if it is gone.
+- **Search** (Ctrl+Shift+F) looks through titles and text of every note, the archive included. With the sidebar closed it opens a floating search box.
+- **Undo**: moving, archiving, restoring and renaming a project show an Undo bar for a few seconds. Deleting sends the note or project to the Recycle Bin; a project with notes asks first and offers to archive it instead.
+
 ## Shortcuts
 
 | Action | Keys |
 | --- | --- |
-| New tab / new window | Ctrl+T / Ctrl+N (also Ctrl+Shift+N) |
+| New tab (a note in Unsorted once a notes folder is chosen) / new window | Ctrl+T / Ctrl+N (also Ctrl+Shift+N) |
+| New note in the current project | Ctrl+Alt+N |
+| Sidebar / search notes | Ctrl+Shift+B / Ctrl+Shift+F |
 | Close tab (or the window, see Settings) | Ctrl+W |
 | Go to tab 1 … 9 | Alt+1 … Alt+9 |
 | Open / Save / Save as | Ctrl+O / Ctrl+S / Ctrl+Shift+S |
@@ -68,12 +88,13 @@ Requires Node 22.
 npm install
 npm start          # build renderer + run Electron
 npm run watch      # rebuild renderer on change (run Electron separately)
-npm test           # unit tests (encoding, line endings, strings)
+npm test           # unit tests (encoding, line endings, strings, notes folder)
 npm run e2e        # drives the real app with Playwright; on Linux: xvfb-run -a npm run e2e
 node test/e2e/writing.mjs   # writing mode, hidden markers, autosave, draft recovery
 node test/e2e/lines.mjs     # VS Code line editing, driven with real key presses
 node test/e2e/settings.mjs  # Settings: rebinding, conflicts, persistence, menu labels, Ctrl+T/Ctrl+N/Alt+digit
 node test/e2e/update.mjs    # update flow against a local feed (NOTERA_UPDATE_FEED), up to the installer step
+node test/e2e/notes.mjs     # projects in the sidebar: create, rename, drag, move, archive, undo, search, first run
 npm run icon       # regenerate build/icon.png + icon.ico from the SVG in scripts/make-icon.js
 ```
 

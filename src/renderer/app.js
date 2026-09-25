@@ -9,6 +9,7 @@ import { COMMANDS, CATEGORIES, display } from '../shared/commands.js';
 import { TEMPLATES } from '../shared/templates.js';
 import { renderMarkdown, countWords } from './markdown.js';
 import { bindTaskCheckboxes } from './previewTasks.js';
+import { createSidebar, ICONS } from './sidebar.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
 import { openSearchPanel, findNext, findPrevious, gotoLine } from '@codemirror/search';
 
@@ -36,13 +37,14 @@ function editorOpts(tab) {
     dark: isDark,
     phrases: LOCALES[locale].search,
     hideMarkers: settings.hideMarkers !== false,
-    placeholder: tab.kind === 'md' ? t('ui.startWriting') : ''
+    placeholder: tab.kind === 'md' ? t('ui.startWriting') : '',
+    readOnly: !!tab.readOnly
   };
 }
 
 
 function runFormat(action, v = view) {
-  if (!active || active.kind !== 'md') return true; // swallow, but do nothing for plain text
+  if (!active || active.kind !== 'md' || active.readOnly) return true; // swallow, but do nothing for plain text
   switch (action) {
     case 'bold': return fmt.toggleInline(v, '**');
     case 'italic': return fmt.toggleInline(v, '*');
@@ -69,7 +71,28 @@ function suggestedName(tab) {
   return cleaned || t('untitled');
 }
 
-function tabTitle(tab) { return tab.name || t('untitled'); }
+// ---------- notes (projects) ----------
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const SEP = api.platform === 'win32' ? '\\' : '/';
+const pathKey = (p) => (api.platform === 'win32' ? String(p).toLowerCase() : String(p));
+const baseName = (p) => String(p).split(/[\\/]/).pop();
+function findTab(p) { return p ? tabs.find((x) => x.path && pathKey(x.path) === pathKey(p)) : null; }
+/** Heading of the first line ("" for an empty "# "), or null when the first line is no heading. */
+function headingOf(text) {
+  const m = /^#(?:\s+(.*))?$/.exec(String(text).split('\n', 1)[0]);
+  return m ? (m[1] || '').trim() : null;
+}
+function lineTitle(tab) { return headingOf(docFor(tab).line(1).text); }
+function noteInfo(tab) { return sidebar && tab && tab.path ? sidebar.noteInfo(tab.path) : null; }
+
+function tabTitle(tab) {
+  if (noteInfo(tab)) {
+    const h = lineTitle(tab);
+    if (h === null) return (tab.name || '').replace(/\.(md|markdown|txt)$/i, '');
+    return h || t('notes.untitledNote');
+  }
+  return tab.name || t('untitled');
+}
 
 function updateTitle() {
   if (!active) return;
@@ -93,7 +116,9 @@ function makeTab(init = {}) {
     savedDoc: null,
     draftId: init.draftId || null,
     autosaveTimer: null,
-    draftTimer: null
+    draftTimer: null,
+    readOnly: false,
+    lastTitle: headingOf(init.text || '') || ''
   };
   tab.state = createState(init.text || '', editorOpts(tab));
   tab.savedDoc = tab.state.doc;
@@ -102,7 +127,8 @@ function makeTab(init = {}) {
 }
 
 function activateTab(tab) {
-  if (active && active !== tab) { active.state = view.state; void flushPending(active); }
+  if (active && active !== tab) { active.state = view.state; void flushPending(active); void maybeRenameNote(active); }
+  if (sidebar && tab.path) syncReadOnly(tab);
   active = tab;
   view.setState(tab.state);
   // A fresh state may have stale compartment config if settings changed while inactive.
@@ -112,6 +138,8 @@ function activateTab(tab) {
   updateStatus();
   updateTitle();
   schedulePreview(0);
+  renderNotesBanner();
+  if (sidebar) sidebar.render();
   view.focus();
 }
 
@@ -144,6 +172,11 @@ function renderTabs() {
     el.appendChild(close);
     el.addEventListener('click', () => activateTab(tab));
     el.addEventListener('auxclick', (e) => { if (e.button === 1) void closeTab(tab); });
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (tab !== active) activateTab(tab);
+      sidebar.showTabMenu(tab, { x: e.clientX, y: e.clientY });
+    });
     host.appendChild(el);
   }
   const activeEl = host.querySelector('.tab.active');
@@ -176,11 +209,18 @@ async function closeTab(tab) {
   }
   clearTimeout(tab.autosaveTimer);
   await dropDraft(tab);
+  // A new note closed before anything was written leaves no empty file behind.
+  if (tab.pristine && tab.path && docFor(tab).toString() === tab.pristine) {
+    tab.discarded = true;
+    await api.notes.call('discardEmpty', tab.path, tab.pristine);
+  }
   const idx = tabs.indexOf(tab);
+  if (idx < 0) return true;
   tabs.splice(idx, 1);
   if (tabs.length === 0) newTab();
   else if (tab === active) activateTab(tabs[Math.min(idx, tabs.length - 1)]);
   else renderTabs();
+  if (sidebar) sidebar.render();
   return true;
 }
 
@@ -297,9 +337,11 @@ async function dropDraft(tab) {
   await api.deleteDraft(id);
 }
 
+/** Write what a pending autosave or draft timer would write. False when the save failed. */
 async function flushPending(tab) {
-  if (tab.autosaveTimer && tab.path && tab.dirty) await writeTab(tab);
+  if (tab.autosaveTimer && tab.path && tab.dirty && !(await writeTab(tab))) return false;
   if (tab.draftTimer && !tab.path) await writeDraft(tab);
+  return true;
 }
 
 async function restoreDrafts() {
@@ -347,6 +389,227 @@ async function requestClose() {
   api.closeConfirmed();
 }
 
+// ---------- notes: tabs follow their files ----------
+/** Replace a tab's text with the smallest possible change, so the cursor stays where it is. */
+function replaceDoc(tab, text) {
+  const cur = docFor(tab).toString();
+  if (cur === text) return;
+  let a = 0;
+  while (a < cur.length && a < text.length && cur[a] === text[a]) a++;
+  let b = 0;
+  while (b < cur.length - a && b < text.length - a && cur[cur.length - 1 - b] === text[text.length - 1 - b]) b++;
+  const changes = { from: a, to: cur.length - b, insert: text.slice(a, text.length - b) };
+  if (tab === active) view.dispatch({ changes, annotations: [] });
+  else tab.state = tab.state.update({ changes }).state;
+}
+
+/** A file moved (renamed, moved to another project, archived, restored): the tab goes with it. */
+async function followMove(from, to) {
+  const fk = pathKey(from);
+  for (const tab of tabs) {
+    if (!tab.path) continue;
+    const k = pathKey(tab.path);
+    let next = null;
+    if (k === fk) next = to;
+    else if (k.startsWith(fk + SEP)) next = to + tab.path.slice(from.length);
+    if (!next) continue;
+    tab.path = next;
+    tab.name = baseName(next);
+    // The header line may have been rewritten (new project): take the text from disk.
+    const r = await api.readFile(next);
+    if (!r.ok) continue;
+    if (!tab.dirty) {
+      replaceDoc(tab, r.text);
+      tab.savedDoc = docFor(tab);
+      tab.dirty = false;
+      clearTimeout(tab.autosaveTimer); tab.autosaveTimer = null;
+    } else {
+      // Unsaved edits stay; only the header line follows the file.
+      const diskMeta = r.text.split('\n', 4).find((l) => /^(Projekt|Project): .* · (Skapad|Created): /.test(l));
+      const doc = docFor(tab);
+      for (let n = 1; n <= Math.min(3, doc.lines) && diskMeta; n++) {
+        const line = doc.line(n);
+        if (/^(Projekt|Project): .* · (Skapad|Created): /.test(line.text) && line.text !== diskMeta) {
+          const changes = { from: line.from, to: line.to, insert: diskMeta };
+          if (tab === active) view.dispatch({ changes }); else tab.state = tab.state.update({ changes }).state;
+          break;
+        }
+      }
+    }
+    tab.mtimeMs = r.mtimeMs;
+    tab.encoding = r.encoding;
+    tab.eol = r.eol;
+  }
+}
+
+/** Files that went to the Recycle Bin: their tabs close without asking. */
+function dropDeleted(p) {
+  const pk = pathKey(p);
+  for (const tab of [...tabs]) {
+    if (!tab.path) continue;
+    const k = pathKey(tab.path);
+    if (k !== pk && !k.startsWith(pk + SEP)) continue;
+    clearTimeout(tab.autosaveTimer); clearTimeout(tab.draftTimer);
+    const idx = tabs.indexOf(tab);
+    tabs.splice(idx, 1);
+    if (tab === active) {
+      active = null;
+      if (tabs.length) activateTab(tabs[Math.min(idx, tabs.length - 1)]); else newTab();
+    }
+  }
+}
+
+async function applyResult(r) {
+  if (!r || typeof r !== 'object') return;
+  for (const m of r.moved || []) await followMove(m.from, m.to);
+  for (const d of r.deleted || []) dropDeleted(d);
+  renderTabs(); updateTitle(); updateStatus();
+}
+
+async function flushAll() {
+  if (active) active.state = view.state;
+  for (const tab of [...tabs]) await flushPending(tab);
+}
+
+/** Archived notes are read-only until restored. */
+function syncReadOnly(tab) {
+  const info = noteInfo(tab);
+  const ro = !!(info && info.archived);
+  if (ro === tab.readOnly) return false;
+  tab.readOnly = ro;
+  if (tab === active) view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) });
+  else tab.state = tab.state.update({ effects: reconfigureEffects(editorOpts(tab)) }).state;
+  return true;
+}
+
+function onTreeChanged() {
+  for (const tab of tabs) syncReadOnly(tab);
+  renderTabs(); updateTitle(); updateStatus(); renderNotesBanner();
+}
+
+/** When the cursor leaves the title line, the file is renamed after the heading. */
+async function maybeRenameNote(tab) {
+  if (!tab || !tab.path || tab.readOnly || tab.discarded || !tabs.includes(tab)) return;
+  const info = noteInfo(tab);
+  if (!info || info.archived) return;
+  const title = lineTitle(tab);
+  if (title === null || title === tab.lastTitle) return;
+  if (tab.renaming) { tab.renameAgain = true; return; }
+  tab.renaming = true;
+  try {
+    // Never rename a file whose new text did not reach the disk.
+    if (!(await flushPending(tab))) return;
+    const r = await api.notes.call('renameForTitle', tab.path, title);
+    if (r && !r.error) {
+      tab.lastTitle = title;
+      await applyResult(r);
+      if (r.moved && r.moved.length) { sidebar.toast(t('notes.toastRenamed', { file: baseName(r.path) })); await sidebar.refresh(); }
+    }
+  } finally {
+    tab.renaming = false;
+    if (tab.renameAgain) { tab.renameAgain = false; void maybeRenameNote(tab); }
+  }
+}
+
+async function inboxFolder() {
+  if (!sidebar.inboxName()) await sidebar.refresh();
+  return sidebar.inboxName();
+}
+
+/** The project of the note in the active tab, or Unsorted. */
+async function currentFolder() {
+  const info = noteInfo(active);
+  if (info && !info.archived) return info.folder;
+  return inboxFolder();
+}
+
+async function createNoteIn(folder) {
+  if (!settings.notesRoot) { newTab(); return; }
+  await flushAll();
+  const r = await api.notes.call('createNote', folder || (await inboxFolder()));
+  if (!r || r.error) { sidebar.toast(t('notes.opFailed', { error: (r && (r.message || r.error)) || '?' })); return; }
+  sidebar.expand(folder);
+  await sidebar.refresh();
+  await openPaths([r.path]);
+  const tab = findTab(r.path);
+  if (!tab) return;
+  tab.pristine = r.text;
+  tab.lastTitle = '';
+  if (tab === active) { view.dispatch({ selection: { anchor: 2 } }); view.focus(); }
+  renderTabs(); sidebar.render();
+}
+
+async function openNote(p) {
+  const tab = findTab(p);
+  if (tab) activateTab(tab); else await openPaths([p]);
+}
+
+/** Move an untitled draft or a file from outside the notes folder into a project. */
+async function moveTabToProject(tab, folder) {
+  if (tab.path) {
+    if (tab.dirty && !(await writeTab(tab))) return;
+    await flushPending(tab);
+    await sidebar.moveTo(tab.path, folder);
+    return;
+  }
+  const r = await api.notes.call('createNote', folder, { text: docFor(tab).toString() });
+  if (!r || r.error) { sidebar.toast(t('notes.opFailed', { error: (r && (r.message || r.error)) || '?' })); return; }
+  replaceDoc(tab, r.text);
+  tab.path = r.path; tab.name = baseName(r.path); tab.kind = 'md';
+  tab.savedDoc = docFor(tab); tab.dirty = false; tab.recovered = false;
+  tab.lastTitle = headingOf(r.text) || '';
+  const st = await api.statFile(r.path);
+  tab.mtimeMs = st.ok ? st.mtimeMs : null;
+  await dropDraft(tab);
+  await sidebar.refresh();
+  renderTabs(); updateTitle(); updateStatus();
+  sidebar.toast(t('notes.toastMoved', { project: sidebar.folderLabel(folder) }));
+}
+
+async function chooseNotesRoot() {
+  const r = await api.notes.chooseRoot();
+  if (!r) return;
+  await sidebar.refresh();
+  sidebar.toast(t('notes.folderChosen', { inbox: t('notes.inbox') }));
+}
+
+/** Ask for a new project name and create it. Resolves to the name, or null. */
+async function promptProjectName() {
+  const dlg = $('#dlg-project');
+  const input = $('#project-name');
+  const err = $('#project-error');
+  input.value = '';
+  err.textContent = '';
+  for (;;) {
+    dlg.returnValue = '';
+    dlg.showModal();
+    input.focus();
+    await new Promise((res) => dlg.addEventListener('close', res, { once: true }));
+    if (dlg.returnValue !== 'ok') { view.focus(); return null; }
+    const name = input.value.trim();
+    const e = await sidebar.createProject(name);
+    if (!e) { view.focus(); return name; }
+    err.textContent = e;
+  }
+}
+
+function renderNotesBanner() {
+  const el = $('#notes-banner');
+  if (!el) return;
+  const info = noteInfo(active);
+  if (!settings.notesRoot && !settings.notesBannerDismissed) {
+    el.innerHTML = `<div class="nb-banner"><span class="grow">${esc(t('notes.banner'))}</span><button type="button" class="primary" data-nb="choose">${esc(t('notes.chooseFolder'))}</button><button type="button" data-nb="dismiss">${esc(t('notes.notNow'))}</button></div>`;
+  } else if (info && info.archived) {
+    el.innerHTML = `<div class="nb-banner"><span class="grow">${esc(t('notes.archivedBanner', { project: sidebar.folderLabel(info.folder) }))}</span><button type="button" class="primary" data-nb="restore">${esc(t('notes.restore'))}</button></div>`;
+  } else el.innerHTML = '';
+}
+
+function applySidebarLayout() {
+  document.body.classList.toggle('sb-open', !!settings.sidebarOpen);
+  document.documentElement.style.setProperty('--sb-width', `${settings.sidebarWidth || 264}px`);
+  $('#sb-toggle').classList.toggle('on', !!settings.sidebarOpen);
+}
+
 // ---------- status bar ----------
 function updateStatus() {
   if (!active) return;
@@ -365,6 +628,14 @@ function updateStatus() {
   $('#st-kind').title = active.kind === 'md' ? t('ui.switchToText') : t('ui.switchToMarkdown');
   const words = countWords(s.doc.toString());
   $('#ft-words').textContent = t('ui.words', { n: words });
+  const info = noteInfo(active);
+  const stNote = $('#st-note');
+  stNote.hidden = !info;
+  if (info) {
+    const where = info.archived ? `${t('notes.archiveTitle')} › ${sidebar.folderLabel(info.folder)}` : sidebar.folderLabel(info.folder);
+    stNote.textContent = `${where} › ${active.name}`;
+    stNote.title = active.path;
+  }
   const state = active.recovered && active.dirty ? t('ui.recovered') : active.dirty ? t('ui.unsaved') : (active.path ? t('ui.saved') : '');
   $('#ft-status').textContent = [tabTitle(active), state].filter(Boolean).join(' · ');
 }
@@ -416,6 +687,7 @@ function applySettings(next, prev = {}) {
   root.setProperty('--editor-size', `${settings.fontSize || 15}px`);
   document.body.classList.toggle('no-statusbar', settings.statusBar === false);
   document.body.classList.toggle('no-formatting-bar', settings.formattingBar === false);
+  applySidebarLayout();
   const newLocale = settings.language && settings.language !== 'auto' ? settings.language : (prev.__locale || locale);
   if (settings.language === 'auto' && prev.language && prev.language !== 'auto') {
     // Falling back to the system locale requires the main process' answer; reuse bootstrap locale.
@@ -433,6 +705,8 @@ function applySettings(next, prev = {}) {
     schedulePreview(0);
     renderUpdate();
     if (settingsDialog) settingsDialog.refresh();
+    if (sidebar && prev.notesRoot !== settings.notesRoot) void sidebar.refresh();
+    renderNotesBanner();
   }
 }
 
@@ -448,6 +722,8 @@ function applyI18n() {
   for (const el of $$('[data-i18n]')) el.textContent = t(el.dataset.i18n);
   for (const el of $$('[data-i18n-title]')) { el.title = t(el.dataset.i18nTitle); el.setAttribute('aria-label', el.title); }
   $('#tabbar').setAttribute('aria-label', t('ui.newTab'));
+  for (const el of $$('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  if (sidebar) sidebar.applyI18n();
 }
 
 function setZoom(z) {
@@ -588,7 +864,17 @@ function ensureEditorVisible() {
 // ---------- menu / actions ----------
 async function handleAction(action, payload) {
   switch (action) {
-    case 'new': newTab(); break;
+    case 'new': if (settings.notesRoot) await createNoteIn(await inboxFolder()); else newTab(); break;
+    case 'newNoteInProject': if (settings.notesRoot) await createNoteIn(await currentFolder()); else newTab(); break;
+    case 'newProject':
+      if (!settings.notesRoot) await chooseNotesRoot();
+      else if (settings.sidebarOpen && !settings.writingMode) sidebar.startNewProject();
+      else await promptProjectName();
+      break;
+    case 'archiveNote': { const info = noteInfo(active); if (info && !info.archived) await sidebar.archiveNote(active.path); break; }
+    case 'chooseNotesFolder': await chooseNotesRoot(); break;
+    case 'toggleSidebar': await api.setSettings({ sidebarOpen: !settings.sidebarOpen }); break;
+    case 'searchNotes': sidebar.openSearch(); break;
     case 'newFromTemplate': {
       const tpl = TEMPLATES.find((x) => x.id === payload);
       if (tpl) newTab({ text: tpl.text(t) });
@@ -599,7 +885,7 @@ async function handleAction(action, payload) {
       // ovanför befintlig text; caret hamnar direkt efter 'Titel:'. Idempotent:
       // ett dokument som redan börjar med '# Titel:' lämnas orörd.
       const mtpl = TEMPLATES.find((x) => x.id === payload);
-      if (mtpl && mtpl.header && !view.state.doc.toString().startsWith('# Titel:')) {
+      if (mtpl && mtpl.header && !active.readOnly && !view.state.doc.toString().startsWith('# Titel:')) {
         const head = mtpl.header(t);
         view.dispatch({ changes: { from: 0, insert: head }, selection: { anchor: head.indexOf('\n') } });
         view.focus();
@@ -628,7 +914,7 @@ async function handleAction(action, payload) {
       break;
     }
     case 'goTo': ensureEditorVisible(); gotoLine(view); break;
-    case 'timeDate': insertTimeDate(); break;
+    case 'timeDate': if (!active.readOnly) insertTimeDate(); break;
     case 'font': await openFontDialog(); break;
     case 'zoomIn': setZoom((settings.zoom || 100) + 10); break;
     case 'zoomOut': setZoom((settings.zoom || 100) - 10); break;
@@ -640,6 +926,7 @@ async function handleAction(action, payload) {
     case 'moveLineUp': case 'moveLineDown': case 'copyLineUp': case 'copyLineDown': case 'deleteLine': case 'selectLine':
     case 'insertLineBelow': case 'insertLineAbove': case 'selectNextOccurrence': case 'selectAllOccurrences':
     case 'addCursorAbove': case 'addCursorBelow': case 'indentLine': case 'outdentLine':
+      if (active.readOnly) break;
       ensureEditorVisible(); lineCommands[action](view); view.focus(); break;
     case 'prevTab': cycleTab(-1); break;
     case 'newWindow': api.newWindow(); break;
@@ -669,7 +956,20 @@ async function handleAction(action, payload) {
 }
 
 function bindUi() {
-  $('#tab-add').addEventListener('click', () => newTab());
+  $('#tab-add').addEventListener('click', () => void handleAction('new'));
+  $('#sb-toggle').innerHTML = ICONS.sidebar;
+  $('#sb-close').innerHTML = ICONS.back;
+  for (const el of $$('.sb-search-ico')) el.innerHTML = ICONS.search;
+  $('#sb-toggle').addEventListener('click', () => void handleAction('toggleSidebar'));
+  $('#sb-close').addEventListener('click', () => void handleAction('toggleSidebar'));
+  $('#st-note').addEventListener('click', () => { if (active && active.path) void sidebar.reveal(active.path); });
+  $('#notes-banner').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-nb]');
+    if (!b) return;
+    if (b.dataset.nb === 'choose') void chooseNotesRoot();
+    else if (b.dataset.nb === 'dismiss') void api.setSettings({ notesBannerDismissed: true });
+    else if (b.dataset.nb === 'restore' && active && active.path) void sidebar.restoreNote(active.path);
+  });
   for (const b of $$('#toolbar [data-action]')) {
     b.addEventListener('mousedown', (e) => e.preventDefault()); // keep editor focus
     b.addEventListener('click', () => { hidePopup(); runFormat(b.dataset.action); });
@@ -734,7 +1034,9 @@ function bindUi() {
   });
   $('#preview-pane').addEventListener('dblclick', () => { if (active?.kind === 'md') void api.setSettings({ viewMode: 'split' }); });
 
-  window.addEventListener('focus', () => void checkExternalChange());
+  window.addEventListener('focus', () => { void checkExternalChange(); if (sidebar) void sidebar.refresh(); });
+  window.addEventListener('blur', () => { if (active) void maybeRenameNote(active); });
+  api.notes.onChanged(async (ev) => { await applyResult(ev); await sidebar.refresh(); });
   api.onThemeChanged((dark) => applyTheme(dark));
 
   api.onMenu((action, payload) => void handleAction(action, payload));
@@ -816,6 +1118,7 @@ function markDirty() {
 let bootLocale = 'en';
 let keys = null;
 let settingsDialog = null;
+let sidebar = null;
 async function boot() {
   const b = await api.bootstrap();
   keys = createKeyDispatcher({ run: (id) => void handleAction(id) });
@@ -834,14 +1137,33 @@ async function boot() {
         if (dirty !== active.dirty) { active.dirty = dirty; renderTabs(); updateTitle(); }
         if (dirty) scheduleAutosave(active);
         schedulePreview();
+        if (trs.some((tr) => tr.docChanged && tr.changes.touchesRange(0, tr.startState.doc.line(1).to))) {
+          renderTabs(); updateTitle(); if (sidebar) sidebar.renderTitles();
+        }
       }
-      if (docChanged || trs.some((tr) => tr.selection)) updateStatus();
+      if (docChanged || trs.some((tr) => tr.selection)) {
+        updateStatus();
+        const onTitle = v.state.doc.lineAt(v.state.selection.main.head).number === 1;
+        if (active.onTitle && !onTitle) void maybeRenameNote(active);
+        active.onTitle = onTitle;
+      }
     }
   });
   view.scrollDOM.addEventListener('scroll', syncPreviewScroll, { passive: true });
   settingsDialog = createSettingsDialog({
-    t: (...a) => t(...a), api, getSettings: () => settings, openFontDialog, version: b.version,
+    t: (...a) => t(...a), api, getSettings: () => settings, openFontDialog, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
     onClose: () => view.focus()
+  });
+  sidebar = createSidebar({
+    api, t: () => t, settings: () => settings, pathKey,
+    liveTitle: (p) => { const tab = findTab(p); return tab ? lineTitle(tab) : null; },
+    activePath: () => (active ? active.path : null),
+    flush: flushAll, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
+    promptProjectName, moveTabToProject, closeTab: (tab) => closeTab(tab),
+    focusEditor: () => view.focus(),
+    sidebarVisible: () => !!settings.sidebarOpen && !settings.writingMode,
+    showSidebar: async () => { if (settings.writingMode) await api.setSettings({ writingMode: false }); if (!settings.sidebarOpen) await api.setSettings({ sidebarOpen: true }); },
+    shortcutLabel: (id) => display((keys.bindings()[id] || [])[0] || '')
   });
   bindUi();
   $('#update-go').addEventListener('click', () => void onUpdateGo());
@@ -860,7 +1182,10 @@ async function boot() {
   }
   else if (restored) activateTab(tabs[0]);
   else newTab();
-  window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, get update() { return update; }, handleAction, openPaths, keys };
+  await sidebar.refresh();
+  sidebar.applyI18n();
+  renderNotesBanner();
+  window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, get update() { return update; }, get sidebar() { return sidebar; }, handleAction, openPaths, keys };
 }
 
 void boot();

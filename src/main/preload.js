@@ -49,5 +49,12 @@ contextBridge.exposeInMainWorld('notera', {
   onOpenFiles: (cb) => on('files:open', cb),
   onRequestClose: (cb) => on('window:requestClose', cb),
   onSettingsChanged: (cb) => on('settings:changed', cb),
-  onThemeChanged: (cb) => on('theme:changed', cb)
+  onThemeChanged: (cb) => on('theme:changed', cb),
+  notes: {
+    call: (method, ...args) => ipcRenderer.invoke('notes:call', method, ...args),
+    chooseRoot: () => ipcRenderer.invoke('notes:chooseRoot'),
+    confirmDeleteNote: (title) => ipcRenderer.invoke('notes:confirmDeleteNote', title),
+    confirmDeleteProject: (args) => ipcRenderer.invoke('notes:confirmDeleteProject', args),
+    onChanged: (cb) => on('notes:changed', cb)
+  }
 });

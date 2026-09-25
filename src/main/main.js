@@ -8,6 +8,7 @@ const { resolveLocale, makeT } = require('../shared/strings');
 const commands = require('../shared/commands');
 const { createUpdater } = require('./updater');
 const templates = require('../shared/templates');
+const { createNotesStore } = require('./notes');
 
 const isDev = !app.isPackaged;
 // Tests point this at a scratch directory so they never touch real settings.
@@ -22,6 +23,7 @@ const pendingFiles = new Map(); // webContents.id -> string[]
 const pendingTabs = new Map(); // webContents.id -> draftId (flik lossad till nytt fönster)
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
 let updater;
+let notesStore = null;
 
 function parseFileArgs(argv, cwd) {
   const args = process.defaultApp ? argv.slice(2) : argv.slice(1);
@@ -342,6 +344,93 @@ ipcMain.on('tab:detach', (e, p = {}) => {
 });
 ipcMain.on('shell:openExternal', (_e, url) => { if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url); });
 
+// ---------- Notes (projects in the sidebar) ----------
+// One store per notes folder, shared by every window. Mutations are broadcast so every window
+// moves its open tabs along with the files and redraws its sidebar.
+function getNotesStore() {
+  const root = settings.get('notesRoot');
+  if (!root) return null;
+  if (!notesStore || notesStore.root !== root) {
+    notesStore = createNotesStore({
+      root,
+      getLocale: () => locale,
+      trash: (p) => shell.trashItem(p),
+      untitled: () => t('notes.untitledNote'),
+      eol: process.platform === 'win32' ? 'CRLF' : 'LF'
+    });
+  }
+  return notesStore;
+}
+
+const NOTES_READS = new Set(['tree', 'search', 'countNotes', 'locate']);
+const NOTES_WRITES = new Set([
+  'createNote', 'renameForTitle', 'moveNote', 'reorderNote', 'setPinned', 'archiveNote', 'restoreNote', 'deleteNote', 'discardEmpty',
+  'createProject', 'renameProject', 'reorderProject', 'setCollapsed', 'archiveProject', 'restoreProject', 'deleteProject', 'undo'
+]);
+ipcMain.handle('notes:call', async (_e, method, ...args) => {
+  if (!NOTES_READS.has(method) && !NOTES_WRITES.has(method)) return { error: 'unknown' };
+  const store = getNotesStore();
+  if (!store) return { error: 'noRoot' };
+  try {
+    const r = await store[method](...args);
+    if (NOTES_WRITES.has(method)) broadcast('notes:changed', { moved: (r && r.moved) || [], deleted: (r && r.deleted) || [] });
+    return r === undefined ? null : r;
+  } catch (err) {
+    return { error: 'failed', message: err.message };
+  }
+});
+
+async function chooseNotesRoot(win) {
+  const r = await dialog.showOpenDialog(win || focusedWindow(), {
+    title: t('notes.chooseFolderTitle'),
+    defaultPath: settings.get('notesRoot') || app.getPath('documents'),
+    properties: ['openDirectory', 'createDirectory', 'promptToCreate']
+  });
+  if (r.canceled || !r.filePaths.length) return null;
+  return setNotesRoot(r.filePaths[0]);
+}
+async function setNotesRoot(root) {
+  const store = createNotesStore({ root, getLocale: () => locale, trash: (p) => shell.trashItem(p), untitled: () => t('notes.untitledNote') });
+  const idx = await store.ensure();
+  updateSettings({ notesRoot: root, sidebarOpen: true });
+  broadcast('notes:changed', { moved: [], deleted: [] });
+  return { root, inbox: idx.inbox };
+}
+ipcMain.handle('notes:chooseRoot', (e) => chooseNotesRoot(BrowserWindow.fromWebContents(e.sender)));
+
+ipcMain.handle('notes:confirmDeleteNote', async (e, title) => {
+  const r = await dialog.showMessageBox(BrowserWindow.fromWebContents(e.sender), {
+    type: 'question', title: t('notes.deleteNoteTitle'), message: t('notes.deleteNoteMessage', { title }),
+    buttons: [t('notes.deleteButton'), t('dialog.cancel')], defaultId: 0, cancelId: 1, noLink: true,
+    checkboxLabel: t('notes.dontAsk'), checkboxChecked: false
+  });
+  if (r.response !== 0) return false;
+  if (r.checkboxChecked) updateSettings({ confirmDelete: false });
+  return true;
+});
+
+// 'delete' | 'archive' | 'cancel'
+ipcMain.handle('notes:confirmDeleteProject', async (e, { project, n, archived }) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (n === 0) {
+    const r = await dialog.showMessageBox(win, {
+      type: 'question', title: t('notes.deleteProjectTitle', { project }), message: t('notes.deleteProjectTitle', { project }),
+      detail: t('notes.deleteEmptyProject'), buttons: [t('notes.deleteButton'), t('dialog.cancel')], defaultId: 1, cancelId: 1, noLink: true
+    });
+    return r.response === 0 ? 'delete' : 'cancel';
+  }
+  const buttons = archived
+    ? [t('notes.deleteProjectButton'), t('dialog.cancel')]
+    : [t('notes.deleteProjectButton'), t('notes.archiveInstead'), t('dialog.cancel')];
+  const r = await dialog.showMessageBox(win, {
+    type: 'warning', title: t('notes.deleteProjectTitle', { project }), message: t('notes.deleteProjectMessage', { project, n }),
+    detail: archived ? '' : t('notes.deleteProjectDetail'), buttons, defaultId: buttons.length - 1, cancelId: buttons.length - 1, noLink: true
+  });
+  if (r.response === 0) return 'delete';
+  if (!archived && r.response === 1) return 'archive';
+  return 'cancel';
+});
+
 // ---------- Menu ----------
 // Built from the command registry, so a shortcut changed in Settings shows up here too.
 // Accelerators are labels only (registerAccelerator: false): the renderer dispatches every key.
@@ -367,7 +456,9 @@ function buildMenu() {
     {
       label: t('menu.file'),
       submenu: [
-        cmd('new'),
+        cmd('new', s.notesRoot ? { label: t('menu.newNote') } : {}),
+        cmd('newNoteInProject', { enabled: !!s.notesRoot }),
+        cmd('newProject', { enabled: !!s.notesRoot }),
         cmd('newWindow', { click: () => createWindow() }),
         cmd('open'),
         {
@@ -390,6 +481,9 @@ function buildMenu() {
         cmd('save'),
         cmd('saveAs'),
         cmd('saveAll'),
+        { type: 'separator' },
+        cmd('archiveNote', { enabled: !!s.notesRoot }),
+        cmd('chooseNotesFolder'),
         { type: 'separator' },
         cmd('closeTab'),
         cmd('closeWindow', { click: () => { const w = focusedWindow(); if (w) w.close(); } }),
@@ -457,6 +551,8 @@ function buildMenu() {
         { label: t('menu.zoom'), submenu: [cmd('zoomIn'), cmd('zoomOut'), cmd('zoomReset')] },
         { type: 'separator' },
         viewRadio('viewEditor', 'editor'), viewRadio('viewSplit', 'split'), viewRadio('viewPreview', 'preview'),
+        { type: 'separator' },
+        check('toggleSidebar', 'sidebarOpen'), cmd('searchNotes', { enabled: !!s.notesRoot }),
         { type: 'separator' },
         check('wordWrap'), check('lineNumbers'), check('hideMarkers'), check('formattingBar'), check('statusBar'),
         { type: 'separator' },

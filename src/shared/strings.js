@@ -174,6 +174,76 @@ for (let n = 1; n <= 9; n++) {
 en.templates = { standupTitle: 'Standup', doneLast: 'Done since last', blockers: 'Blockers', nextUp: 'To do for next meeting' };
 sv.templates = { standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 'Blockers', nextUp: 'Göra till nästa möte' };
 
+Object.assign(en.menu, {
+  newNote: 'New note', newNoteInProject: 'New note in project', newProject: 'New project…', toggleSidebar: 'Sidebar',
+  searchNotes: 'Search notes', archiveNote: 'Archive note', chooseNotesFolder: 'Notes folder…'
+});
+Object.assign(sv.menu, {
+  newNote: 'Ny anteckning', newNoteInProject: 'Ny anteckning i projektet', newProject: 'Nytt projekt…', toggleSidebar: 'Sidopanel',
+  searchNotes: 'Sök anteckningar', archiveNote: 'Arkivera anteckningen', chooseNotesFolder: 'Anteckningsmapp…'
+});
+
+en.notes = {
+  create: 'Create', untitledNote: 'Untitled note', title: 'Notes', collapse: 'Hide the sidebar', search: 'Search notes', searchAll: 'Search all notes, including the archive',
+  inbox: 'Unsorted', projects: 'Projects', newProject: 'New project', projectName: 'Project name',
+  newNote: 'New note', newNoteIn: 'New note in {project}', more: 'More', open: 'Open', pin: 'Pin to top', unpin: 'Unpin',
+  moveTo: 'Move to', moveToProject: 'Move to project', newProjectEllipsis: 'New project…', archive: 'Archive', delete: 'Delete…',
+  rename: 'Rename', archiveProject: 'Archive project', deleteProject: 'Delete project…',
+  archiveTitle: 'Archive', archiveHint: 'Hidden from the list but included in search. Restore puts a note back into its project.',
+  archiveEmpty: 'The archive is empty.', wholeProject: 'whole project', restore: 'Restore', restoreTo: 'Restore to {project}',
+  restoreProject: 'Restore project', deleteForever: 'Delete permanently…', back: 'Back',
+  emptyInbox: 'Nothing unsorted. Ctrl+T writes here.', emptyProject: 'Empty. Click + for a note.',
+  noResults: 'No notes match “{q}”.', archived: 'Archived', recent: 'Notes',
+  setup: 'Collect your notes in projects. Choose a notes folder and Notera makes one subfolder per project in it.',
+  chooseFolder: 'Choose notes folder…', chooseFolderTitle: 'Choose notes folder', banner: 'Collect your notes in projects: choose a folder where Notera sorts them.',
+  notNow: 'Not now', folderChosen: 'Notes folder chosen. Ctrl+T now writes to {inbox}.',
+  archivedBanner: 'Archived from {project}. Read-only until you restore it.', showInSidebar: 'Show in sidebar', closeTab: 'Close tab',
+  chooseFolderFirst: 'Choose a notes folder first',
+  toastArchived: 'Archived: {title}', toastMoved: 'Moved to {project}', toastRestored: 'Restored to {project}',
+  toastRestoredNew: 'Restored to {project} (project re-created)', toastProjectArchived: 'Project {project} archived',
+  toastProjectRestored: 'Project {project} restored', toastProjectRenamed: 'Renamed to {project}', toastDeleted: 'Moved to the Recycle Bin: {title}',
+  toastProjectDeleted: 'Project {project} moved to the Recycle Bin', toastRenamed: 'Renamed the file to {file}', toastNewNote: 'New note in {project}',
+  undo: 'Undo', undone: 'Undone', undoFailed: 'Could not undo',
+  nameEmpty: 'Enter a name.', nameInvalid: 'The name cannot contain < > : " / \\ | ? * or end with a dot.', nameReserved: '{name} is reserved.',
+  nameTaken: 'There is already a project called {name}.',
+  deleteNoteTitle: 'Delete the note?', deleteNoteMessage: '“{title}” will be moved to the Recycle Bin. You can restore it from there.',
+  dontAsk: "Don't ask again", deleteButton: 'Delete',
+  deleteProjectTitle: 'Delete the project {project}?', deleteProjectMessage: '{project} and {n} notes will be moved to the Recycle Bin.',
+  deleteProjectDetail: 'To keep the notes out of the list without deleting them, archive the project instead.',
+  deleteEmptyProject: 'The project is empty. Its folder will be removed.', archiveInstead: 'Archive instead', deleteProjectButton: 'Delete project',
+  opFailed: 'That did not work: {error}', settingsSection: 'Notes', settingsFolder: 'Notes folder', notChosen: 'Not chosen', change: 'Change…', confirmDeleteSetting: 'Ask before deleting a note'
+};
+sv.notes = {
+  create: 'Skapa', untitledNote: 'Namnlös anteckning', title: 'Anteckningar', collapse: 'Fäll in sidopanelen', search: 'Sök anteckningar', searchAll: 'Sök i alla anteckningar, arkivet inräknat',
+  inbox: 'Osorterat', projects: 'Projekt', newProject: 'Nytt projekt', projectName: 'Projektnamn',
+  newNote: 'Ny anteckning', newNoteIn: 'Ny anteckning i {project}', more: 'Mer', open: 'Öppna', pin: 'Fäst överst', unpin: 'Lossa',
+  moveTo: 'Flytta till', moveToProject: 'Flytta till projekt', newProjectEllipsis: 'Nytt projekt…', archive: 'Arkivera', delete: 'Ta bort…',
+  rename: 'Byt namn', archiveProject: 'Arkivera projekt', deleteProject: 'Ta bort projekt…',
+  archiveTitle: 'Arkiv', archiveHint: 'Dolt i listan men med i sökningen. Återställ lägger tillbaka anteckningen i sitt projekt.',
+  archiveEmpty: 'Arkivet är tomt.', wholeProject: 'helt projekt', restore: 'Återställ', restoreTo: 'Återställ till {project}',
+  restoreProject: 'Återställ projektet', deleteForever: 'Ta bort permanent…', back: 'Tillbaka',
+  emptyInbox: 'Inget osorterat. Ctrl+T skriver hit.', emptyProject: 'Tomt. Klicka på + för en anteckning.',
+  noResults: 'Inga anteckningar matchar ”{q}”.', archived: 'Arkiverad', recent: 'Anteckningar',
+  setup: 'Samla anteckningarna i projekt. Välj en anteckningsmapp så skapar Notera en undermapp per projekt där.',
+  chooseFolder: 'Välj anteckningsmapp…', chooseFolderTitle: 'Välj anteckningsmapp', banner: 'Samla anteckningarna i projekt: välj en mapp där Notera sorterar dem.',
+  notNow: 'Inte nu', folderChosen: 'Anteckningsmappen är vald. Ctrl+T skriver nu i {inbox}.',
+  archivedBanner: 'Arkiverad från {project}. Skrivskyddad tills du återställer den.', showInSidebar: 'Visa i sidopanelen', closeTab: 'Stäng flik',
+  chooseFolderFirst: 'Välj en anteckningsmapp först',
+  toastArchived: 'Arkiverad: {title}', toastMoved: 'Flyttad till {project}', toastRestored: 'Återställd till {project}',
+  toastRestoredNew: 'Återställd till {project} (projektet återskapades)', toastProjectArchived: 'Projektet {project} arkiverat',
+  toastProjectRestored: 'Projektet {project} återställt', toastProjectRenamed: 'Bytte namn till {project}', toastDeleted: 'Flyttad till papperskorgen: {title}',
+  toastProjectDeleted: 'Projektet {project} flyttat till papperskorgen', toastRenamed: 'Filen döptes om till {file}', toastNewNote: 'Ny anteckning i {project}',
+  undo: 'Ångra', undone: 'Ångrat', undoFailed: 'Det gick inte att ångra',
+  nameEmpty: 'Ange ett namn.', nameInvalid: 'Namnet får inte innehålla < > : " / \\ | ? * eller sluta med punkt.', nameReserved: '{name} är reserverat.',
+  nameTaken: 'Det finns redan ett projekt som heter {name}.',
+  deleteNoteTitle: 'Ta bort anteckningen?', deleteNoteMessage: '”{title}” flyttas till papperskorgen. Därifrån går den att återställa.',
+  dontAsk: 'Fråga inte igen', deleteButton: 'Ta bort',
+  deleteProjectTitle: 'Ta bort projektet {project}?', deleteProjectMessage: '{project} och {n} anteckningar flyttas till papperskorgen.',
+  deleteProjectDetail: 'Vill du bara få bort anteckningarna ur listan kan du arkivera projektet i stället.',
+  deleteEmptyProject: 'Projektet är tomt. Mappen tas bort.', archiveInstead: 'Arkivera i stället', deleteProjectButton: 'Ta bort projektet',
+  opFailed: 'Det gick inte: {error}', settingsSection: 'Anteckningar', settingsFolder: 'Anteckningsmapp', notChosen: 'Inte vald', change: 'Byt…', confirmDeleteSetting: 'Fråga innan en anteckning tas bort'
+};
+
 const LOCALES = { en, sv };
 
 function resolveLocale(setting, systemLocale) {
