@@ -6,7 +6,9 @@ import { createKeyDispatcher } from './keybindings.js';
 import { createSettingsDialog } from './settingsDialog.js';
 import { attachTabDrag } from './tabdrag.js';
 import { COMMANDS, CATEGORIES, display } from '../shared/commands.js';
+import { TEMPLATES } from '../shared/templates.js';
 import { renderMarkdown, countWords } from './markdown.js';
+import { bindTaskCheckboxes } from './previewTasks.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
 import { openSearchPanel, findNext, findPrevious, gotoLine } from '@codemirror/search';
 
@@ -391,6 +393,7 @@ function renderPreview() {
   if (!text.trim()) { el.classList.add('empty'); el.textContent = t('ui.emptyPreview'); return; }
   el.classList.remove('empty');
   el.innerHTML = renderMarkdown(text);
+  bindTaskCheckboxes(el, view);
 }
 function syncPreviewScroll() {
   const pane = $('#preview-pane');
@@ -586,6 +589,11 @@ function ensureEditorVisible() {
 async function handleAction(action, payload) {
   switch (action) {
     case 'new': newTab(); break;
+    case 'newFromTemplate': {
+      const tpl = TEMPLATES.find((x) => x.id === payload);
+      if (tpl) newTab({ text: tpl.text(t) });
+      break;
+    }
     case 'open': await openDialog(); break;
     case 'openPaths': await openPaths(payload || []); break;
     case 'save': await saveTab(active); break;

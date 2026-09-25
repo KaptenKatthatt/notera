@@ -115,5 +115,29 @@ await win.evaluate(() => window.__notera.handleAction('closeTab'));
 await win.waitForFunction(() => window.__notera.tabs.length === 1 && window.__notera.active.state.doc.length === 0);
 await win.waitForTimeout(300);
 assert.equal(fs.readdirSync(path.join(userData, 'drafts')).length, 0, 'draft deleted after discard');
+// Klickbara todo-rutor i förhandsvisningen
+await win.evaluate(() => window.__notera.handleAction('new'));
+await win.waitForFunction(() => window.__notera.tabs.length === 2);
+await win.keyboard.type('# Todo\n\n- [ ] Oklar\n- [x] Klar\n');
+await win.evaluate(() => window.notera.setSettings({ viewMode: 'split' }));
+await win.waitForSelector('#preview input[type="checkbox"]');
+const boxes = win.locator('#preview input[type="checkbox"]');
+assert.equal(await boxes.count(), 2, 'två rutor i preview');
+assert.equal(await boxes.nth(0).isDisabled(), false, 'rutan är klickbar');
+await boxes.nth(0).click();
+await win.waitForFunction(() => window.__notera.view.state.doc.toString().includes('- [x] Oklar'));
+assert.ok((await win.evaluate(() => window.__notera.view.state.doc.toString())).includes('- [x] Oklar'), 'klick togglade raden i dokumentet');
+
+// Parentes-wrap à la VS Code: markerad text + '(' wrappas
+await win.evaluate(() => {
+  const v = window.__notera.view;
+  v.dispatch({ changes: { from: v.state.doc.length, insert: '\nSista ordet' } });
+  const to = v.state.doc.length;
+  v.dispatch({ selection: { anchor: to - 5, head: to } }); // 'ordet'
+});
+await win.keyboard.press('(');
+const wrapped = await win.evaluate(() => window.__notera.view.state.doc.toString());
+assert.ok(wrapped.includes('(ordet)'), 'parentes wrappar selektionen: ' + JSON.stringify(wrapped.slice(-24)));
+
 await app.close();
 console.log('writing OK');
