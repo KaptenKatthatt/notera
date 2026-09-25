@@ -1,7 +1,7 @@
-import { EditorState, Compartment } from '@codemirror/state';
+import { EditorState, Compartment, Prec, RangeSetBuilder } from '@codemirror/state';
 import {
   EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, dropCursor,
-  rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder
+  rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder, ViewPlugin, Decoration
 } from '@codemirror/view';
 import { hideMarkers } from './markers.js';
 import { searchCount } from './searchCount.js';
@@ -12,6 +12,7 @@ import { languages } from '@codemirror/language-data';
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { syntaxHighlighting, HighlightStyle, indentUnit } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
+import { META_RE } from '../shared/noteHeader.js';
 
 export const compartments = {
   language: new Compartment(),
@@ -21,8 +22,51 @@ export const compartments = {
   phrases: new Compartment(),
   extraKeys: new Compartment(),
   markers: new Compartment(),
-  placeholder: new Compartment()
+  placeholder: new Compartment(),
+  readOnly: new Compartment()
 };
+
+// ---------- project notes: the "Projekt: X · Skapad: …" header line ----------
+const metaLineDeco = Decoration.line({ class: 'cm-note-meta' });
+const noteMeta = ViewPlugin.fromClass(class {
+  constructor(view) { this.decorations = this.build(view); }
+  update(u) { if (u.docChanged) this.decorations = this.build(u.view); }
+  build(view) {
+    const b = new RangeSetBuilder();
+    const doc = view.state.doc;
+    for (let n = 1; n <= Math.min(3, doc.lines); n++) {
+      const line = doc.line(n);
+      if (META_RE.test(line.text)) { b.add(line.from, line.from, metaLineDeco); break; }
+    }
+    return b.finish();
+  }
+}, { decorations: (v) => v.decorations });
+
+/** Enter on the title line of a note jumps past the header line to the body instead of splitting it. */
+function enterPastHeader(view) {
+  const { state } = view;
+  const sel = state.selection.main;
+  if (!sel.empty || state.selection.ranges.length > 1 || state.readOnly || state.doc.lines < 2) return false;
+  if (state.doc.lineAt(sel.head).number !== 1 || !/^#\s/.test(state.doc.line(1).text)) return false;
+  const meta = state.doc.line(2);
+  if (!META_RE.test(meta.text)) return false;
+  let insert = '';
+  let target;
+  if (state.doc.lines >= 3 && state.doc.line(3).text === '') {
+    if (state.doc.lines >= 4) target = state.doc.line(4).from;
+    else { insert = '\n'; target = state.doc.length + 1; }
+  } else if (state.doc.lines >= 3) {
+    // Header line followed directly by text: open a blank line under the header.
+    view.dispatch({ changes: { from: meta.to, insert: '\n' }, selection: { anchor: meta.to + 1 }, scrollIntoView: true, userEvent: 'input' });
+    return true;
+  } else { insert = '\n\n'; target = state.doc.length + 2; }
+  view.dispatch({
+    changes: insert ? { from: state.doc.length, insert } : undefined,
+    selection: { anchor: target }, scrollIntoView: true, userEvent: 'select'
+  });
+  return true;
+}
+const noteKeys = Prec.high(keymap.of([{ key: 'Enter', run: enterPastHeader }]));
 
 const mdHighlight = HighlightStyle.define([
   { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--fg)' },
@@ -71,6 +115,9 @@ export function baseExtensions(opts) {
     compartments.extraKeys.of(keymap.of(opts.extraKeys || [])),
     compartments.markers.of(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
     compartments.placeholder.of(placeholder(opts.placeholder || '')),
+    compartments.readOnly.of(readOnlyExt(opts.readOnly)),
+    noteMeta,
+    noteKeys,
     searchCount,
     history(),
     closeBrackets(),
@@ -90,6 +137,8 @@ export function baseExtensions(opts) {
   ];
 }
 
+function readOnlyExt(on) { return on ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []; }
+
 export function createState(text, opts) {
   return EditorState.create({ doc: text, extensions: baseExtensions(opts) });
 }
@@ -108,7 +157,8 @@ export function reconfigureEffects(opts) {
     compartments.phrases.reconfigure(EditorState.phrases.of(opts.phrases || {})),
     compartments.extraKeys.reconfigure(keymap.of(opts.extraKeys || [])),
     compartments.markers.reconfigure(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
-    compartments.placeholder.reconfigure(placeholder(opts.placeholder || ''))
+    compartments.placeholder.reconfigure(placeholder(opts.placeholder || '')),
+    compartments.readOnly.reconfigure(readOnlyExt(opts.readOnly))
   ];
 }
 

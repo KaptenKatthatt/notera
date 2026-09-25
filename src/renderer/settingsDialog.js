@@ -57,6 +57,19 @@ export function createSettingsDialog(ctx) {
     fontBox.append(fontName, fontBtn);
     row(t('settings.font'), fontBox);
 
+    section(t('notes.settingsSection'));
+    const folderBox = document.createElement('span'); folderBox.className = 'set-inline';
+    const folderName = document.createElement('span'); folderName.id = 'set-notes-root';
+    folderName.className = s.notesRoot ? 'set-path' : 'set-muted';
+    folderName.textContent = s.notesRoot || t('notes.notChosen');
+    folderName.title = s.notesRoot || '';
+    const folderBtn = document.createElement('button'); folderBtn.type = 'button';
+    folderBtn.textContent = s.notesRoot ? t('notes.change') : t('notes.chooseFolder');
+    folderBtn.addEventListener('click', () => void ctx.chooseNotesRoot());
+    folderBox.append(folderName, folderBtn);
+    row(t('notes.settingsFolder'), folderBox);
+    toggle('confirmDelete', t('notes.confirmDeleteSetting'), true);
+
     section(t('settings.editing'));
     toggle('autosave', t('settings.autosave'), true);
     toggle('hideMarkers', t('settings.hideMarkers'), true);

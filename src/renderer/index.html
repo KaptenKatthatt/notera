@@ -7,7 +7,26 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <div id="shell">
+  <aside id="sidebar" data-i18n-aria="notes.title" aria-label="Notes">
+    <div class="sb-top">
+      <div class="sb-title">
+        <span data-i18n="notes.title">Notes</span>
+        <button type="button" id="sb-close" class="sb-ibtn" data-i18n-title="notes.collapse" title="Hide the sidebar"></button>
+      </div>
+      <label class="sb-search" id="sb-searchbox">
+        <span class="sb-search-ico"></span>
+        <input id="sb-q" type="search" autocomplete="off" spellcheck="false" />
+        <kbd id="sb-q-kbd"></kbd>
+      </label>
+    </div>
+    <div id="sb-list"></div>
+    <div id="sb-foot"></div>
+  </aside>
+  <div id="sb-resizer" aria-hidden="true"></div>
+  <div id="workspace">
   <header id="tabbar" role="tablist" aria-label="Tabs">
+    <button type="button" id="sb-toggle" class="icon-btn" data-i18n-title="menu.toggleSidebar" title="Sidebar"></button>
     <div id="tabs"></div>
     <button id="tab-add" class="icon-btn" data-i18n-title="ui.newTab" title="New tab" aria-label="New tab">+</button>
   </header>
@@ -63,6 +82,8 @@
     </div>
   </div>
 
+  <div id="notes-banner"></div>
+
   <main id="main" data-view="editor">
     <div id="editor"></div>
     <div id="preview-pane"><article id="preview" class="preview"></article></div>
@@ -83,6 +104,7 @@
   </main>
 
   <footer id="statusbar">
+    <button id="st-note" class="st-btn" hidden></button>
     <span id="st-pos">Ln 1, Col 1</span>
     <span id="st-sel"></span>
     <span class="spacer"></span>
@@ -93,6 +115,18 @@
     <button id="st-enc" class="st-btn" data-i18n-title="ui.toggleEncoding" title="Click to change encoding">UTF-8</button>
     <button id="st-kind" class="st-btn">Markdown</button>
   </footer>
+  </div>
+  </div>
+
+  <div id="sb-menu" class="sb-menu" role="menu" hidden></div>
+  <div id="sb-ghost" hidden></div>
+  <div id="notes-toast" role="status" aria-live="polite" hidden></div>
+  <div id="palette" hidden>
+    <div class="pal">
+      <label class="sb-search"><span class="sb-search-ico"></span><input id="pal-q" type="search" autocomplete="off" spellcheck="false" /><kbd>Esc</kbd></label>
+      <div class="pal-list" id="pal-list" role="listbox"></div>
+    </div>
+  </div>
 
   <div id="popup-menu" class="popup-menu" hidden></div>
 
@@ -117,6 +151,18 @@
       <div class="dlg-actions">
         <button value="cancel" data-i18n="ui.cancel">Cancel</button>
         <button value="ok" class="primary" data-i18n="ui.insert">Insert</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-project">
+    <form method="dialog">
+      <h2 data-i18n="notes.newProject">New project</h2>
+      <label><span data-i18n="notes.projectName">Project name</span><input id="project-name" type="text" autocomplete="off" spellcheck="false" /></label>
+      <div class="dlg-error" id="project-error"></div>
+      <div class="dlg-actions">
+        <button value="cancel" data-i18n="ui.cancel">Cancel</button>
+        <button value="ok" class="primary" id="project-ok" data-i18n="notes.create">Create</button>
       </div>
     </form>
   </dialog>

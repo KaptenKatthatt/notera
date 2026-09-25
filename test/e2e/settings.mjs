@@ -125,17 +125,17 @@ assert.deepEqual(await win.locator('.kb-row').evaluateAll((r) => r.map((x) => x.
 ok('sökning på namn och på tangent');
 await win.fill('#kb-search', '');
 
-// Add Ctrl+Shift+B to Bold, then remove Ctrl+B.
+// Add Ctrl+Shift+J to Bold, then remove Ctrl+B.
 await row('bold').hover();
 await row('bold').locator('.kb-add').click();
 await win.waitForSelector('.kb-row.recording');
-await win.keyboard.press('Control+Shift+B');
+await win.keyboard.press('Control+Shift+J');
 await win.waitForFunction(() => document.querySelectorAll('.kb-row[data-id="bold"] kbd').length === 2);
 await row('bold').locator('.kb-x').first().click();
 await win.waitForFunction(() => document.querySelectorAll('.kb-row[data-id="bold"] kbd').length === 1);
-assert.deepEqual(await chips('bold'), ['Ctrl+Shift+B']);
+assert.deepEqual(await chips('bold'), ['Ctrl+Shift+J']);
 assert.equal(await row('bold').locator('.kb-tag').count(), 1, 'marked as changed');
-ok('Fet: Ctrl+Shift+B tillagd, Ctrl+B borttagen');
+ok('Fet: Ctrl+Shift+J tillagd, Ctrl+B borttagen');
 
 // A key used elsewhere: Ctrl+I on Strikethrough asks, then moves it.
 await row('strikethrough').hover();
@@ -178,9 +178,9 @@ ok('Esc stänger Inställningar');
 await reset('ord', 1);
 await win.keyboard.press('Control+B');
 assert.equal(await doc(), 'ord', 'Ctrl+B does nothing now');
-await win.keyboard.press('Control+Shift+B');
+await win.keyboard.press('Control+Shift+J');
 assert.equal(await doc(), '**ord**');
-ok('Ctrl+B gör ingenting, Ctrl+Shift+B gör fet');
+ok('Ctrl+B gör ingenting, Ctrl+Shift+J gör fet');
 await reset('ord', 1);
 await win.keyboard.press('Control+I');
 assert.equal(await doc(), '~~ord~~');
@@ -203,7 +203,7 @@ assert.equal(await app.evaluate(({ clipboard }) => clipboard.readText()), 'abc')
 ok('Kopiera flyttad: Ctrl+C kopierar inte, Ctrl+Shift+C gör det');
 
 // Native menu labels follow.
-assert.equal(await menuAccel('Bold'), 'Ctrl+Shift+B');
+assert.equal(await menuAccel('Bold'), 'Ctrl+Shift+J');
 assert.ok(!(await menuAccel('Italic')), 'Italic has no shortcut in the menu');
 assert.equal(await menuAccel('Strikethrough'), 'Ctrl+Shift+X');
 ok('menyn visar de nya tangenterna');
@@ -212,7 +212,7 @@ ok('menyn visar de nya tangenterna');
 await win.keyboard.press('F1');
 await win.waitForSelector('#dlg-keys[open]');
 const ref = await win.locator('.keys-grid').textContent();
-assert.ok(ref.includes('Ctrl+Shift+BBold') && !ref.includes('Ctrl+IItalic'), 'reference uses live bindings');
+assert.ok(ref.includes('Ctrl+Shift+JBold') && !ref.includes('Ctrl+IItalic'), 'reference uses live bindings');
 await win.keyboard.press('Escape');
 ok('kortkommandolistan följer med');
 
@@ -220,12 +220,12 @@ ok('kortkommandolistan följer med');
 await win.evaluate(() => { const t = window.__notera.active; t.dirty = false; t.savedDoc = window.__notera.view.state.doc; });
 await app.close();
 const saved = JSON.parse(fs.readFileSync(path.join(userData, 'settings.json'), 'utf8')).keybindings;
-assert.deepEqual(saved.bold, ['Ctrl+Shift+B']);
+assert.deepEqual(saved.bold, ['Ctrl+Shift+J']);
 app = await launch();
 win = await app.firstWindow();
 await win.waitForFunction(() => window.__notera && window.__notera.tabs.length > 0);
 await reset('ord', 1);
-await win.keyboard.press('Control+Shift+B');
+await win.keyboard.press('Control+Shift+J');
 assert.equal(await doc(), '**ord**');
 ok('ändringarna finns kvar efter omstart');
 
