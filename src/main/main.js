@@ -14,6 +14,9 @@ if (process.env.NOTERA_USER_DATA) app.setPath('userData', process.env.NOTERA_USE
 let settings;
 let t;
 let locale;
+// AUMID: matchar electron-builder appId — krav för att JumpList (taskbar-
+// högerklicket) och notifieringar ska knytas till appens identitet i Windows.
+app.setAppUserModelId('se.jonasolson.notera');
 const pendingFiles = new Map(); // webContents.id -> string[]
 const pendingTabs = new Map(); // webContents.id -> draftId (flik lossad till nytt fönster)
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
