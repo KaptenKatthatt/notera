@@ -17,19 +17,16 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" vi
 
 app.whenReady().then(async () => {
   console.log('ready');
-  const win = new BrowserWindow({ width: 256, height: 256, show: true, frame: false, useContentSize: true, webPreferences: { offscreen: true } });
+  // transparent: true gör fönsterbakgrunden genomskinlig — annars komponerar
+  // Chromium på en opak (vit) bakgrund och ikonens hörn blir vita.
+  const win = new BrowserWindow({ width: 256, height: 256, show: true, frame: false, transparent: true, backgroundColor: '#00000000', useContentSize: true, webPreferences: { offscreen: true } });
   win.webContents.setFrameRate(10);
   await win.loadURL('data:text/html,' + encodeURIComponent(`<html><body style="margin:0;background:#00000000">${svg}</body></html>`));
   console.log('loaded');
   // Wait for the page to settle, then take the last paint in a short window (first paints can be blank).
   await new Promise((r) => setTimeout(r, 800));
-  const img = await new Promise((resolve) => {
-    let last = null;
-    const onPaint = (_e, _dirty, image) => { if (image.getSize().width > 0) last = image; };
-    win.webContents.on('paint', onPaint);
-    win.webContents.invalidate();
-    setTimeout(async () => { win.webContents.off('paint', onPaint); resolve(last || await win.webContents.capturePage()); }, 1500);
-  });
+  // capturePage på transparen-fönstret bevarar alfakanalen (paint-events gör det inte).
+  const img = await win.webContents.capturePage();
   console.log('painted', img.getSize());
   const out = path.join(__dirname, '..', 'build');
   fs.mkdirSync(out, { recursive: true });
