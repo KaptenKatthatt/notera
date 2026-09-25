@@ -1,0 +1,1623 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Notera, mockup: projekt i sidopanelen</title>
+<style>
+:root {
+  --bg: #ffffff; --bg-chrome: #f4f4f3; --bg-hover: #e8e8e8; --bg-active: #ffffff; --bg-popup: #ffffff;
+  --fg: #222324; --fg-muted: #6b6b6b; --border: #dcdcdc; --accent: #0067c0; --accent-fg: #ffffff;
+  --selection: #cce4ff; --shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  --sel-row: rgba(0, 103, 192, 0.12); --danger: #b3261e; --flash: #fff1a8;
+  --ui-font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --editor-font: "iA Writer Mono S", Consolas, "Cascadia Mono", Menlo, "Courier New", monospace;
+  --md-h: #222324; --md-meta: #aeb1b5;
+  --mk-bg: #fff6d1; --mk-border: #d9c27a; --mk-fg: #5a4a10; --mk-btn: #fffbea;
+  --sbw: 264px; --mockbar: 42px;
+}
+html[data-theme="dark"] {
+  --bg: #101010; --bg-chrome: #1c1c1c; --bg-hover: #2c2c2c; --bg-active: #101010; --bg-popup: #232323;
+  --fg: #eeeeee; --fg-muted: #a0a0a0; --border: #333333; --accent: #4cc2ff; --accent-fg: #002b45;
+  --selection: #2a4a6b; --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --sel-row: rgba(76, 194, 255, 0.16); --danger: #ff8a80; --flash: #5a4a10;
+  --md-h: #eeeeee; --md-meta: #6d7078;
+  --mk-bg: #2e2913; --mk-border: #5e5222; --mk-fg: #e8d78f; --mk-btn: #3a3418;
+}
+html[data-theme="dark"] { color-scheme: dark; }
+@font-face { font-family: "iA Writer Mono S"; src: url("../../fonts/iAWriterMonoS-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "iA Writer Mono S"; src: url("../../fonts/iAWriterMonoS-Bold.ttf"); font-weight: 700; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: var(--ui-font); font-size: 13px; color: var(--fg); background: var(--bg); overflow: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+svg { flex: none; }
+
+/* ---------- Mockup bar (not part of the app) ---------- */
+#mockbar {
+  height: var(--mockbar); display: flex; align-items: center; gap: 6px; padding: 0 8px;
+  background: var(--mk-bg); border-bottom: 1px dashed var(--mk-border); color: var(--mk-fg);
+  overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+}
+#mockbar::-webkit-scrollbar { display: none; }
+#mockbar .lbl { font-size: 11px; font-weight: 600; letter-spacing: .02em; margin-right: 2px; }
+.mk-btn {
+  border: 1px solid var(--mk-border); background: var(--mk-btn); color: var(--mk-fg); border-radius: 6px;
+  padding: 5px 9px; font: 12px ui-monospace, Consolas, Menlo, monospace; flex: none;
+}
+.mk-btn:active { transform: translateY(1px); }
+.mk-btn.on { background: var(--mk-fg); color: var(--mk-bg); }
+
+/* ---------- Stage / frame ---------- */
+#stage { position: relative; height: calc(100dvh - var(--mockbar)); overflow: hidden; }
+body.desktop #stage { background: #7a7a7a; overflow: auto; }
+#frame { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+body.desktop #frame { width: 1280px; transform-origin: 0 0; box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+
+/* ---------- Native menu bar (Electron) ---------- */
+#menubar { display: flex; align-items: center; height: 26px; padding: 0 4px; background: var(--bg-chrome); flex: none; }
+#menubar button { border: none; background: transparent; padding: 3px 9px; border-radius: 4px; font-size: 12px; }
+#menubar button:hover, #menubar button.open { background: var(--bg-hover); }
+#menubar .app-title { margin-left: auto; color: var(--fg-muted); font-size: 12px; padding-right: 8px; }
+
+#appbody { flex: 1; display: flex; min-height: 0; position: relative; }
+
+/* ---------- Sidebar ---------- */
+#sidebar {
+  width: var(--sbw); flex: none; overflow: hidden; background: var(--bg-chrome);
+  border-right: 1px solid var(--border); transition: width .18s ease; position: relative; z-index: 6;
+}
+body.sb-closed #sidebar { width: 0; border-right: none; }
+.sb-inner { width: var(--sbw); height: 100%; display: flex; flex-direction: column; }
+.sb-top { padding: 8px 8px 6px; display: flex; flex-direction: column; gap: 8px; }
+.sb-title { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px; font-weight: 600; }
+.sb-title .spacer { flex: 1; }
+.sb-search {
+  display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg-muted);
+}
+.sb-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--fg); font: inherit; }
+.sb-search:focus-within { border-color: var(--accent); }
+kbd { font: 10px ui-monospace, Consolas, Menlo, monospace; color: var(--fg-muted); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; background: var(--bg-chrome); white-space: nowrap; }
+body.touch .sb-search kbd { display: none; }
+#sb-list { flex: 1; overflow-y: auto; padding: 2px 0 12px; scrollbar-width: thin; overscroll-behavior: contain; }
+.sb-foot { border-top: 1px solid var(--border); padding: 6px; }
+.sb-foot button { width: 100%; display: flex; align-items: center; gap: 8px; border: none; background: transparent; border-radius: 6px; height: 32px; padding: 0 8px; color: var(--fg-muted); }
+.sb-foot button:hover, .sb-foot button.on { background: var(--bg-hover); color: var(--fg); }
+.sb-foot .count { margin-left: auto; font-size: 11px; }
+
+.sec { display: flex; align-items: center; height: 28px; margin: 10px 6px 2px; padding: 0 4px 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-muted); }
+.sec .spacer { flex: 1; }
+.row {
+  display: flex; align-items: center; gap: 6px; height: 30px; margin: 1px 6px; padding: 0 4px 0 6px;
+  border-radius: 6px; position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent; cursor: default;
+}
+body.touch .row { height: 40px; }
+.row:hover { background: var(--bg-hover); }
+.row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .muted, .row .count { color: var(--fg-muted); font-size: 11px; }
+.row.note { padding-left: 28px; }
+.row.note .pin { color: var(--fg-muted); margin-left: -18px; margin-right: 0; }
+.row.active { background: var(--sel-row); }
+.row.active .name { font-weight: 600; }
+.row.untitled .name { color: var(--fg-muted); font-style: italic; }
+.row .chev { width: 16px; height: 16px; color: var(--fg-muted); transition: transform .12s; }
+.row .chev.open { transform: rotate(90deg); }
+.row .ico { color: var(--fg-muted); }
+.acts { display: flex; gap: 1px; opacity: 0; }
+.row:hover .acts, .row.menu-open .acts, body.touch .acts { opacity: 1; }
+.acts button, .ibtn {
+  width: 24px; height: 24px; border: none; background: transparent; border-radius: 4px; color: var(--fg-muted);
+  display: grid; place-items: center; padding: 0;
+}
+body.touch .acts button { width: 34px; height: 34px; }
+.acts button:hover, .ibtn:hover { background: var(--bg-active); color: var(--fg); }
+html[data-theme="dark"] .acts button:hover, html[data-theme="dark"] .ibtn:hover { background: #3a3a3a; }
+.hint { margin: 2px 6px 4px 34px; font-size: 12px; color: var(--fg-muted); padding: 4px 0; }
+.hint.drop { border-radius: 6px; padding: 6px; margin-left: 28px; }
+.row.newproj { color: var(--fg-muted); }
+.row.newproj input, .row input.rename {
+  flex: 1; min-width: 0; height: 24px; border: 1px solid var(--accent); border-radius: 4px; padding: 0 6px;
+  background: var(--bg); color: var(--fg); font: inherit; outline: none;
+}
+body.touch .row input { height: 32px; font-size: 16px; }
+.err { margin: 0 8px 4px 34px; color: var(--danger); font-size: 12px; }
+.row.dragging { opacity: .35; }
+.drop-before::before, .drop-after::after {
+  content: ""; position: absolute; left: 6px; right: 6px; height: 2px; background: var(--accent); border-radius: 2px; pointer-events: none;
+}
+.drop-before::before { top: -2px; }
+.drop-after::after { bottom: -2px; }
+.drop-into { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--sel-row); }
+.row.flash, .flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0%, 30% { background: var(--flash); } 100% { background: transparent; } }
+
+.arch-head { display: flex; align-items: center; gap: 6px; margin: 4px 6px 6px; padding: 0 4px; height: 30px; font-weight: 600; }
+.arch-note { margin: 0 12px 6px; font-size: 12px; color: var(--fg-muted); }
+.tag { font-size: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 1px 6px; color: var(--fg-muted); white-space: nowrap; }
+
+.res { margin: 1px 6px; padding: 6px 8px; border-radius: 6px; cursor: default; }
+.res:hover, .res.sel { background: var(--bg-hover); }
+.res .t { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.res .t span.tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res .s { font-size: 12px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.res .p { font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+mark { background: var(--flash); color: inherit; border-radius: 2px; }
+.empty-res { margin: 16px 14px; color: var(--fg-muted); }
+
+.setup { margin: 16px 12px; padding: 14px; border: 1px dashed var(--border); border-radius: 8px; color: var(--fg-muted); line-height: 1.5; }
+.setup b { color: var(--fg); }
+
+#resizer { width: 6px; margin-left: -3px; cursor: col-resize; position: relative; z-index: 7; flex: none; touch-action: none; }
+#resizer:hover, #resizer.on { background: var(--accent); opacity: .4; }
+body.sb-closed #resizer, body.narrow #resizer { display: none; }
+#scrim { display: none; }
+
+/* ---------- Workspace ---------- */
+#workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#tabbar { display: flex; align-items: flex-end; background: var(--bg-chrome); padding: 6px 6px 0 6px; gap: 2px; min-height: 38px; flex: none; }
+#sb-toggle { margin-right: 4px; }
+.icon-btn { border: none; background: transparent; border-radius: 6px; width: 30px; height: 30px; margin-bottom: 2px; color: var(--fg-muted); display: grid; place-items: center; padding: 0; flex: none; }
+.icon-btn:hover, .icon-btn.on { background: var(--bg-hover); color: var(--fg); }
+#tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+#tabs::-webkit-scrollbar { display: none; }
+.tab {
+  display: flex; align-items: center; gap: 6px; padding: 7px 6px 7px 12px; border-radius: 8px 8px 0 0;
+  border: 1px solid transparent; border-bottom: none; color: var(--fg-muted); white-space: nowrap; max-width: 220px; flex: none; cursor: default;
+}
+.tab:hover { background: var(--bg-hover); color: var(--fg); }
+.tab.active { background: var(--bg-active); color: var(--fg); border-color: var(--border); }
+.tab .name { overflow: hidden; text-overflow: ellipsis; }
+.tab .kind { font-size: 10px; color: var(--fg-muted); }
+.tab .close, .tab .more { border: none; background: transparent; width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center; color: var(--fg-muted); padding: 0; }
+.tab .close:hover, .tab .more:hover { background: var(--bg-hover); color: var(--fg); }
+
+#toolbar { display: flex; align-items: center; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--border); min-height: 38px; flex: none; overflow: hidden; }
+.tb-btn { border: 1px solid transparent; background: transparent; border-radius: 6px; min-width: 30px; height: 30px; padding: 0 7px; font-size: 14px; color: var(--fg); }
+.tb-btn:hover { background: var(--bg-hover); }
+.tb-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex: none; }
+.segmented { margin-left: auto; display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex: none; }
+.segmented button { border: none; background: transparent; padding: 4px 10px; color: var(--fg-muted); }
+.segmented button + button { border-left: 1px solid var(--border); }
+.segmented button.active { background: var(--accent); color: var(--accent-fg); }
+
+.banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--bg-chrome); font-size: 13px; }
+.banner .grow { flex: 1; min-width: 180px; }
+.btn { border: 1px solid var(--border); background: var(--bg); border-radius: 6px; padding: 5px 12px; }
+.btn:hover { background: var(--bg-hover); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+html[data-theme="dark"] .btn.danger { color: #2b0000; }
+body.touch .btn { padding: 9px 14px; }
+
+#main { flex: 1; position: relative; min-height: 0; }
+#hl, #ta {
+  position: absolute; inset: 0; margin: 0; border: 0; padding: 16px 22px 60px;
+  font-family: var(--editor-font); font-size: 15px; line-height: 1.65; letter-spacing: 0; tab-size: 4;
+  white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; overflow-y: auto;
+  scrollbar-width: none; font-variant-ligatures: none;
+}
+#hl::-webkit-scrollbar, #ta::-webkit-scrollbar { display: none; }
+body.touch #hl, body.touch #ta { font-size: 16px; padding: 14px 16px 60px; }
+#hl { color: var(--fg); pointer-events: none; overflow: hidden; }
+#ta { background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--fg); resize: none; outline: none; }
+#ta::selection { background: var(--selection); }
+#hl .mk { color: var(--md-meta); }
+#hl .h { color: var(--md-h); font-weight: 700; }
+#hl .meta { color: var(--md-meta); }
+#hl .ph { color: var(--md-meta); font-weight: 400; }
+#empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-muted); text-align: center; padding: 20px; }
+#empty .box { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+#statusbar { display: flex; align-items: center; gap: 4px; padding: 0 6px; height: 26px; background: var(--bg-chrome); border-top: 1px solid var(--border); color: var(--fg-muted); font-size: 12px; flex: none; white-space: nowrap; overflow: hidden; }
+#statusbar > span, #statusbar > button { padding: 0 8px; }
+#statusbar .st-btn { border: none; background: transparent; height: 22px; border-radius: 4px; color: inherit; }
+#statusbar .st-btn:hover { background: var(--bg-hover); color: var(--fg); }
+#st-path { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#st-path.flash { border-radius: 4px; }
+#statusbar .spacer { flex: 1; }
+
+/* ---------- Disk panel ---------- */
+#disk { width: 0; flex: none; overflow: hidden; background: var(--bg-chrome); border-left: 1px solid var(--border); transition: width .18s; }
+body.disk-open #disk { width: 330px; }
+body:not(.disk-open) #disk { border-left: none; }
+.disk-inner { width: 330px; height: 100%; display: flex; flex-direction: column; }
+.disk-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.disk-head .spacer { flex: 1; }
+.disk-body { flex: 1; overflow: auto; padding: 8px 10px 20px; font: 12px/1.7 ui-monospace, Consolas, Menlo, monospace; }
+.disk-body .d { white-space: nowrap; padding: 0 4px; border-radius: 3px; }
+.disk-body .dir { font-weight: 700; }
+.disk-body .muted { color: var(--fg-muted); }
+.disk-body h4 { font: 600 11px var(--ui-font); letter-spacing: .04em; text-transform: uppercase; color: var(--fg-muted); margin: 14px 0 4px; }
+.disk-body details summary { cursor: pointer; }
+.disk-body pre { margin: 4px 0 0 14px; padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; line-height: 1.5; overflow-x: auto; }
+.disk-note { font: 12px/1.45 var(--ui-font); color: var(--fg-muted); margin: 2px 0 8px; }
+
+/* ---------- Overlays ---------- */
+.popup-menu {
+  position: absolute; z-index: 40; display: flex; flex-direction: column; min-width: 200px; max-width: 290px; padding: 4px;
+  background: var(--bg-popup); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+}
+.popup-menu button { display: flex; align-items: center; gap: 10px; border: none; background: transparent; text-align: left; padding: 6px 10px; border-radius: 4px; white-space: nowrap; }
+body.touch .popup-menu button { padding: 11px 12px; }
+.popup-menu button:hover { background: var(--bg-hover); }
+.popup-menu button .lab { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.popup-menu button.danger { color: var(--danger); }
+.popup-menu button[disabled] { opacity: .45; }
+.popup-menu .sep { height: 1px; background: var(--border); margin: 4px 2px; }
+.popup-menu .mh { padding: 6px 10px 4px; font-size: 11px; color: var(--fg-muted); }
+.popup-menu .chk { width: 14px; text-align: center; }
+
+#toast {
+  position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 12px;
+  background: #2b2b2b; color: #f2f2f2; border-radius: 8px; padding: 8px 8px 8px 14px; box-shadow: var(--shadow); max-width: calc(100% - 24px);
+}
+#toast .msg { overflow: hidden; text-overflow: ellipsis; }
+#toast button { border: none; background: transparent; color: #7cc8ff; font-weight: 600; padding: 6px 10px; border-radius: 4px; }
+#toast button:hover { background: #3a3a3a; }
+#toast .bar { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; background: #7cc8ff; transform-origin: 0 50%; opacity: .6; }
+
+.modal-back { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.35); display: grid; place-items: center; padding: 16px; }
+.modal { width: min(440px, 100%); background: var(--bg-popup); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 18px 20px 16px; max-height: 100%; overflow: auto; }
+.modal h2 { font-size: 16px; margin: 0 0 10px; }
+.modal p { margin: 0 0 10px; line-height: 1.5; }
+.modal .acts2 { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.modal label.chkl { display: flex; align-items: center; gap: 8px; color: var(--fg-muted); }
+.modal input[type=text] { width: 100%; height: 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); padding: 0 8px; font: 12px ui-monospace, Consolas, Menlo, monospace; }
+body.touch .modal input[type=text] { font-size: 16px; height: 40px; }
+.modal ol { padding-left: 20px; margin: 0; line-height: 1.5; }
+.modal ol li { margin-bottom: 6px; }
+
+#palette { position: absolute; inset: 0; z-index: 55; background: rgba(0,0,0,.18); }
+.pal { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); width: min(560px, calc(100% - 20px)); background: var(--bg-popup); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+.pal .sb-search { border: none; border-bottom: 1px solid var(--border); border-radius: 0; height: 44px; padding: 0 14px; background: transparent; }
+.pal .sb-search input { font-size: 15px; }
+body.touch .pal .sb-search input { font-size: 16px; }
+.pal .list { max-height: 50vh; overflow: auto; padding: 4px 0; }
+
+#ghost { position: fixed; left: 0; top: 0; z-index: 100; pointer-events: none; padding: 6px 10px; border-radius: 6px; background: var(--bg-popup); border: 1px solid var(--accent); box-shadow: var(--shadow); font-size: 13px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#writing-exit { position: absolute; top: 8px; right: 10px; z-index: 5; }
+body.writing #menubar, body.writing #tabbar, body.writing #toolbar, body.writing #statusbar, body.writing #sidebar, body.writing #resizer, body.writing .banner { display: none !important; }
+body.writing #hl, body.writing #ta { padding-left: max(22px, calc(50% - 360px)); padding-right: max(22px, calc(50% - 360px)); padding-top: 40px; }
+
+/* ---------- Narrow screens: drawer + bottom sheet ---------- */
+body.narrow #menubar .app-title { display: none; }
+body.narrow #sidebar {
+  position: absolute; left: 0; top: 0; bottom: 0; width: min(86vw, 330px); z-index: 30; border-right: 1px solid var(--border);
+  transform: translateX(-102%); transition: transform .2s ease; box-shadow: var(--shadow);
+}
+body.narrow.drawer-open #sidebar { transform: none; }
+body.narrow .sb-inner { width: 100%; }
+body.narrow #scrim { display: block; position: absolute; inset: 0; z-index: 29; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .2s; }
+body.narrow.drawer-open #scrim { opacity: 1; pointer-events: auto; }
+body.narrow .segmented, body.narrow .tb-wide { display: none; }
+body.narrow #st-extra { display: none; }
+body.narrow #disk {
+  position: absolute; left: 0; right: 0; bottom: 0; width: auto !important; height: 62%; z-index: 35; border-left: none; border-top: 1px solid var(--border);
+  border-radius: 12px 12px 0 0; box-shadow: var(--shadow); transform: translateY(105%); transition: transform .2s ease;
+}
+body.narrow.disk-open #disk { transform: none; }
+body.narrow .disk-inner { width: 100%; }
+body.narrow .tab { max-width: 160px; }
+</style>
+</head>
+<body>
+<div id="mockbar" aria-label="Mockup-verktyg (inte en del av appen)">
+  <span class="lbl">MOCKUP</span>
+  <button class="mk-btn" data-mk="ctrl-t" title="Ny anteckning i Osorterat">Ctrl+T</button>
+  <button class="mk-btn" data-mk="ctrl-alt-n" title="Ny anteckning i aktuellt projekt">Ctrl+Alt+N</button>
+  <button class="mk-btn" data-mk="ctrl-shift-b" title="Fäll ut eller in sidopanelen">Ctrl+Shift+B</button>
+  <button class="mk-btn" data-mk="ctrl-shift-f" title="Sök anteckningar">Ctrl+Shift+F</button>
+  <button class="mk-btn" data-mk="disk" id="mk-disk">Disk</button>
+  <button class="mk-btn" data-mk="help">Prova</button>
+  <button class="mk-btn" data-mk="menu" id="mk-menu">Mer ▾</button>
+</div>
+
+<div id="stage">
+  <div id="frame">
+    <div id="menubar">
+      <button data-menu="file">Arkiv</button>
+      <button data-menu="edit">Redigera</button>
+      <button data-menu="view">Visa</button>
+      <button data-menu="help">Hjälp</button>
+      <span class="app-title" id="win-title">Notera</span>
+    </div>
+    <div id="appbody">
+      <aside id="sidebar" aria-label="Anteckningar">
+        <div class="sb-inner">
+          <div class="sb-top">
+            <div class="sb-title">
+              <span>Anteckningar</span><span class="spacer"></span>
+              <button class="ibtn" id="sb-close" title="Fäll in sidopanelen (Ctrl+Shift+B)"></button>
+            </div>
+            <label class="sb-search" id="sb-searchbox">
+              <span class="i-search"></span>
+              <input id="sb-q" type="search" placeholder="Sök anteckningar" autocomplete="off" spellcheck="false" />
+              <kbd>Ctrl+Shift+F</kbd>
+            </label>
+          </div>
+          <div id="sb-list"></div>
+          <div class="sb-foot" id="sb-foot"></div>
+        </div>
+      </aside>
+      <div id="resizer" title="Dra för att ändra bredd"></div>
+      <div id="scrim"></div>
+      <div id="workspace">
+        <header id="tabbar">
+          <button class="icon-btn" id="sb-toggle" title="Sidopanel (Ctrl+Shift+B)"></button>
+          <div id="tabs"></div>
+          <button class="icon-btn" id="tab-add" title="Ny anteckning (Ctrl+T)">+</button>
+        </header>
+        <div id="toolbar">
+          <button class="tb-btn"><b>B</b></button><button class="tb-btn"><i>I</i></button><button class="tb-btn"><s>S</s></button>
+          <span class="tb-sep"></span><button class="tb-btn"><b>H</b></button>
+          <span class="tb-sep tb-wide"></span><button class="tb-btn tb-wide">• ≡</button><button class="tb-btn tb-wide">1. ≡</button><button class="tb-btn tb-wide">☑ ≡</button>
+          <div class="segmented"><button class="active">Editor</button><button>Delad</button><button>Förhandsvisning</button></div>
+        </div>
+        <div id="banner"></div>
+        <main id="main">
+          <pre id="hl" aria-hidden="true"></pre>
+          <textarea id="ta" spellcheck="false" autocomplete="off" autocapitalize="sentences"></textarea>
+          <div id="empty" hidden></div>
+          <button class="btn" id="writing-exit" hidden>Lämna skrivläge</button>
+        </main>
+        <footer id="statusbar">
+          <button class="st-btn" id="st-path" title="Visa på disken"></button>
+          <span id="st-save"></span>
+          <span class="spacer"></span>
+          <span id="st-words"></span>
+          <span id="st-extra">UTF-8 · Windows (CRLF) · Markdown</span>
+        </footer>
+      </div>
+      <aside id="disk" aria-label="Disk">
+        <div class="disk-inner">
+          <div class="disk-head"><span>På disken</span><span class="spacer"></span><button class="ibtn" id="disk-close" title="Stäng"></button></div>
+          <div class="disk-body" id="disk-body"></div>
+        </div>
+      </aside>
+    </div>
+    <div id="toast" hidden></div>
+    <div id="popup" class="popup-menu" hidden></div>
+    <div id="modal-root"></div>
+    <div id="palette" hidden>
+      <div class="pal">
+        <label class="sb-search"><span class="i-search"></span><input id="pal-q" type="search" placeholder="Sök i alla anteckningar, arkivet inräknat" autocomplete="off" spellcheck="false" /><kbd>Esc</kbd></label>
+        <div class="list" id="pal-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="ghost" hidden></div>
+
+<script>
+'use strict';
+// ---------------------------------------------------------------------------
+// Icons
+// ---------------------------------------------------------------------------
+const I = {
+  sidebar: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/><path d="M3 5h1.6M3 7h1.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
+  search: '<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  folder: '<svg class="ico" width="15" height="15" viewBox="0 0 16 16"><path d="M1.5 4.5a1 1 0 011-1h3.3l1.5 1.5h6.2a1 1 0 011 1v6.5a1 1 0 01-1 1h-11a1 1 0 01-1-1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  inbox: '<svg class="ico" width="15" height="15" viewBox="0 0 16 16"><path d="M2 9.5l1.8-6h8.4l1.8 6v3.5H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M2 9.5h3.5l1 1.5h3l1-1.5H14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  plus: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  dots: '<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="12.5" cy="8" r="1.3" fill="currentColor"/></svg>',
+  pin: '<svg class="pin" width="13" height="13" viewBox="0 0 16 16"><path d="M9.5 1.8l4.7 4.7-1.6.6-2.4 2.4.3 3-1.2 1.2-3-3-3.6 3.6-.6-.6 3.6-3.6-3-3 1.2-1.2 3 .3 2.4-2.4z" fill="currentColor"/></svg>',
+  archive: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="3" rx=".8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 5.5v7.5h11V5.5M6.5 8.5h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  restore: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M3 7.5A5 5 0 118 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M1 5.5l2 2.2 2.2-2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  back: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  close: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  trash: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  move: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 8h10M9 5l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  edit: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M3 13l.6-2.6L10.8 3.2l2 2L5.6 12.4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  note: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M3.5 1.5h6l3 3v10h-9z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.5 8h5M5.5 10.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+  reveal: '<svg width="14" height="14" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/></svg>',
+};
+document.querySelectorAll('.i-search').forEach((e) => (e.outerHTML = I.search));
+document.getElementById('sb-toggle').innerHTML = I.sidebar;
+document.getElementById('sb-close').innerHTML = I.back;
+document.getElementById('disk-close').innerHTML = I.close;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fmtDT = (d) => `${fmtDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const ROOT = 'C:\\Users\\Jonas\\OneDrive\\Dokument\\Notera';
+const INBOX = 'inbox';
+const UNTITLED = 'Namnlös anteckning';
+const META_RE = /^Projekt: .* · Skapad: .*$/;
+let seq = 0;
+const newId = (p) => `${p}${Date.now().toString(36)}${(++seq).toString(36)}`;
+const isTouch = matchMedia('(pointer: coarse)').matches;
+document.body.classList.toggle('touch', isTouch);
+
+// ---------------------------------------------------------------------------
+// Data (undoable) and UI state
+// ---------------------------------------------------------------------------
+function noteSeed(id, project, pname, title, created, text, extra = {}) {
+  return {
+    id, kind: 'note', project, created, pinned: false, archived: false,
+    body: `# ${title}\nProjekt: ${pname} · Skapad: ${created}\n\n${text}`,
+    file: `${created.slice(0, 10)} ${title}.md`, ...extra,
+  };
+}
+function seedDemo() {
+  return {
+    rootChosen: true, dontAskDelete: false, trash: [], draftNo: 1,
+    projects: [
+      { id: INBOX, name: 'Osorterat', inbox: true, expanded: true, archived: false },
+      { id: 'p-enl', name: 'Enlantis', expanded: true, archived: false },
+      { id: 'p-not', name: 'Notera', expanded: true, archived: false },
+      { id: 'p-hac', name: 'Hackytel', expanded: false, archived: false },
+      { id: 'p-q2', name: 'Q2-rapport', expanded: true, archived: true },
+    ],
+    notes: [
+      noteSeed('n-vet', INBOX, 'Osorterat', 'Ringa veterinären om Stella', '2026-09-25 07:55', 'Hälta vänster fram sedan i söndags. Fråga om de kan komma torsdag.\n'),
+      noteSeed('n-pbi', 'p-enl', 'Enlantis', 'PBI-1234 Inloggningsfel', '2026-09-18 09:12',
+        'Användare får "Invalid callback URL" när de loggar in på devservern.\n\n## Hittat\n- Kinde saknar devserver-URL:en bland callbacks\n- dev_user-bypassen fungerar\n\n## Nästa steg\n- [ ] Lägg till callback i Kinde\n- [ ] Testa på mobilen\n', { pinned: true }),
+      noteSeed('n-hem', 'p-enl', 'Enlantis', 'Hemma, feedback på mockups', '2026-09-22 14:05', 'Kommande: korten ska vara lika höga.\nMina djur: saknar artfilter.\n'),
+      noteSeed('n-spr', 'p-enl', 'Enlantis', 'Sprintplanering v39', '2026-09-21 08:30', '- Hemma PR 9\n- B-360 uppföljning\n- Kinde-supporten\n'),
+      noteSeed('n-dep', 'p-enl', 'Enlantis', 'Gammal deploy-lista', '2026-06-02 11:00', '1. Bygg\n2. Kör migrationer\n3. Deploy till Cloud Run\n', { archived: true }),
+      noteSeed('n-sid', 'p-not', 'Notera', 'Projekt i sidopanelen', '2026-09-25 10:20', 'Sidopanel som i Claude desktop. Plus på projektet skapar en anteckning med sidhuvud.\n'),
+      noteSeed('n-rel', 'p-not', 'Notera', 'Releasechecklista', '2026-09-24 16:40', '- [ ] Bumpa version\n- [ ] dist:win\n- [ ] gh release create\n'),
+      noteSeed('n-vis', 'p-hac', 'Hackytel', 'Visdomsatlasen, idéer', '2026-09-10 20:15', 'Karta över citat per land.\n'),
+      noteSeed('n-pet', 'p-hac', 'Hackytel', 'Möte med Petra', '2026-09-12 13:00', 'Hon vill ha en export till PDF.\n'),
+      noteSeed('n-q2a', 'p-q2', 'Q2-rapport', 'Utkast Q2', '2026-06-20 09:00', 'Intäkter upp 12 %.\n'),
+      noteSeed('n-q2b', 'p-q2', 'Q2-rapport', 'Siffror från ekonomi', '2026-06-24 15:30', 'Väntar på bokslutet.\n'),
+      { id: 'x-los', kind: 'ext', path: 'C:\\Users\\Jonas\\Skrivbord\\lösa tankar.md', body: '# Lösa tankar\n\nSkrev det här innan Notera hade projekt. Flytta mig till ett projekt via ⋯ på fliken.\n' },
+    ],
+  };
+}
+function seedFirstRun() {
+  return {
+    rootChosen: false, dontAskDelete: false, trash: [], draftNo: 2,
+    projects: [{ id: INBOX, name: 'Osorterat', inbox: true, expanded: true, archived: false }],
+    notes: [
+      { id: 'd-1', kind: 'draft', name: 'Namnlös 1', body: 'Handla\n- mjölk\n- kaffe\n' },
+      { id: 'x-los', kind: 'ext', path: 'C:\\Users\\Jonas\\Skrivbord\\lösa tankar.md', body: '# Lösa tankar\n\nSkrev det här innan Notera hade projekt.\n' },
+    ],
+  };
+}
+function uiDemo() {
+  return { tabs: ['n-pbi', 'n-sid', 'x-los'], active: 'n-pbi', sidebarOpen: true, drawerOpen: false, sbWidth: 264,
+    archiveView: false, diskOpen: false, desktop: false, writing: false, theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', bannerDismissed: false };
+}
+function uiFirstRun(prev) {
+  return { ...uiDemo(), tabs: ['d-1', 'x-los'], active: 'd-1', sidebarOpen: false, theme: prev.theme, desktop: prev.desktop };
+}
+
+const STORE = 'notera-mockup-projekt-sidebar-v1';
+let S, U;
+try {
+  const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+  if (saved && saved.S && saved.U) { S = saved.S; U = saved.U; }
+} catch { /* start fresh */ }
+if (!S) { S = seedDemo(); U = uiDemo(); }
+U.writing = false; U.archiveView = false;
+function persist() { try { localStorage.setItem(STORE, JSON.stringify({ S, U })); } catch { /* ignore */ } }
+
+// ---------------------------------------------------------------------------
+// Model helpers
+// ---------------------------------------------------------------------------
+const proj = (id) => S.projects.find((p) => p.id === id);
+const doc = (id) => S.notes.find((n) => n.id === id);
+const activeProjects = () => S.projects.filter((p) => !p.inbox && !p.archived);
+const isArchived = (n) => n.kind === 'note' && (n.archived || proj(n.project)?.archived);
+const pname = (n) => proj(n.project)?.name ?? '?';
+function notesOf(pid) {
+  const list = S.notes.filter((n) => n.kind === 'note' && n.project === pid && !n.archived);
+  return [...list.filter((n) => n.pinned), ...list.filter((n) => !n.pinned)];
+}
+function titleOf(n) {
+  if (n.kind === 'draft') return n.name;
+  if (n.kind === 'ext') return n.path.split('\\').pop();
+  const m = n.body.split('\n')[0].match(/^#\s+(.*)$/);
+  return m ? m[1].trim() : '';
+}
+const displayTitle = (n) => (n.kind === 'note' ? titleOf(n) || UNTITLED : titleOf(n));
+const sanitize = (t) => t.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim().slice(0, 80).replace(/[. ]+$/, '');
+const folderOf = (n) => (isArchived(n) ? `Arkiv\\${pname(n)}` : pname(n));
+const relPath = (n) => (n.kind === 'note' ? `${folderOf(n)}\\${n.file}` : n.kind === 'ext' ? n.path : `%APPDATA%\\Notera\\drafts\\${n.name}.md`);
+const wantedBase = (n) => `${n.created.slice(0, 10)} ${sanitize(titleOf(n)) || UNTITLED}`;
+function uniqueFile(n, base) {
+  const folder = folderOf(n);
+  const taken = new Set(S.notes.filter((x) => x.kind === 'note' && x.id !== n.id && folderOf(x) === folder).map((x) => x.file.toLowerCase()));
+  let name = `${base}.md`;
+  for (let i = 2; taken.has(name.toLowerCase()); i++) name = `${base} (${i}).md`;
+  return name;
+}
+function setMetaProject(n, name) {
+  const lines = n.body.split('\n');
+  const i = lines.findIndex((l) => META_RE.test(l));
+  if (i >= 0) lines[i] = lines[i].replace(/^Projekt: .*?( · Skapad: .*)$/, (_, rest) => `Projekt: ${name}${rest}`);
+  else {
+    const meta = `Projekt: ${name} · Skapad: ${n.created}`;
+    if (/^#\s/.test(lines[0] || '')) lines.splice(1, 0, meta);
+    else lines.unshift(`# ${n.kind === 'note' && n.file ? n.file.replace(/\.md$/, '') : 'Namnlös'}`, meta, '');
+  }
+  n.body = lines.join('\n');
+}
+// Put note n (already detached or not) at the top of project pid, just after pinned notes.
+function placeTop(n, pid) {
+  S.notes.splice(S.notes.indexOf(n), 1);
+  const siblings = S.notes.filter((x) => x.kind === 'note' && x.project === pid && !x.archived);
+  const firstUnpinned = siblings.find((x) => !x.pinned);
+  if (n.pinned || !firstUnpinned) {
+    const firstAny = siblings[0];
+    S.notes.splice(firstAny ? S.notes.indexOf(firstAny) : S.notes.length, 0, n);
+  } else S.notes.splice(S.notes.indexOf(firstUnpinned), 0, n);
+}
+function moveToProject(n, pid, beforeId, after) {
+  const p = proj(pid);
+  n.project = pid;
+  n.archived = false;
+  setMetaProject(n, p.name);
+  if (beforeId) {
+    S.notes.splice(S.notes.indexOf(n), 1);
+    const t = doc(beforeId);
+    S.notes.splice(S.notes.indexOf(t) + (after ? 1 : 0), 0, n);
+  } else placeTop(n, pid);
+  n.file = uniqueFile(n, wantedBase(n));
+}
+
+// ---------------------------------------------------------------------------
+// Undo + toast + flash
+// ---------------------------------------------------------------------------
+let toastTimer = null;
+const flashPaths = new Set();
+function flash(...paths) {
+  paths.forEach((p) => flashPaths.add(p));
+  setTimeout(() => { paths.forEach((p) => flashPaths.delete(p)); }, 1700);
+}
+function toast(msg, undo) {
+  const t = $('#toast');
+  clearTimeout(toastTimer);
+  t.innerHTML = `<span class="msg">${esc(msg)}</span>${undo ? '<button id="t-undo">Ångra</button>' : ''}<span class="bar"></span>`;
+  t.hidden = false;
+  const bar = t.querySelector('.bar');
+  bar.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: undo ? 6000 : 3000, easing: 'linear' });
+  if (undo) t.querySelector('#t-undo').onclick = () => { undo(); hideToast(); };
+  toastTimer = setTimeout(hideToast, undo ? 6000 : 3000);
+}
+function hideToast() { $('#toast').hidden = true; }
+function withUndo(msg, fn) {
+  const snap = JSON.stringify(S);
+  const res = fn();
+  commit();
+  toast(msg, () => { S = JSON.parse(snap); commit(); toast('Ångrat'); });
+  return res;
+}
+function commit() {
+  U.tabs = U.tabs.filter((id) => doc(id));
+  if (!doc(U.active)) U.active = U.tabs[U.tabs.length - 1] || null;
+  persist();
+  renderAll();
+}
+
+// ---------------------------------------------------------------------------
+// Actions
+// ---------------------------------------------------------------------------
+const narrow = () => document.body.classList.contains('narrow');
+function openDoc(id, { focus = false } = {}) {
+  if (!U.tabs.includes(id)) U.tabs.push(id);
+  U.active = id;
+  if (narrow()) U.drawerOpen = false;
+  commit();
+  if (focus) focusEditor();
+  requestAnimationFrame(() => document.querySelector(`.tab[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+}
+function newDraft() {
+  const n = { id: newId('d'), kind: 'draft', name: `Namnlös ${S.draftNo++}`, body: '' };
+  S.notes.push(n);
+  openDoc(n.id, { focus: true });
+}
+function newNote(pid) {
+  if (!S.rootChosen) return newDraft();
+  const p = proj(pid);
+  const created = fmtDT(new Date());
+  const n = { id: newId('n'), kind: 'note', project: pid, created, pinned: false, archived: false,
+    body: `# \nProjekt: ${p.name} · Skapad: ${created}\n\n`, file: '' };
+  S.notes.push(n);
+  placeTop(n, pid);
+  n.file = uniqueFile(n, wantedBase(n));
+  p.expanded = true;
+  flash(relPath(n));
+  openDoc(n.id);
+  focusEditor(2);
+  toast(`Ny anteckning i ${p.name}: ${n.file}`);
+}
+function currentProjectId() {
+  const n = doc(U.active);
+  if (n && n.kind === 'note' && !isArchived(n)) return n.project;
+  return INBOX;
+}
+function togglePin(n) {
+  n.pinned = !n.pinned;
+  if (n.pinned) placeTop(n, n.project);
+  commit();
+}
+function archiveNote(n) {
+  withUndo(`Arkiverad: ${displayTitle(n)}`, () => {
+    n.archived = true;
+    n.file = uniqueFile(n, n.file.replace(/\.md$/, '').replace(/ \(\d+\)$/, ''));
+    flash(relPath(n));
+  });
+}
+function trashNote(n) {
+  S.trash.unshift(`${ROOT}\\${relPath(n)}`);
+  S.notes.splice(S.notes.indexOf(n), 1);
+  flash('trash');
+}
+function deleteNote(n, forever) {
+  const run = () => withUndo(`Flyttad till papperskorgen: ${displayTitle(n)}`, () => trashNote(n));
+  if (S.dontAskDelete) return run();
+  modal({
+    title: forever ? 'Ta bort från arkivet?' : 'Ta bort anteckningen?',
+    body: `<p>”${esc(displayTitle(n))}” flyttas till papperskorgen i Windows. Därifrån går den att återställa.</p><label class="chkl"><input type="checkbox" id="m-dont"> Fråga inte igen</label>`,
+    buttons: [
+      { label: 'Avbryt' },
+      { label: 'Ta bort', cls: 'danger', act: (root) => { if (root.querySelector('#m-dont').checked) S.dontAskDelete = true; run(); } },
+    ],
+  });
+}
+function archiveProject(p) {
+  withUndo(`Projektet ${p.name} arkiverat`, () => {
+    p.archived = true;
+    notesOf(p.id).forEach((n) => flash(`Arkiv\\${p.name}\\${n.file}`));
+    if (currentProjectId() === p.id) { /* tab stays open, now read-only */ }
+  });
+}
+function deleteProject(p) {
+  const list = S.notes.filter((n) => n.kind === 'note' && n.project === p.id);
+  const active = list.filter((n) => !n.archived).length;
+  const doDelete = () => withUndo(`Projektet ${p.name} flyttat till papperskorgen`, () => {
+    S.trash.unshift(`${ROOT}\\${p.name}\\  (mapp, ${list.length} ${list.length === 1 ? 'fil' : 'filer'})`);
+    list.forEach((n) => S.notes.splice(S.notes.indexOf(n), 1));
+    S.projects.splice(S.projects.indexOf(p), 1);
+  });
+  if (active === 0) {
+    return modal({ title: `Ta bort projektet ${esc(p.name)}?`, body: '<p>Projektet är tomt. Mappen tas bort.</p>',
+      buttons: [{ label: 'Avbryt' }, { label: 'Ta bort', cls: 'danger', act: doDelete }] });
+  }
+  modal({
+    title: `Ta bort projektet ${esc(p.name)}?`,
+    body: `<p><b>${esc(p.name)}</b> och ${active} ${active === 1 ? 'anteckning' : 'anteckningar'} flyttas till papperskorgen i Windows.</p><p>Vill du spara dem utan att de syns i listan kan du arkivera projektet i stället.</p>`,
+    buttons: [
+      { label: 'Avbryt' },
+      { label: 'Arkivera i stället', act: () => archiveProject(p) },
+      { label: 'Ta bort projektet', cls: 'danger', act: doDelete },
+    ],
+  });
+}
+function findOrCreateProject(name) {
+  if (name === 'Osorterat') return proj(INBOX);
+  let p = S.projects.find((x) => !x.archived && !x.inbox && x.name === name);
+  if (!p) { p = { id: newId('p'), name, expanded: true, archived: false }; S.projects.push(p); }
+  return p;
+}
+function restoreNote(n) {
+  const snap = JSON.stringify(S);
+  const origin = proj(n.project);
+  let target = origin;
+  let recreated = false;
+  if (origin.archived) { recreated = !S.projects.some((x) => !x.archived && x.name === origin.name); target = findOrCreateProject(origin.name); }
+  n.archived = false;
+  moveToProject(n, target.id);
+  target.expanded = true;
+  flash(relPath(n));
+  commit();
+  toast(`Återställd till ${target.name}${recreated ? ' (projektet återskapades)' : ''}`, () => { S = JSON.parse(snap); commit(); toast('Ångrat'); });
+}
+function restoreProject(p) {
+  withUndo(`Projektet ${p.name} återställt`, () => {
+    const existing = S.projects.find((x) => !x.archived && !x.inbox && x.name === p.name);
+    if (existing) {
+      S.notes.filter((n) => n.kind === 'note' && n.project === p.id && !n.archived).forEach((n) => moveToProject(n, existing.id));
+      if (!S.notes.some((n) => n.project === p.id)) S.projects.splice(S.projects.indexOf(p), 1);
+    } else {
+      p.archived = false; p.expanded = true;
+      S.notes.filter((n) => n.project === p.id && !n.archived).forEach((n) => flash(relPath(n)));
+    }
+  });
+}
+function deleteProjectForever(p) {
+  const list = S.notes.filter((n) => n.kind === 'note' && n.project === p.id);
+  modal({
+    title: `Ta bort ${esc(p.name)} från arkivet?`,
+    body: `<p>Projektet och ${list.length} ${list.length === 1 ? 'anteckning' : 'anteckningar'} flyttas till papperskorgen i Windows.</p>`,
+    buttons: [{ label: 'Avbryt' }, { label: 'Ta bort', cls: 'danger', act: () => withUndo(`${p.name} flyttat till papperskorgen`, () => {
+      S.trash.unshift(`${ROOT}\\Arkiv\\${p.name}\\  (mapp, ${list.length} filer)`);
+      list.forEach((n) => S.notes.splice(S.notes.indexOf(n), 1));
+      S.projects.splice(S.projects.indexOf(p), 1);
+    }) }],
+  });
+}
+function moveNoteTo(n, pid) {
+  if (n.kind === 'note' && n.project === pid && !isArchived(n)) return;
+  const p = proj(pid);
+  withUndo(`Flyttad till ${p.name}`, () => {
+    if (n.kind !== 'note') {
+      const created = fmtDT(new Date());
+      const oldTitle = titleOf(n).replace(/\.(md|txt)$/i, '');
+      Object.assign(n, { kind: 'note', project: pid, created, pinned: false, archived: false, file: '' });
+      if (!/^#\s/.test(n.body)) n.body = `# ${oldTitle}\n\n${n.body}`;
+      S.notes.splice(S.notes.indexOf(n), 1); S.notes.push(n);
+      delete n.path; delete n.name;
+    }
+    moveToProject(n, pid);
+    p.expanded = true;
+    flash(relPath(n));
+  });
+}
+function renameProject(p, name) {
+  const n = S.notes.filter((x) => x.kind === 'note' && x.project === p.id);
+  withUndo(`Bytte namn till ${name}. ${n.length} sidhuvuden uppdaterade`, () => {
+    p.name = name;
+    n.forEach((x) => setMetaProject(x, name));
+    n.forEach((x) => flash(relPath(x)));
+  });
+}
+function createProject(name) {
+  const p = { id: newId('p'), name, expanded: true, archived: false };
+  S.projects.push(p);
+  flash(`${name}\\`);
+  commit();
+  toast(`Projektet ${name} skapat`);
+  return p;
+}
+function projectNameError(name, self) {
+  if (!name) return 'Ange ett namn.';
+  if (/[<>:"/\\|?*]/.test(name)) return 'Namnet får inte innehålla < > : " / \\ | ? *';
+  if (/^(osorterat|arkiv)$/i.test(name)) return `${name} är reserverat.`;
+  if (S.projects.some((p) => p !== self && !p.archived && p.name.toLowerCase() === name.toLowerCase())) return `Det finns redan ett projekt som heter ${name}.`;
+  return '';
+}
+function revealInSidebar(n) {
+  U.archiveView = isArchived(n);
+  $('#sb-q').value = '';
+  if (!isArchived(n)) proj(n.project).expanded = true;
+  if (narrow()) U.drawerOpen = true; else U.sidebarOpen = true;
+  commit();
+  const row = document.querySelector(`#sb-list [data-id="${n.id}"]`);
+  if (row) { row.scrollIntoView({ block: 'center' }); row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); }
+}
+function toggleSidebar() {
+  if (narrow()) U.drawerOpen = !U.drawerOpen; else U.sidebarOpen = !U.sidebarOpen;
+  commit();
+}
+function openSearch() {
+  const open = narrow() ? U.drawerOpen : U.sidebarOpen;
+  if (open && !U.writing) { $('#sb-q').focus(); $('#sb-q').select(); return; }
+  $('#palette').hidden = false;
+  $('#pal-q').value = '';
+  palSel = 0;
+  renderPalette();
+  $('#pal-q').focus();
+}
+
+// ---------------------------------------------------------------------------
+// Rendering: sidebar
+// ---------------------------------------------------------------------------
+let editing = null; // { kind: 'new' | 'rename', pid, value, error }
+function noteRow(n) {
+  const t = titleOf(n);
+  return `<div class="row note${n.id === U.active ? ' active' : ''}${t ? '' : ' untitled'}" data-drag="note" data-drop="note" data-id="${n.id}" data-pid="${n.project}" title="${esc(relPath(n))}">
+    ${n.pinned ? I.pin : ''}<span class="name">${esc(t || UNTITLED)}</span>
+    <span class="acts"><button data-act="note-menu" title="Mer">${I.dots}</button></span></div>`;
+}
+function projectBlock(p) {
+  const list = notesOf(p.id);
+  const isEdit = editing && editing.kind === 'rename' && editing.pid === p.id;
+  let h = `<div class="row proj${p.inbox ? ' inbox' : ''}" ${p.inbox ? '' : 'data-drag="proj"'} data-drop="proj" data-pid="${p.id}">
+    ${I.chev.replace('class="chev"', `class="chev${p.expanded ? ' open' : ''}"`)}${p.inbox ? I.inbox : I.folder}
+    ${isEdit ? `<input class="rename" id="ed-input" value="${esc(editing.value)}" autocomplete="off" spellcheck="false" />`
+      : `<span class="name">${esc(p.name)}</span>${!p.expanded && list.length ? `<span class="count">${list.length}</span>` : ''}`}
+    <span class="acts"><button data-act="new-note" title="Ny anteckning i ${esc(p.name)}${p.inbox ? ' (Ctrl+T)' : ''}">${I.plus}</button>${p.inbox ? '' : `<button data-act="proj-menu" title="Mer">${I.dots}</button>`}</span></div>`;
+  if (isEdit && editing.error) h += `<div class="err">${esc(editing.error)}</div>`;
+  if (p.expanded) {
+    h += list.map(noteRow).join('');
+    if (!list.length) h += `<div class="hint drop" data-drop="empty" data-pid="${p.id}">${p.inbox ? 'Inkorgen är tom. Ctrl+T skriver hit.' : 'Tomt. Tryck + för en anteckning.'}</div>`;
+  }
+  return h;
+}
+function renderTree() {
+  if (!S.rootChosen) {
+    return `<div class="setup"><b>Samla anteckningarna i projekt.</b><br>Välj en anteckningsmapp så skapar Notera en undermapp per projekt där.<br><br><button class="btn primary" data-act="choose-root">Välj anteckningsmapp…</button></div>`;
+  }
+  let h = projectBlock(proj(INBOX));
+  h += `<div class="sec"><span>Projekt</span><span class="spacer"></span><button class="ibtn" data-act="new-project" title="Nytt projekt">${I.plus}</button></div>`;
+  h += activeProjects().map(projectBlock).join('');
+  if (editing && editing.kind === 'new') {
+    h += `<div class="row newproj">${I.folder}<input id="ed-input" placeholder="Projektnamn" value="${esc(editing.value)}" autocomplete="off" spellcheck="false" /></div>`;
+    if (editing.error) h += `<div class="err">${esc(editing.error)}</div>`;
+  } else h += `<div class="row newproj" data-act="new-project">${I.plus}<span class="name">Nytt projekt</span></div>`;
+  return h;
+}
+function archiveGroups() {
+  const groups = new Map();
+  S.notes.filter(isArchived).forEach((n) => {
+    const p = proj(n.project);
+    if (!groups.has(p.name)) groups.set(p.name, { name: p.name, archivedProjects: [], notes: [] });
+    groups.get(p.name).notes.push(n);
+  });
+  S.projects.filter((p) => p.archived).forEach((p) => {
+    if (!groups.has(p.name)) groups.set(p.name, { name: p.name, archivedProjects: [], notes: [] });
+    groups.get(p.name).archivedProjects.push(p);
+  });
+  return [...groups.values()];
+}
+function renderArchive() {
+  const groups = archiveGroups();
+  let h = `<div class="arch-head"><button class="ibtn" data-act="arch-back" title="Tillbaka">${I.back}</button><span>Arkiv</span></div>`;
+  h += '<div class="arch-note">Dolt i listan men med i sökningen. Återställ lägger tillbaka anteckningen i sitt projekt.</div>';
+  if (!groups.length) return h + '<div class="empty-res">Arkivet är tomt.</div>';
+  groups.forEach((g) => {
+    const ap = g.archivedProjects[0];
+    h += `<div class="row proj" ${ap ? `data-pid="${ap.id}"` : ''}>${I.folder}<span class="name">${esc(g.name)}</span>${ap ? '<span class="tag">helt projekt</span>' : ''}
+      ${ap ? `<span class="acts"><button data-act="arch-proj-restore" title="Återställ projektet">${I.restore}</button><button data-act="arch-proj-menu" title="Mer">${I.dots}</button></span>` : ''}</div>`;
+    g.notes.forEach((n) => {
+      h += `<div class="row note${n.id === U.active ? ' active' : ''}" data-id="${n.id}" title="${esc(relPath(n))}"><span class="name">${esc(displayTitle(n))}</span>
+        <span class="acts"><button data-act="arch-restore" title="Återställ">${I.restore}</button><button data-act="arch-menu" title="Mer">${I.dots}</button></span></div>`;
+    });
+  });
+  return h;
+}
+function searchResults(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return [];
+  return S.notes.filter((n) => n.kind === 'note' && (displayTitle(n).toLowerCase().includes(q) || n.body.toLowerCase().includes(q)))
+    .sort((a, b) => (isArchived(a) - isArchived(b)) || (displayTitle(b).toLowerCase().includes(q) - displayTitle(a).toLowerCase().includes(q)));
+}
+function hilite(text, q) {
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0 || !q) return esc(text);
+  return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
+}
+function resultHtml(n, q, sel) {
+  const body = n.body.split('\n').slice(2).map((l) => l.replace(/^\s*(#{1,6}\s|[-*+]\s(\[[ xX]\]\s)?|\d+\.\s|>\s?)/, '')).join(' ').replace(/\s+/g, ' ').trim();
+  const i = body.toLowerCase().indexOf(q.trim().toLowerCase());
+  const snip = i >= 0 ? (i > 30 ? '…' : '') + body.slice(Math.max(0, i - 30), i + 70) : body.slice(0, 90);
+  return `<div class="res${sel ? ' sel' : ''}" data-open="${n.id}">
+    <div class="t">${I.note}<span class="tt">${hilite(displayTitle(n), q.trim())}</span>${isArchived(n) ? '<span class="tag">Arkiverad</span>' : ''}</div>
+    <div class="s">${hilite(snip, q.trim())}</div><div class="p">${esc(pname(n))}</div></div>`;
+}
+function renderSidebar() {
+  const q = $('#sb-q').value;
+  const list = $('#sb-list');
+  const st = list.scrollTop;
+  $('#sb-searchbox').hidden = !S.rootChosen;
+  if (q.trim() && S.rootChosen) {
+    const r = searchResults(q);
+    list.innerHTML = r.length ? r.map((n) => resultHtml(n, q, false)).join('') : `<div class="empty-res">Inga träffar på ”${esc(q)}”.</div>`;
+  } else if (U.archiveView) list.innerHTML = renderArchive();
+  else list.innerHTML = renderTree();
+  list.scrollTop = st;
+  const count = S.notes.filter(isArchived).length;
+  $('#sb-foot').innerHTML = S.rootChosen ? `<button data-act="archive-toggle" class="${U.archiveView ? 'on' : ''}">${I.archive}<span>Arkiv</span><span class="count">${count}</span></button>` : '';
+  const inp = $('#ed-input');
+  if (inp && document.activeElement !== inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+
+// ---------------------------------------------------------------------------
+// Rendering: tabs, editor, status, disk
+// ---------------------------------------------------------------------------
+function renderTabs() {
+  $('#tabs').innerHTML = U.tabs.map((id) => {
+    const n = doc(id);
+    const act = id === U.active;
+    return `<div class="tab${act ? ' active' : ''}" data-id="${id}" title="${esc(relPath(n))}">
+      <span class="name">${esc(displayTitle(n))}</span>${n.kind === 'draft' ? '<span class="kind">utkast</span>' : ''}
+      ${act ? `<button class="more" data-act="tab-menu" title="Mer">${I.dots}</button>` : ''}
+      <button class="close" data-act="tab-close" title="Stäng (Ctrl+W)">${I.close}</button></div>`;
+  }).join('');
+  $('#sb-toggle').classList.toggle('on', narrow() ? U.drawerOpen : U.sidebarOpen);
+  $('#tab-add').title = S.rootChosen ? 'Ny anteckning i Osorterat (Ctrl+T)' : 'Ny flik (Ctrl+T)';
+}
+function highlight(text) {
+  const lines = text.split('\n');
+  return lines.map((l, i) => {
+    let m;
+    if ((m = l.match(/^(#{1,6} )(.*)$/))) {
+      const ph = i === 0 && !m[2] ? '<span class="ph">Titel</span>' : '';
+      return `<span class="mk">${esc(m[1])}</span><span class="h">${esc(m[2])}</span>${ph}`;
+    }
+    if (META_RE.test(l)) return `<span class="meta">${esc(l)}</span>`;
+    if ((m = l.match(/^(\s*(?:[-*+]|\d+\.)\s(?:\[[ xX]\]\s)?)(.*)$/))) return `<span class="mk">${esc(m[1])}</span>${esc(m[2])}`;
+    return esc(l);
+  }).join('\n') + '\n ';
+}
+function renderEditor() {
+  const n = doc(U.active);
+  const ta = $('#ta');
+  const hl = $('#hl');
+  $('#empty').hidden = !!n;
+  ta.hidden = hl.hidden = !n;
+  if (!n) {
+    $('#empty').innerHTML = `<div class="box"><div>Ingen anteckning öppen.</div><button class="btn primary" data-act="empty-new">Ny anteckning</button></div>`;
+    return;
+  }
+  if (ta.dataset.id !== n.id || ta.value !== n.body) {
+    ta.value = n.body;
+    ta.dataset.id = n.id;
+    ta.scrollTop = 0;
+  }
+  ta.readOnly = isArchived(n);
+  hl.innerHTML = highlight(n.body);
+  hl.scrollTop = ta.scrollTop;
+}
+function renderBanner() {
+  const n = doc(U.active);
+  const b = $('#banner');
+  if (!S.rootChosen && !U.bannerDismissed) {
+    b.innerHTML = `<div class="banner"><span class="grow">Samla anteckningarna i projekt: välj en mapp där Notera sorterar dem.</span><button class="btn primary" data-act="choose-root">Välj anteckningsmapp…</button><button class="btn" data-act="banner-dismiss">Inte nu</button></div>`;
+  } else if (n && isArchived(n)) {
+    b.innerHTML = `<div class="banner"><span class="grow">Arkiverad från <b>${esc(pname(n))}</b>. Skrivskyddad tills du återställer den.</span><button class="btn primary" data-act="banner-restore">Återställ</button></div>`;
+  } else b.innerHTML = '';
+}
+let saveState = '';
+function renderStatus() {
+  const n = doc(U.active);
+  const p = $('#st-path');
+  p.textContent = n ? (n.kind === 'note' ? relPath(n) : relPath(n)) : '';
+  p.classList.toggle('flash', !!n && flashPaths.has(relPath(n)));
+  $('#st-save').textContent = n ? saveState : '';
+  const words = n ? (n.body.match(/\S+/g) || []).length : 0;
+  $('#st-words').textContent = n ? `${words} ord` : '';
+  $('#win-title').textContent = n ? `${displayTitle(n)} – Notera` : 'Notera';
+}
+function renderDisk() {
+  if (!U.diskOpen) return;
+  const f = (path, label, cls = '') => `<div class="d ${cls}${flashPaths.has(path) ? ' flash' : ''}">${label}</div>`;
+  let h = '';
+  if (!S.rootChosen) {
+    h += '<div class="disk-note">Ingen anteckningsmapp vald än. Nya flikar blir utkast som idag.</div>';
+  } else {
+    h += `<div class="disk-note">Filerna ligger i bokstavsordning som i Utforskaren. Ordningen du ser i sidopanelen sparas i .notera.json.</div>`;
+    h += `<div class="d dir">${esc(ROOT)}\\</div>`;
+    const orderJson = {
+      version: 1,
+      projekt: activeProjects().map((p) => p.name),
+      utfallda: S.projects.filter((p) => !p.archived && p.expanded).map((p) => p.name),
+      ordning: Object.fromEntries(S.projects.filter((p) => !p.archived).map((p) => [p.name, notesOf(p.id).map((n) => n.file)])),
+      fasta: S.notes.filter((n) => n.kind === 'note' && n.pinned && !isArchived(n)).map((n) => `${pname(n)}/${n.file}`),
+    };
+    h += `<details><summary class="d">&nbsp;&nbsp;.notera.json</summary><pre>${esc(JSON.stringify(orderJson, null, 2))}</pre></details>`;
+    const folderBlock = (name, notes, indent) => {
+      let s = f(`${name}\\`, `${indent}${esc(name.split('\\').pop())}\\`, 'dir');
+      [...notes].sort((a, b) => a.file.localeCompare(b.file, 'sv')).forEach((n) => { s += f(relPath(n), `${indent}&nbsp;&nbsp;${esc(n.file)}`); });
+      if (!notes.length) s += `<div class="d muted">${indent}&nbsp;&nbsp;(tom)</div>`;
+      return s;
+    };
+    S.projects.filter((p) => !p.archived).sort((a, b) => (b.inbox - a.inbox) || a.name.localeCompare(b.name, 'sv'))
+      .forEach((p) => { h += folderBlock(p.name, S.notes.filter((n) => n.kind === 'note' && n.project === p.id && !n.archived), '&nbsp;&nbsp;'); });
+    const arch = archiveGroups();
+    h += f('Arkiv\\', '&nbsp;&nbsp;Arkiv\\', 'dir');
+    if (!arch.length) h += '<div class="d muted">&nbsp;&nbsp;&nbsp;&nbsp;(tom)</div>';
+    arch.sort((a, b) => a.name.localeCompare(b.name, 'sv')).forEach((g) => { h += folderBlock(`Arkiv\\${g.name}`, g.notes, '&nbsp;&nbsp;&nbsp;&nbsp;'); });
+  }
+  const ext = S.notes.filter((n) => n.kind === 'ext');
+  const drafts = S.notes.filter((n) => n.kind === 'draft');
+  if (ext.length) { h += '<h4>Utanför anteckningsmappen</h4>'; ext.forEach((n) => { h += `<div class="d">${esc(n.path)}</div>`; }); }
+  if (drafts.length) { h += '<h4>Utkast, %APPDATA%\\Notera\\drafts</h4>'; drafts.forEach((n) => { h += `<div class="d">${esc(n.name)}.md</div>`; }); }
+  h += '<h4>Papperskorgen i Windows</h4>';
+  h += S.trash.length ? S.trash.map((t, i) => `<div class="d${i === 0 && flashPaths.has('trash') ? ' flash' : ''}">${esc(t)}</div>`).join('') : '<div class="d muted">(tom)</div>';
+  const body = $('#disk-body');
+  const st = body.scrollTop;
+  const openDetails = body.querySelector('details')?.open;
+  body.innerHTML = h;
+  if (openDetails) body.querySelector('details').open = true;
+  body.scrollTop = st;
+}
+function applyLayout() {
+  const b = document.body;
+  b.classList.toggle('desktop', U.desktop);
+  const isNarrow = !U.desktop && window.innerWidth < 760;
+  b.classList.toggle('narrow', isNarrow);
+  b.classList.toggle('sb-closed', !isNarrow && !U.sidebarOpen);
+  b.classList.toggle('drawer-open', isNarrow && U.drawerOpen);
+  b.classList.toggle('disk-open', U.diskOpen);
+  b.classList.toggle('writing', U.writing);
+  $('#writing-exit').hidden = !U.writing;
+  document.documentElement.dataset.theme = U.theme;
+  document.documentElement.style.setProperty('--sbw', `${U.sbWidth}px`);
+  $('#mk-disk').classList.toggle('on', U.diskOpen);
+  const frame = $('#frame');
+  if (U.desktop) {
+    const stage = $('#stage');
+    const s = Math.min(1, stage.clientWidth / 1280);
+    frame.style.transform = `scale(${s})`;
+    frame.style.height = `${Math.min(stage.clientHeight / s, 860)}px`;
+    frame.dataset.scale = s;
+  } else { frame.style.transform = ''; frame.style.height = ''; frame.dataset.scale = 1; }
+}
+function renderAll() {
+  applyLayout();
+  renderSidebar();
+  renderTabs();
+  renderBanner();
+  renderEditor();
+  renderStatus();
+  renderDisk();
+}
+
+// ---------------------------------------------------------------------------
+// Popup menus + modals
+// ---------------------------------------------------------------------------
+const scale = () => Number($('#frame').dataset.scale || 1);
+function toFrame(x, y) { const r = $('#frame').getBoundingClientRect(); const s = scale(); return [(x - r.left) / s, (y - r.top) / s]; }
+let menuAnchor = null;
+function showMenu(anchor, items, title) {
+  closeMenu();
+  menuAnchor = anchor;
+  anchor.closest('.row')?.classList.add('menu-open');
+  const pop = $('#popup');
+  const render = (list, head, isSub) => {
+    pop.innerHTML = (isSub ? `<button data-i="back">${I.back}<span class="lab">Tillbaka</span></button><div class="sep"></div>` : '')
+      + (head ? `<div class="mh">${esc(head)}</div>` : '')
+      + list.map((it, i) => it.sep ? '<div class="sep"></div>'
+        : `<button data-i="${i}" class="${it.danger ? 'danger' : ''}" ${it.disabled ? 'disabled' : ''}>${it.icon || (it.check !== undefined ? `<span class="chk">${it.check ? '✓' : ''}</span>` : '<span class="chk"></span>')}<span class="lab">${esc(it.label)}</span>${it.kbd && !isTouch ? `<kbd>${esc(it.kbd)}</kbd>` : ''}${it.sub ? '<span>›</span>' : ''}</button>`).join('');
+    pop.onclick = (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      e.stopPropagation();
+      if (btn.dataset.i === 'back') return render(items, title, false);
+      const it = list[+btn.dataset.i];
+      if (it.sub) return render(it.sub(), it.label, true);
+      closeMenu();
+      it.act?.();
+    };
+    place();
+  };
+  const place = () => {
+    pop.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    const [x, y] = toFrame(r.left, r.bottom);
+    const [x2] = toFrame(r.right, r.bottom);
+    const fw = $('#frame').offsetWidth, fh = $('#frame').offsetHeight;
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    let left = Math.min(Math.max(6, x2 - w), fw - w - 6);
+    if (x2 - w < 6) left = Math.min(x, fw - w - 6);
+    let top = y + 4;
+    if (top + h > fh - 6) top = Math.max(6, y - (r.height / scale()) - h - 4);
+    pop.style.left = `${left}px`; pop.style.top = `${top}px`;
+  };
+  render(items, title, false);
+}
+function closeMenu() {
+  $('#popup').hidden = true;
+  document.querySelectorAll('.menu-open').forEach((e) => e.classList.remove('menu-open'));
+  document.querySelectorAll('#menubar .open').forEach((e) => e.classList.remove('open'));
+  menuAnchor = null;
+}
+function moveTargets(n) {
+  const list = [proj(INBOX), ...activeProjects()].filter((p) => !(n.kind === 'note' && !isArchived(n) && p.id === n.project));
+  const items = list.map((p) => ({ label: p.name, icon: p.inbox ? I.inbox : I.folder, act: () => moveNoteTo(n, p.id) }));
+  items.push({ sep: true }, { label: 'Nytt projekt…', icon: I.plus, act: () => promptModal('Nytt projekt', '', (name) => { const p = createProject(name); moveNoteTo(n, p.id); }) });
+  return items;
+}
+function noteMenu(n, anchor) {
+  showMenu(anchor, [
+    { label: 'Öppna', icon: I.note, act: () => openDoc(n.id) },
+    { label: n.pinned ? 'Lossa' : 'Fäst överst', icon: I.pin.replace('class="pin"', ''), act: () => togglePin(n) },
+    { label: 'Flytta till', icon: I.move, sub: () => moveTargets(n) },
+    { sep: true },
+    { label: 'Arkivera', icon: I.archive, act: () => archiveNote(n) },
+    { label: 'Ta bort…', icon: I.trash, danger: true, act: () => deleteNote(n) },
+  ], displayTitle(n));
+}
+function projMenu(p, anchor) {
+  showMenu(anchor, [
+    { label: 'Ny anteckning', icon: I.plus, act: () => newNote(p.id) },
+    { label: 'Byt namn', icon: I.edit, act: () => { editing = { kind: 'rename', pid: p.id, value: p.name, error: '' }; renderSidebar(); } },
+    { sep: true },
+    { label: 'Arkivera projekt', icon: I.archive, act: () => archiveProject(p) },
+    { label: 'Ta bort projekt…', icon: I.trash, danger: true, act: () => deleteProject(p) },
+  ], p.name);
+}
+function modal({ title, body, buttons }) {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-back"><div class="modal" role="dialog" aria-modal="true"><h2>${title}</h2>${body}<div class="acts2">${
+    buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-b="${i}">${esc(b.label)}</button>`).join('')}</div></div></div>`;
+  const back = root.firstElementChild;
+  back.addEventListener('click', (e) => {
+    if (e.target === back) return (root.innerHTML = '');
+    const btn = e.target.closest('[data-b]');
+    if (!btn) return;
+    const b = buttons[+btn.dataset.b];
+    if (b.act && b.act(back) === false) return;
+    root.innerHTML = '';
+  });
+  const last = back.querySelector('.btn:last-child');
+  (back.querySelector('input[type=text]') || last).focus();
+  return back;
+}
+function promptModal(title, value, done) {
+  const back = modal({
+    title: esc(title),
+    body: `<input type="text" id="m-in" value="${esc(value)}" autocomplete="off" spellcheck="false" placeholder="Projektnamn"><div class="err" id="m-err" style="margin:6px 0 0"></div>`,
+    buttons: [{ label: 'Avbryt' }, { label: 'Skapa', cls: 'primary', act: (root) => {
+      const v = root.querySelector('#m-in').value.trim();
+      const err = projectNameError(v);
+      if (err) { root.querySelector('#m-err').textContent = err; return false; }
+      done(v);
+    } }],
+  });
+  back.querySelector('#m-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') back.querySelector('.btn.primary').click(); });
+}
+function chooseRoot() {
+  const back = modal({
+    title: 'Välj anteckningsmapp',
+    body: `<p>Notera skapar en undermapp per projekt här, plus <code>Osorterat</code> och <code>Arkiv</code>. En mapp i OneDrive ger dig backup.</p>
+      <input type="text" id="m-root" value="${esc(ROOT)}" autocomplete="off" spellcheck="false">
+      <div style="margin-top:8px"><button class="btn" id="m-browse">Bläddra…</button></div>`,
+    buttons: [{ label: 'Avbryt' }, { label: 'Använd mappen', cls: 'primary', act: () => {
+      S.rootChosen = true;
+      if (narrow()) U.drawerOpen = true; else U.sidebarOpen = true;
+      flash('Osorterat\\', 'Arkiv\\');
+      commit();
+      toast('Anteckningsmappen är vald. Ctrl+T skriver nu i Osorterat.');
+    } }],
+  });
+  back.querySelector('#m-browse').onclick = () => toast('I appen öppnas Windows mappväljare här.');
+}
+function helpModal() {
+  modal({
+    title: 'Prova det här',
+    body: `<ol>
+      <li>Tryck på <b>+</b> vid Enlantis, skriv en titel och tryck Enter. Filnamnet i statusraden byts när du lämnar rubriken.</li>
+      <li><b>Ctrl+T</b> i gula raden skapar en anteckning i Osorterat. <b>Ctrl+Alt+N</b> skapar en i projektet du står i.</li>
+      <li>${isTouch ? 'Håll fingret på en anteckning en halv sekund och dra' : 'Dra en anteckning'} till ett annat projekt. Raden <i>Projekt:</i> i sidhuvudet skrivs om.</li>
+      <li>${isTouch ? 'Håll utan att dra: då öppnas menyn.' : 'Dra projekt för att ändra ordning.'}</li>
+      <li><b>⋯ › Fäst överst</b>, <b>Arkivera</b> och sedan <b>Ångra</b>.</li>
+      <li><b>Arkiv</b> längst ner: återställ projektet Q2-rapport eller en enskild anteckning.</li>
+      <li>Sök på <i>kinde</i> eller <i>deploy</i> med <b>Ctrl+Shift+F</b>. Arkiverade träffar är märkta.</li>
+      <li><b>⋯ › Ta bort projekt</b> på Hackytel.</li>
+      <li><b>⋯</b> på fliken <i>lösa tankar.md</i>: flytta in en fil utifrån.</li>
+      <li><b>Disk</b> visar vad som händer med filerna.</li>
+      <li><b>Mer › Första start</b> visar läget innan anteckningsmappen är vald.</li>
+      <li><b>Mer › Visa som desktop</b>, gärna med telefonen på tvären.</li></ol>`,
+    buttons: [{ label: 'Stäng', cls: 'primary' }],
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Events: sidebar
+// ---------------------------------------------------------------------------
+let suppressClick = false;
+$('#sb-list').addEventListener('click', (e) => {
+  if (suppressClick) { suppressClick = false; return; }
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  const row = e.target.closest('.row');
+  const n = row?.dataset.id ? doc(row.dataset.id) : null;
+  const p = row?.dataset.pid ? proj(row.dataset.pid) : null;
+  const res = e.target.closest('[data-open]');
+  if (res) { const d = doc(res.dataset.open); openDoc(d.id); return; }
+  if (e.target.closest('input')) return;
+  switch (act) {
+    case 'new-note': return newNote(p.id);
+    case 'note-menu': return noteMenu(n, e.target.closest('button'));
+    case 'proj-menu': return projMenu(p, e.target.closest('button'));
+    case 'new-project': editing = { kind: 'new', value: '', error: '' }; return renderSidebar();
+    case 'choose-root': return chooseRoot();
+    case 'arch-back': U.archiveView = false; return commit();
+    case 'arch-restore': return restoreNote(n);
+    case 'arch-menu': return showMenu(e.target.closest('button'), [
+      { label: 'Öppna', icon: I.note, act: () => openDoc(n.id) },
+      { label: `Återställ till ${pname(n)}`, icon: I.restore, act: () => restoreNote(n) },
+      { sep: true },
+      { label: 'Ta bort permanent…', icon: I.trash, danger: true, act: () => deleteNote(n, true) },
+    ], displayTitle(n));
+    case 'arch-proj-restore': return restoreProject(p);
+    case 'arch-proj-menu': return showMenu(e.target.closest('button'), [
+      { label: 'Återställ projektet', icon: I.restore, act: () => restoreProject(p) },
+      { sep: true },
+      { label: 'Ta bort permanent…', icon: I.trash, danger: true, act: () => deleteProjectForever(p) },
+    ], p.name);
+  }
+  if (!row) return;
+  if (n && !act) return openDoc(n.id);
+  if (row.classList.contains('proj') && p && !U.archiveView) { p.expanded = !p.expanded; commit(); }
+});
+$('#sb-list').addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (isTouch) return;
+  const row = e.target.closest('.row');
+  if (row) openRowMenu(row, e);
+});
+function openRowMenu(row) {
+  const btn = row.querySelector('[data-act$="menu"]');
+  if (btn) btn.click();
+}
+$('#sb-foot').addEventListener('click', (e) => {
+  if (e.target.closest('[data-act="archive-toggle"]')) { U.archiveView = !U.archiveView; $('#sb-q').value = ''; commit(); }
+});
+$('#sb-q').addEventListener('input', renderSidebar);
+$('#sb-q').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.target.value = ''; renderSidebar(); e.target.blur(); }
+  if (e.key === 'Enter') { const r = searchResults(e.target.value); if (r[0]) openDoc(r[0].id); }
+});
+// inline editing (new project / rename)
+$('#sb-list').addEventListener('input', (e) => { if (e.target.id === 'ed-input' && editing) editing.value = e.target.value; });
+$('#sb-list').addEventListener('keydown', (e) => {
+  if (e.target.id !== 'ed-input' || !editing) return;
+  if (e.key === 'Escape') { editing = null; renderSidebar(); }
+  if (e.key === 'Enter') { e.preventDefault(); finishEdit(); }
+});
+$('#sb-list').addEventListener('focusout', (e) => {
+  if (e.target.id !== 'ed-input' || !editing) return;
+  setTimeout(() => { if (editing && document.activeElement?.id !== 'ed-input') { if (editing.value.trim()) finishEdit(true); else { editing = null; renderSidebar(); } } }, 120);
+});
+function finishEdit(fromBlur) {
+  const v = editing.value.trim();
+  const self = editing.kind === 'rename' ? proj(editing.pid) : null;
+  if (self && v === self.name) { editing = null; return renderSidebar(); }
+  const err = projectNameError(v, self);
+  if (err) {
+    if (fromBlur) { editing = null; renderSidebar(); return toast(err); }
+    editing.error = err; return renderSidebar();
+  }
+  const ed = editing; editing = null;
+  if (ed.kind === 'new') createProject(v); else renameProject(self, v);
+}
+
+// ---------------------------------------------------------------------------
+// Drag and drop (mouse: press + move; touch: long-press 450 ms, then drag)
+// ---------------------------------------------------------------------------
+let pend = null, drag = null, scrollRAF = null, lastY = 0;
+function beginDrag(row, x, y) {
+  const kind = row.dataset.drag;
+  drag = { row, kind, id: kind === 'note' ? row.dataset.id : row.dataset.pid, sx: x, sy: y, moved: false, target: null };
+  row.classList.add('dragging');
+  const g = $('#ghost');
+  g.textContent = row.querySelector('.name')?.textContent || '';
+  g.hidden = false;
+  moveGhost(x, y);
+  if (isTouch && navigator.vibrate) navigator.vibrate(12);
+  autoScroll();
+}
+function moveGhost(x, y) { $('#ghost').style.transform = `translate(${x + 14}px, ${y - 30}px)`; }
+function clearMarks() { document.querySelectorAll('.drop-before,.drop-after,.drop-into').forEach((e) => e.classList.remove('drop-before', 'drop-after', 'drop-into')); }
+function dragMove(x, y) {
+  lastY = y;
+  if (Math.hypot(x - drag.sx, y - drag.sy) > 8) drag.moved = true;
+  moveGhost(x, y);
+  clearMarks();
+  drag.target = null;
+  const el = document.elementFromPoint(x, y);
+  const row = el && el.closest('#sb-list [data-drop]');
+  if (!row) return;
+  const r = row.getBoundingClientRect();
+  const after = y > r.top + r.height / 2;
+  if (drag.kind === 'note') {
+    if (row.dataset.drop === 'note') {
+      if (row.dataset.id === drag.id) return;
+      drag.target = { type: 'note', id: row.dataset.id, after };
+      row.classList.add(after ? 'drop-after' : 'drop-before');
+    } else {
+      drag.target = { type: 'proj', pid: row.dataset.pid };
+      row.classList.add('drop-into');
+    }
+  } else {
+    let pr = row.dataset.drop === 'proj' ? row : null;
+    if (!pr && row.dataset.pid) pr = document.querySelector(`#sb-list .row.proj[data-pid="${row.dataset.pid}"]`);
+    if (!pr || pr.dataset.pid === INBOX || pr.dataset.pid === drag.id) return;
+    const pr2 = pr.getBoundingClientRect();
+    const aft = pr === row ? after : true;
+    drag.target = { type: 'projorder', pid: pr.dataset.pid, after: aft };
+    pr.classList.add(aft ? 'drop-after' : 'drop-before');
+    void pr2;
+  }
+}
+function autoScroll() {
+  cancelAnimationFrame(scrollRAF);
+  const tick = () => {
+    if (!drag) return;
+    const list = $('#sb-list');
+    const r = list.getBoundingClientRect();
+    if (lastY && lastY < r.top + 36) list.scrollTop -= 6;
+    else if (lastY && lastY > r.bottom - 36) list.scrollTop += 6;
+    scrollRAF = requestAnimationFrame(tick);
+  };
+  scrollRAF = requestAnimationFrame(tick);
+}
+function dragEnd(cancel) {
+  const d = drag;
+  drag = null; lastY = 0;
+  cancelAnimationFrame(scrollRAF);
+  $('#ghost').hidden = true;
+  clearMarks();
+  d.row.classList.remove('dragging');
+  if (cancel) return;
+  if (!d.moved) { if (isTouch) openRowMenu(d.row); return; }
+  suppressClick = true;
+  setTimeout(() => { suppressClick = false; }, 50);
+  const t = d.target;
+  if (!t) return;
+  if (d.kind === 'note') {
+    const n = doc(d.id);
+    if (t.type === 'note') {
+      const target = doc(t.id);
+      if (target.project !== n.project) {
+        withUndo(`Flyttad till ${proj(target.project).name}`, () => { moveToProject(n, target.project, target.id, t.after); flash(relPath(n)); });
+      } else {
+        S.notes.splice(S.notes.indexOf(n), 1);
+        S.notes.splice(S.notes.indexOf(target) + (t.after ? 1 : 0), 0, n);
+        commit();
+      }
+    } else if (t.pid !== n.project) moveNoteTo(n, t.pid);
+  } else {
+    const p = proj(d.id);
+    const target = proj(t.pid);
+    S.projects.splice(S.projects.indexOf(p), 1);
+    S.projects.splice(S.projects.indexOf(target) + (t.after ? 1 : 0), 0, p);
+    commit();
+  }
+}
+const list = $('#sb-list');
+list.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  const row = e.target.closest('[data-drag]');
+  if (!row || e.target.closest('button,input')) return;
+  pend = { row, x: e.clientX, y: e.clientY, mouse: true };
+});
+document.addEventListener('mousemove', (e) => {
+  if (drag) return dragMove(e.clientX, e.clientY);
+  if (pend && pend.mouse && Math.hypot(e.clientX - pend.x, e.clientY - pend.y) > 5) { const p = pend; pend = null; beginDrag(p.row, p.x, p.y); dragMove(e.clientX, e.clientY); }
+});
+document.addEventListener('mouseup', () => { pend = null; if (drag) dragEnd(); });
+list.addEventListener('touchstart', (e) => {
+  if (e.touches.length > 1) return;
+  const row = e.target.closest('[data-drag]');
+  if (!row || e.target.closest('button,input')) return;
+  const t = e.touches[0];
+  pend = { row, x: t.clientX, y: t.clientY, timer: setTimeout(() => { const p = pend; pend = null; if (p) beginDrag(p.row, p.x, p.y); }, 450) };
+}, { passive: true });
+list.addEventListener('touchmove', (e) => {
+  const t = e.touches[0];
+  if (drag) { e.preventDefault(); return dragMove(t.clientX, t.clientY); }
+  if (pend && Math.hypot(t.clientX - pend.x, t.clientY - pend.y) > 10) { clearTimeout(pend.timer); pend = null; }
+}, { passive: false });
+list.addEventListener('touchend', (e) => {
+  if (pend) { clearTimeout(pend.timer); pend = null; }
+  if (drag) { e.preventDefault(); dragEnd(); }
+});
+list.addEventListener('touchcancel', () => { if (pend) { clearTimeout(pend.timer); pend = null; } if (drag) dragEnd(true); });
+
+// Sidebar resize
+$('#resizer').addEventListener('pointerdown', (e) => {
+  const r = $('#resizer');
+  r.setPointerCapture(e.pointerId);
+  r.classList.add('on');
+  const x0 = e.clientX, w0 = U.sbWidth;
+  const mv = (ev) => { U.sbWidth = Math.round(Math.min(480, Math.max(200, w0 + (ev.clientX - x0) / scale()))); applyLayout(); };
+  const up = () => { r.classList.remove('on'); r.removeEventListener('pointermove', mv); r.removeEventListener('pointerup', up); persist(); };
+  r.addEventListener('pointermove', mv);
+  r.addEventListener('pointerup', up);
+});
+
+// ---------------------------------------------------------------------------
+// Events: tabs, editor, chrome
+// ---------------------------------------------------------------------------
+$('#tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  const id = tab.dataset.id;
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  if (act === 'tab-close') {
+    const i = U.tabs.indexOf(id);
+    U.tabs.splice(i, 1);
+    if (U.active === id) U.active = U.tabs[Math.min(i, U.tabs.length - 1)] || null;
+    const n = doc(id);
+    if (n.kind === 'draft' && !n.body.trim()) S.notes.splice(S.notes.indexOf(n), 1);
+    return commit();
+  }
+  if (act === 'tab-menu') return tabMenu(doc(id), e.target.closest('button'));
+  if (U.active !== id) { checkRename(true); U.active = id; commit(); }
+});
+$('#tabs').addEventListener('contextmenu', (e) => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  e.preventDefault();
+  U.active = tab.dataset.id; commit();
+  tabMenu(doc(tab.dataset.id), document.querySelector(`.tab[data-id="${tab.dataset.id}"]`));
+});
+function tabMenu(n, anchor) {
+  const items = [];
+  if (S.rootChosen) {
+    items.push({ label: n.kind === 'note' ? 'Flytta till projekt' : 'Flytta till projekt…', icon: I.move, sub: () => moveTargets(n) });
+    if (n.kind === 'note') items.push({ label: 'Visa i sidopanelen', icon: I.reveal, act: () => revealInSidebar(n) });
+  } else items.push({ label: 'Välj anteckningsmapp först', disabled: true });
+  items.push({ sep: true }, { label: 'Stäng flik', icon: I.close, act: () => document.querySelector(`.tab[data-id="${n.id}"] .close`).click() });
+  showMenu(anchor, items, relPath(n));
+}
+$('#tab-add').onclick = () => newNote(INBOX);
+$('#sb-toggle').onclick = toggleSidebar;
+$('#sb-close').onclick = toggleSidebar;
+$('#scrim').onclick = () => { U.drawerOpen = false; commit(); };
+$('#disk-close').onclick = () => { U.diskOpen = false; commit(); };
+$('#st-path').onclick = () => { U.diskOpen = true; commit(); };
+$('#writing-exit').onclick = () => { U.writing = false; commit(); };
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-act]');
+  if (!a || a.closest('#sb-list') || a.closest('#tabs') || a.closest('#sb-foot')) return;
+  const n = doc(U.active);
+  if (a.dataset.act === 'choose-root') chooseRoot();
+  if (a.dataset.act === 'banner-dismiss') { U.bannerDismissed = true; commit(); }
+  if (a.dataset.act === 'banner-restore' && n) restoreNote(n);
+  if (a.dataset.act === 'empty-new') newNote(INBOX);
+});
+
+const ta = $('#ta');
+let saveTimer = null;
+ta.addEventListener('input', () => {
+  const n = doc(U.active);
+  if (!n) return;
+  n.body = ta.value;
+  $('#hl').innerHTML = highlight(n.body);
+  saveState = n.kind === 'draft' ? 'Utkast sparas…' : 'Sparar…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { saveState = n.kind === 'draft' ? 'Utkast sparat' : 'Sparad'; persist(); renderStatus(); }, 800);
+  renderSidebar(); renderTabs(); renderStatus();
+});
+ta.addEventListener('scroll', () => { $('#hl').scrollTop = ta.scrollTop; });
+// Enter on the title line jumps past the header line to the body instead of splitting the header.
+ta.addEventListener('keydown', (e) => {
+  const n = doc(U.active);
+  if (e.key !== 'Enter' || e.shiftKey || !n || n.kind !== 'note' || ta.readOnly) return;
+  const v = ta.value;
+  const firstNl = v.indexOf('\n');
+  if (firstNl === -1 || ta.selectionStart > firstNl || ta.selectionEnd !== ta.selectionStart) return;
+  const lines = v.split('\n');
+  if (!META_RE.test(lines[1] || '')) return;
+  e.preventDefault();
+  let body = firstNl + 1 + lines[1].length + 1;
+  if (lines[2] === '') body += 1;
+  while (body > ta.value.length) ta.value += '\n';
+  if (ta.value !== n.body) ta.dispatchEvent(new Event('input'));
+  ta.setSelectionRange(body, body);
+  checkRename(true);
+});
+['keyup', 'click'].forEach((ev) => ta.addEventListener(ev, () => checkRename(false)));
+ta.addEventListener('blur', () => checkRename(true));
+function checkRename(leaving) {
+  const n = doc(U.active);
+  if (!n || n.kind !== 'note' || isArchived(n)) return;
+  const onTitle = ta.value.slice(0, ta.selectionStart).indexOf('\n') === -1;
+  if (onTitle && !leaving) return;
+  const want = uniqueFile(n, wantedBase(n));
+  if (want === n.file) return;
+  n.file = want;
+  flash(relPath(n));
+  persist();
+  renderStatus(); renderDisk(); renderTabs();
+  $('#st-path').classList.remove('flash'); void $('#st-path').offsetWidth; $('#st-path').classList.add('flash');
+  toast(`Filen döptes om till ${want}`);
+}
+function focusEditor(pos) {
+  requestAnimationFrame(() => {
+    ta.focus({ preventScroll: true });
+    if (pos !== undefined) ta.setSelectionRange(pos, pos);
+  });
+}
+
+// Menubar (native menu in the app)
+$('#menubar').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-menu]');
+  if (!b) return;
+  const wasOpen = b.classList.contains('open');
+  closeMenu();
+  if (wasOpen) return;
+  const n = doc(U.active);
+  const menus = {
+    file: [
+      { label: S.rootChosen ? 'Ny anteckning (Osorterat)' : 'Ny flik', kbd: 'Ctrl+T', act: () => newNote(INBOX) },
+      { label: 'Ny anteckning i projektet', kbd: 'Ctrl+Alt+N', act: () => newNote(currentProjectId()), disabled: !S.rootChosen },
+      { label: 'Nytt projekt…', act: () => promptModal('Nytt projekt', '', createProject), disabled: !S.rootChosen },
+      { sep: true },
+      { label: 'Flytta till projekt', sub: () => moveTargets(n), disabled: !n || !S.rootChosen },
+      { label: 'Arkivera anteckningen', act: () => archiveNote(n), disabled: !n || n.kind !== 'note' || isArchived(n) },
+      { sep: true },
+      { label: S.rootChosen ? 'Anteckningsmapp…' : 'Välj anteckningsmapp…', act: chooseRoot },
+    ],
+    edit: [{ label: 'Ångra', kbd: 'Ctrl+Z', disabled: true }, { label: 'Sök', kbd: 'Ctrl+F', disabled: true }],
+    view: [
+      { label: 'Sidopanel', kbd: 'Ctrl+Shift+B', check: narrow() ? U.drawerOpen : U.sidebarOpen, act: toggleSidebar },
+      { label: 'Sök anteckningar', kbd: 'Ctrl+Shift+F', check: false, act: openSearch, disabled: !S.rootChosen },
+      { label: 'Arkiv', check: U.archiveView, act: () => { U.archiveView = !U.archiveView; if (narrow()) U.drawerOpen = true; else U.sidebarOpen = true; commit(); }, disabled: !S.rootChosen },
+      { sep: true },
+      { label: 'Skrivläge', kbd: 'Ctrl+Shift+W', check: U.writing, act: () => { U.writing = true; commit(); } },
+    ],
+    help: [{ label: 'Prova det här (mockup)', act: helpModal }],
+  };
+  b.classList.add('open');
+  showMenu(b, menus[b.dataset.menu]);
+  b.classList.add('open');
+});
+
+// Command palette
+let palSel = 0;
+function renderPalette() {
+  const q = $('#pal-q').value;
+  const r = q.trim() ? searchResults(q) : S.notes.filter((n) => n.kind === 'note' && !isArchived(n)).slice(0, 8);
+  palSel = Math.min(palSel, Math.max(0, r.length - 1));
+  $('#pal-list').innerHTML = (q.trim() ? '' : '<div class="mh" style="padding:6px 14px;font-size:11px;color:var(--fg-muted)">Anteckningar</div>')
+    + (r.length ? r.map((n, i) => resultHtml(n, q, i === palSel)).join('') : `<div class="empty-res">Inga träffar på ”${esc(q)}”.</div>`);
+  return r;
+}
+$('#pal-q').addEventListener('input', () => { palSel = 0; renderPalette(); });
+$('#pal-q').addEventListener('keydown', (e) => {
+  const r = renderPalette();
+  if (e.key === 'ArrowDown') { palSel = Math.min(palSel + 1, r.length - 1); renderPalette(); e.preventDefault(); }
+  if (e.key === 'ArrowUp') { palSel = Math.max(palSel - 1, 0); renderPalette(); e.preventDefault(); }
+  if (e.key === 'Enter' && r[palSel]) { $('#palette').hidden = true; openDoc(r[palSel].id); }
+  if (e.key === 'Escape') $('#palette').hidden = true;
+});
+$('#palette').addEventListener('click', (e) => {
+  const res = e.target.closest('[data-open]');
+  if (res) { $('#palette').hidden = true; return openDoc(res.dataset.open); }
+  if (e.target.id === 'palette') $('#palette').hidden = true;
+});
+
+// Global: close menus, keyboard shortcuts
+document.addEventListener('pointerdown', (e) => {
+  if (!$('#popup').hidden && !e.target.closest('#popup') && !e.target.closest('[data-act$="menu"]') && !e.target.closest('#menubar') && !e.target.closest('#mk-menu')) closeMenu();
+});
+function shortcut(name) {
+  closeMenu();
+  if (name === 'ctrl-t') return newNote(INBOX);
+  if (name === 'ctrl-alt-n') return newNote(currentProjectId());
+  if (name === 'ctrl-shift-b') return toggleSidebar();
+  if (name === 'ctrl-shift-f') { if (!S.rootChosen) return toast('Välj en anteckningsmapp först.'); return openSearch(); }
+}
+document.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (e.ctrlKey && e.shiftKey && k === 'b') { e.preventDefault(); shortcut('ctrl-shift-b'); }
+  else if (e.ctrlKey && e.shiftKey && k === 'f') { e.preventDefault(); shortcut('ctrl-shift-f'); }
+  else if (e.ctrlKey && e.altKey && k === 'n') { e.preventDefault(); shortcut('ctrl-alt-n'); }
+  else if (e.ctrlKey && !e.shiftKey && !e.altKey && k === 't') { e.preventDefault(); shortcut('ctrl-t'); }
+  else if (e.key === 'Escape') {
+    if (!$('#popup').hidden) closeMenu();
+    else if ($('#modal-root').innerHTML) $('#modal-root').innerHTML = '';
+    else if (!$('#palette').hidden) $('#palette').hidden = true;
+    else if (U.writing) { U.writing = false; commit(); }
+    else if (narrow() && U.drawerOpen) { U.drawerOpen = false; commit(); }
+  }
+});
+
+// Mockup bar
+$('#mockbar').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mk]');
+  if (!b) return;
+  const k = b.dataset.mk;
+  if (k.startsWith('ctrl')) return shortcut(k);
+  if (k === 'disk') { U.diskOpen = !U.diskOpen; return commit(); }
+  if (k === 'help') return helpModal();
+  if (k === 'menu') {
+    const wasOpen = !$('#popup').hidden && menuAnchor === b;
+    closeMenu();
+    if (wasOpen) return;
+    showMenu(b, [
+      { label: 'Mörkt tema', check: U.theme === 'dark', act: () => { U.theme = U.theme === 'dark' ? 'light' : 'dark'; commit(); } },
+      { label: 'Visa som desktop (1280 px)', check: U.desktop, act: () => { U.desktop = !U.desktop; commit(); } },
+      { sep: true },
+      { label: 'Första start (ingen mapp vald)', act: () => { S = seedFirstRun(); U = uiFirstRun(U); commit(); toast('Första start: sidopanelen är stängd tills en mapp är vald.'); } },
+      { label: 'Återställ demodata', act: () => { const t = U.theme, d = U.desktop; S = seedDemo(); U = { ...uiDemo(), theme: t, desktop: d }; commit(); toast('Demodata återställd'); } },
+    ]);
+  }
+});
+window.addEventListener('resize', () => { applyLayout(); renderTabs(); });
+window.addEventListener('orientationchange', () => setTimeout(applyLayout, 200));
+
+renderAll();
+if (!localStorage.getItem(STORE + '-seen')) { localStorage.setItem(STORE + '-seen', '1'); setTimeout(helpModal, 300); }
+</script>
+</body>
+</html>
