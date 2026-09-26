@@ -898,7 +898,11 @@ async function handleAction(action, payload) {
     case 'save': await saveTab(active); break;
     case 'saveAs': await saveTab(active, true); break;
     case 'saveAll': await saveAll(); break;
-    case 'closeTab': await closeTab(active); break;
+    case 'closeTab':
+      // Closing the only tab closes the window, like a browser. requestClose still asks about unsaved text.
+      if (tabs.length === 1) await api.closeWindow();
+      else await closeTab(active);
+      break;
     case 'print': printCurrent(); break;
     case 'undo': undo(view); view.focus(); break;
     case 'redo': redo(view); view.focus(); break;

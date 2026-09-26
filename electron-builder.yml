@@ -8,6 +8,9 @@ files:
   - src/**/*
   - dist/**/*
   - fonts/**/*
+  # Window icon: without it Windows takes the icon from the exe via its icon cache, which goes blank after an update.
+  - build/icon.ico
+  - build/icon.png
   - package.json
 asar: true
 win:
