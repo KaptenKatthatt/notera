@@ -84,7 +84,7 @@ function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null)
     title: t('appName'),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1f1f1f' : '#ffffff',
     autoHideMenuBar: false,
-    icon: path.join(__dirname, '../../build/icon.png'),
+    icon: path.join(__dirname, '../../build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
