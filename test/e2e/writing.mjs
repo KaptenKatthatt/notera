@@ -109,7 +109,11 @@ assert.ok((await win.locator('.keys-grid tr').count()) > 20);
 await shot('14-shortcuts');
 await win.keyboard.press('Escape');
 
-// Discarding the recovered tab removes its draft
+// Discarding the recovered tab removes its draft. Closing the last tab closes the window, so
+// open a second tab first and go back to the recovered one.
+await win.evaluate(() => window.__notera.handleAction('new'));
+await win.waitForFunction(() => window.__notera.tabs.length === 2);
+await win.evaluate(() => window.__notera.handleAction('goToTab1'));
 await win.evaluate(() => { const t = window.__notera.active; t.dirty = false; t.savedDoc = t.state.doc; });
 await win.evaluate(() => window.__notera.handleAction('closeTab'));
 await win.waitForFunction(() => window.__notera.tabs.length === 1 && window.__notera.active.state.doc.length === 0);
