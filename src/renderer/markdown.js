@@ -4,7 +4,7 @@ import DOMPurify from 'dompurify';
 marked.setOptions({ gfm: true, breaks: false });
 
 export function renderMarkdown(text) {
-  const html = marked.parse(text);
+  const html = marked.parse(text, { async: false });
   return DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ADD_ATTR: ['target'] });
 }
 

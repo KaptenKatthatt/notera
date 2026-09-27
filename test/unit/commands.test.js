@@ -42,7 +42,7 @@ test('only bindings with Ctrl, Alt, Meta or a function key are allowed', () => {
 test('overrides replace defaults, and a list equal to the defaults drops the override', () => {
   let o = c.withBinding({}, 'bold', ['Ctrl+Shift+B']);
   assert.deepEqual(o, { bold: ['Ctrl+Shift+B'] });
-  let b = c.effectiveBindings(o);
+  const b = c.effectiveBindings(o);
   assert.deepEqual(b.bold, ['Ctrl+Shift+B']);
   assert.deepEqual(b.italic, ['Ctrl+I']);
   assert.equal(c.keyMap(b).get('Ctrl+Shift+B'), 'bold');

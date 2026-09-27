@@ -42,7 +42,7 @@ export function attachTabDrag(bar, { onReorder, onDetach }) {
       drag.el.classList.add('dragging');
       try { bar.setPointerCapture(e.pointerId); } catch {}
     }
-    if (!drag.el.isConnected) { endDrag(false, e); return; } // renderTabs() rev DOM:en mitt i draget
+    if (!drag.el.isConnected) { endDrag(false); return; } // renderTabs() rev DOM:en mitt i draget
     place(drag.el, e.clientX - drag.grabDx);
     const rect = drag.el.getBoundingClientRect();
     const center = rect.left + rect.width / 2;
@@ -63,7 +63,7 @@ export function attachTabDrag(bar, { onReorder, onDetach }) {
     return x < -m || y < -m || x > window.innerWidth + m || y > window.innerHeight + m;
   }
 
-  function endDrag(commit, e) {
+  function endDrag(commit) {
     if (!drag) return;
     const { el, tabId, started, pointerId, lastX, lastY } = drag;
     drag = null;
@@ -77,7 +77,7 @@ export function attachTabDrag(bar, { onReorder, onDetach }) {
     if (order.includes(tabId)) onReorder(order);
   }
 
-  bar.addEventListener('pointerup', (e) => endDrag(true, e));
-  bar.addEventListener('pointercancel', (e) => endDrag(false, e));
-  bar.addEventListener('lostpointercapture', (e) => endDrag(true, e));
+  bar.addEventListener('pointerup', () => endDrag(true));
+  bar.addEventListener('pointercancel', () => endDrag(false));
+  bar.addEventListener('lostpointercapture', () => endDrag(true));
 }

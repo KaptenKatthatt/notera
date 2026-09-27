@@ -22,6 +22,7 @@ let locale;
 app.setAppUserModelId('se.jonasolson.notera');
 const pendingFiles = new Map(); // webContents.id -> string[]
 const pendingTabs = new Map(); // webContents.id -> draftId (flik lossad till nytt fönster)
+const closeConfirmed = new WeakSet(); // windows whose renderer has settled unsaved work, so close() may go ahead
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
 let updater;
 let notesStore = null;
@@ -108,7 +109,7 @@ function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null)
   });
 
   win.on('close', (e) => {
-    if (win._closeConfirmed) return;
+    if (closeConfirmed.has(win)) return;
     e.preventDefault();
     win.webContents.send('window:requestClose');
   });
@@ -153,6 +154,7 @@ function showAbout(win) {
 
 async function manualUpdateCheck(win) {
   const r = await updater.check({ manual: true });
+  /** @type {(message: string, type?: 'info' | 'warning' | 'error') => Promise<any>} */
   const box = (message, type = 'info') => dialog.showMessageBox(win || focusedWindow(), { type, title: t('appName'), message, buttons: [t('dialog.ok')] });
   if (r.status === 'latest') await box(t('update.latest', { version: app.getVersion() }));
   else if (r.status === 'unsupported') await box(t('update.unsupported', { reason: t(r.reason === 'portable' ? 'update.reasonPortable' : 'update.reasonDev') }));
@@ -191,7 +193,7 @@ ipcMain.handle('update:install', async () => {
   if (updater.getState().state !== 'downloaded') return false;
   const ok = await prepareAllForQuit();
   if (!ok) return false;
-  for (const w of BrowserWindow.getAllWindows()) w._closeConfirmed = true;
+  for (const w of BrowserWindow.getAllWindows()) closeConfirmed.add(w);
   return updater.install();
 });
 ipcMain.handle('settings:get', () => settings.get());
@@ -241,8 +243,7 @@ ipcMain.handle('file:write', async (_e, { path: p, text, encoding, eol }) => {
 
 // Save As opens in the directory of the current file; a new file opens in the
 // last directory used, falling back to Documents.
-ipcMain.handle('file:saveAsDialog', async (e, { currentPath, suggestedName, kind }) => {
-  const win = BrowserWindow.fromWebContents(e.sender);
+ipcMain.handle('file:saveAsDialog', async (_e, { currentPath, suggestedName, kind }) => {
   const ext = kind === 'txt' ? '.txt' : '.md';
   const defaultPath = currentPath
     ? currentPath
@@ -334,7 +335,7 @@ ipcMain.handle('draft:delete', async (_e, id) => {
 ipcMain.on('window:setTitle', (e, title) => { const w = BrowserWindow.fromWebContents(e.sender); if (w) w.setTitle(title); });
 ipcMain.on('window:closeConfirmed', (e) => {
   const w = BrowserWindow.fromWebContents(e.sender);
-  if (w) { w._closeConfirmed = true; w.close(); }
+  if (w) { closeConfirmed.add(w); w.close(); }
 });
 ipcMain.on('window:new', () => createWindow());
 ipcMain.on('tab:detach', (e, p = {}) => {
@@ -441,18 +442,22 @@ function buildMenu() {
   const accel = (id) => commands.toAccelerator((bindings[id] || [])[0]);
   const label = (id) => t(commands.BY_ID[id].label);
   const cmd = (id, extra = {}) => ({ label: label(id), accelerator: accel(id), registerAccelerator: false, click: () => send(id), ...extra });
+  /** @returns {Electron.MenuItemConstructorOptions} */
   const check = (id, key = id) => ({
     label: label(id), type: 'checkbox', checked: !!s[key], accelerator: accel(id), registerAccelerator: false,
     click: (mi) => updateSettings({ [key]: mi.checked })
   });
+  /** @returns {Electron.MenuItemConstructorOptions} */
   const viewRadio = (id, value) => ({
     label: label(id), type: 'radio', checked: s.viewMode === value, accelerator: accel(id), registerAccelerator: false,
     click: () => updateSettings({ viewMode: value })
   });
+  /** @returns {Electron.MenuItemConstructorOptions} */
   const radio = (text, key, value) => ({ label: text, type: 'radio', checked: s[key] === value, click: () => updateSettings({ [key]: value }) });
   const recent = (s.recentFiles || []).map((f) => ({ label: f, click: () => send('openPaths', [f]) }));
   const exitAccel = accel('exit') || (process.platform === 'win32' ? 'Alt+F4' : undefined);
 
+  /** @type {Electron.MenuItemConstructorOptions[]} */
   const template = [
     {
       label: t('menu.file'),
@@ -578,7 +583,7 @@ function buildMenu() {
         cmd('checkForUpdates', { click: () => void manualUpdateCheck(focusedWindow()) }),
         { type: 'separator' },
         cmd('about', { click: () => showAbout(focusedWindow()) }),
-        ...(isDev ? [{ label: t('menu.toggleDevTools'), role: 'toggleDevTools', accelerator: 'F12' }] : [])
+        ...(isDev ? [/** @type {Electron.MenuItemConstructorOptions} */ ({ label: t('menu.toggleDevTools'), role: 'toggleDevTools', accelerator: 'F12' })] : [])
       ]
     }
   ];

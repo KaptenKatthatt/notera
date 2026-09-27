@@ -22,6 +22,7 @@ async function resolveTarget(p) {
   try { return await fsp.realpath(p); } catch { return p; }
 }
 
+/** @param {string} p @param {string | Buffer} data @param {{ encoding?: BufferEncoding }} [opts] */
 async function writeFileAtomic(p, data, { encoding = 'utf8' } = {}) {
   const target = await resolveTarget(p);
   const mode = await fsp.stat(target).then((s) => s.mode, () => undefined);
@@ -52,6 +53,7 @@ async function writeFileAtomic(p, data, { encoding = 'utf8' } = {}) {
 }
 
 /** Synchronous variant for the settings file, which is saved from synchronous code. */
+/** @param {string} p @param {string | Buffer} data @param {{ encoding?: BufferEncoding }} [opts] */
 function writeFileAtomicSync(p, data, { encoding = 'utf8' } = {}) {
   let target = p;
   try { target = fs.realpathSync(p); } catch { /* new file */ }

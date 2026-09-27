@@ -32,6 +32,7 @@ const noteMeta = ViewPlugin.fromClass(class {
   constructor(view) { this.decorations = this.build(view); }
   update(u) { if (u.docChanged) this.decorations = this.build(u.view); }
   build(view) {
+    /** @type {RangeSetBuilder<Decoration>} */
     const b = new RangeSetBuilder();
     const doc = view.state.doc;
     for (let n = 1; n <= Math.min(3, doc.lines); n++) {

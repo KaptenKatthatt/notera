@@ -65,6 +65,7 @@ function createUpdater({ broadcast, getSettings }) {
   }
 
   /** @returns {Promise<{ status: 'available'|'latest'|'unsupported'|'error'|'busy', version?, reason?, message? }>} */
+  /** @param {{ manual?: boolean }} [opts] */
   async function check({ manual } = {}) {
     if (reason) return { status: 'unsupported', reason };
     if (['downloading', 'downloaded'].includes(state.state)) {

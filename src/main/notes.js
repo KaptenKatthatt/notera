@@ -134,7 +134,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   async function projectDirs(idx) {
-    let ents = [];
+    let ents;
     try { ents = await fsp.readdir(root, { withFileTypes: true }); } catch { return []; }
     return ents
       .filter((e) => e.isDirectory() && !e.name.startsWith('.') && lower(e.name) !== lower(idx.inbox) && lower(e.name) !== lower(idx.archive))
@@ -154,7 +154,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     const names = await listNotes(dir);
     const known = (idx.order[folder] || []).filter((n) => names.includes(n));
     const unknown = names.filter((n) => !known.includes(n));
-    const mtimes = new Map(await Promise.all(unknown.map(async (n) => [n, (await fsp.stat(path.join(dir, n))).mtimeMs])));
+    const mtimes = new Map(await Promise.all(unknown.map(async (n) => /** @type {[string, number]} */ ([n, (await fsp.stat(path.join(dir, n))).mtimeMs]))));
     unknown.sort((a, b) => mtimes.get(b) - mtimes.get(a));
     return [...unknown, ...known];
   }
@@ -370,6 +370,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   // ---------- notes ----------
+  /** @param {string} folder @param {{ text?: string }} [opts] */
   async function createNote(folder, { text } = {}) {
     return run(async () => {
       const idx = await ensure();

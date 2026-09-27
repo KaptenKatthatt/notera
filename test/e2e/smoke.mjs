@@ -22,7 +22,7 @@ await win.waitForSelector('.cm-content');
 await win.waitForFunction(() => window.__notera && window.__notera.tabs.length > 0);
 const shot = (name) => win.screenshot({ path: path.join(shots, name + '.png') });
 const state = () => win.evaluate(() => {
-  const n = window.__notera; const a = n.active;
+  const n = window.__notera;
   return { title: document.title, tabs: n.tabs.map((t) => ({ name: t.name, dirty: t.dirty, kind: t.kind, eol: t.eol, encoding: t.encoding })),
     doc: n.view.state.doc.toString(), settings: n.settings, view: document.querySelector('#main').dataset.view,
     status: Array.from(document.querySelectorAll('#statusbar > *')).map((e) => e.textContent).filter(Boolean) };

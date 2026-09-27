@@ -6,6 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const watch = process.argv.includes('--watch');
 const prod = process.env.NODE_ENV === 'production' || process.argv.includes('--prod');
 
+/** @type {import('esbuild').BuildOptions} */
 const opts = {
   entryPoints: [path.join(root, 'src/renderer/app.js')],
   bundle: true,
