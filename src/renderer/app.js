@@ -6,7 +6,7 @@ import { createKeyDispatcher } from './keybindings.js';
 import { createSettingsDialog } from './settingsDialog.js';
 import { attachTabDrag } from './tabdrag.js';
 import { display } from '../shared/commands.js';
-import { TEMPLATES } from '../shared/templates.js';
+import { TEMPLATES, hasTemplateHeader } from '../shared/templates.js';
 import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
 import { createPreview } from './preview.js';
@@ -758,11 +758,10 @@ async function handleAction(action, payload) {
       break;
     }
     case 'applyTemplate': {
-      // Gör om påbörjat dokument: sidhuvud ('# Titel:' + genererad datum/tid)
-      // ovanför befintlig text; caret hamnar direkt efter 'Titel:'. Idempotent:
-      // ett dokument som redan börjar med '# Titel:' lämnas orörd.
+      // Put the template header ("# Title:" and the date/time) above the text already written; the
+      // cursor lands right after "Title:". A document that already has a header is left alone.
       const mtpl = TEMPLATES.find((x) => x.id === payload);
-      if (mtpl && mtpl.header && !active.readOnly && !view.state.doc.toString().startsWith('# Titel:')) {
+      if (mtpl && mtpl.header && !active.readOnly && !hasTemplateHeader(view.state.doc.toString())) {
         const head = mtpl.header(t);
         view.dispatch({ changes: { from: 0, insert: head }, selection: { anchor: head.indexOf('\n') } });
         view.focus();

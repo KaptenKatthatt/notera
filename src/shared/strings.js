@@ -171,8 +171,8 @@ for (let n = 1; n <= 9; n++) {
   sv.menu[`goToTab${n}`] = `Gå till flik ${n}`;
 }
 
-en.templates = { standupTitle: 'Standup', doneLast: 'Done since last', blockers: 'Blockers', nextUp: 'To do for next meeting' };
-sv.templates = { standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 'Blockers', nextUp: 'Göra till nästa möte' };
+en.templates = { titleLabel: 'Title', standupTitle: 'Standup', doneLast: 'Done since last', blockers: 'Blockers', nextUp: 'To do for next meeting' };
+sv.templates = { titleLabel: 'Titel', standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 'Blockers', nextUp: 'Göra till nästa möte' };
 
 Object.assign(en.menu, {
   newNote: 'New note', newNoteInProject: 'New note in project', newProject: 'New project…', toggleSidebar: 'Sidebar',
