@@ -5,6 +5,10 @@
 // tree it returns and asks for changes. Everything that concerns open tabs (moving them along
 // with their files, opening, creating) goes through the ctx callbacks from app.js.
 
+const SEARCH_DELAY_MS = 120;       // search runs this long after the last keystroke
+const TOAST_MS = 3000;             // how long a plain toast stays
+const TOAST_WITH_UNDO_MS = 6000;   // a toast with an Undo button stays longer, to give time to click it
+
 const ICONS = {
   sidebar: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/><path d="M3 5h1.6M3 7h1.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
   search: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
@@ -272,7 +276,7 @@ export function createSidebar(ctx) {
   input.addEventListener('input', () => {
     clearTimeout(searchTimer);
     if (!input.value.trim()) { results = null; render(); return; }
-    searchTimer = setTimeout(async () => { await ctx.flush(); await runSearch(input.value); render(); }, 120);
+    searchTimer = setTimeout(async () => { await ctx.flush(); await runSearch(input.value); render(); }, SEARCH_DELAY_MS);
   });
   input.addEventListener('keydown', async (e) => {
     if (e.key === 'Escape') { input.value = ''; results = null; render(); ctx.focusEditor(); }
@@ -387,6 +391,7 @@ export function createSidebar(ctx) {
 
   /** "Move to" targets: Unsorted, every project except the current one, and "New project…". */
   function moveTargets(currentFolder, onPick) {
+    /** @type {Array<{ label?: string, icon?: string, act?: () => any, sep?: boolean }>} */
     const items = activeFolders()
       .filter((f) => f !== currentFolder)
       .map((f) => ({ label: folderLabel(f), icon: f === inboxName() ? ICONS.inbox : ICONS.folder, act: () => onPick(f) }));
@@ -570,7 +575,7 @@ export function createSidebar(ctx) {
     clearMarks();
     drag.target = null;
     const el = document.elementFromPoint(x, y);
-    const row = el && el.closest('#sb-list [data-drop]');
+    const row = /** @type {HTMLElement | null} */ (el && el.closest('#sb-list [data-drop]'));
     if (!row) return;
     const r = row.getBoundingClientRect();
     const after = y > r.top + r.height / 2;
@@ -584,7 +589,7 @@ export function createSidebar(ctx) {
         row.classList.add('drop-into');
       }
     } else {
-      let pr = row.dataset.drop === 'proj' ? row : list.querySelector(`.sb-proj[data-folder="${CSS.escape(row.dataset.folder || '')}"]`);
+      const pr = row.dataset.drop === 'proj' ? row : list.querySelector(`.sb-proj[data-folder="${CSS.escape(row.dataset.folder || '')}"]`);
       if (!pr || pr.dataset.folder === inboxName() || pr.dataset.folder === drag.folder) return;
       const aft = pr === row ? after : true;
       drag.target = { type: 'proj', folder: pr.dataset.folder, after: aft };
@@ -665,7 +670,7 @@ export function createSidebar(ctx) {
     toastEl.querySelector('.msg').textContent = msg;
     toastEl.hidden = false;
     if (undo) toastEl.querySelector('button').onclick = () => { hideToast(); void undo(); };
-    toastTimer = setTimeout(hideToast, undo ? 6000 : 3000);
+    toastTimer = setTimeout(hideToast, undo ? TOAST_WITH_UNDO_MS : TOAST_MS);
   }
   function hideToast() { toastEl.hidden = true; }
 

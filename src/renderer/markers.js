@@ -9,6 +9,7 @@ const hidden = Decoration.replace({});
 const HIDDEN_NODES = new Set(['EmphasisMark', 'CodeMark', 'StrikethroughMark', 'LinkMark', 'URL']);
 
 function build(view) {
+  /** @type {RangeSetBuilder<Decoration>} */
   const builder = new RangeSetBuilder();
   const { doc, selection } = view.state;
   const reveal = selection.ranges.map((r) => [doc.lineAt(r.from).from, doc.lineAt(r.to).to]);

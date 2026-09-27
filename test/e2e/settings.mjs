@@ -30,7 +30,6 @@ const reset = (text, pos) => win.evaluate(([t, p]) => {
 const row = (id) => win.locator(`.kb-row[data-id="${id}"]`);
 const chips = (id) => row(id).locator('kbd').allTextContents();
 const menuAccel = (id) => app.evaluate(({ Menu }, id) => {
-  const find = (items) => { for (const i of items) { if (i.click && i.id === id) return i; if (i.submenu) { const r = find(i.submenu.items); if (r) return r; } } return null; };
   const labels = [];
   const walk = (items) => { for (const i of items) { labels.push([i.label, i.accelerator]); if (i.submenu) walk(i.submenu.items); } };
   walk(Menu.getApplicationMenu().items);
@@ -78,7 +77,8 @@ await win.keyboard.press('Control+N');
 const lonely = await lonelyP;
 await lonely.waitForFunction(() => window.__notera && window.__notera.tabs.length === 1);
 const lonelyClosed = lonely.waitForEvent('close');
-await lonely.keyboard.press('Control+W');
+// The window closes before the key is released, so the press itself reports a closed page.
+await lonely.keyboard.press('Control+W').catch(() => {});
 await lonelyClosed;
 assert.equal(app.windows().length, 1);
 ok('Ctrl+W på fönstrets enda flik stänger fönstret');
@@ -101,7 +101,7 @@ await w2.waitForFunction(() => window.__notera && window.__notera.tabs.length ==
 await w2.keyboard.press('Control+T');
 await w2.waitForFunction(() => window.__notera.tabs.length === 2);
 const closedP = w2.waitForEvent('close');
-await w2.keyboard.press('Control+W');
+await w2.keyboard.press('Control+W').catch(() => {});
 await closedP;
 assert.equal(app.windows().length, 1);
 ok('Ctrl+W stänger hela fönstret med alla flikar');

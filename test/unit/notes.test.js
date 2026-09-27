@@ -290,3 +290,51 @@ test('a reorder does not drag a note back after it moved elsewhere', async () =>
   assert.deepEqual(ls('B'), [path.basename(x.path)]);
   assert.deepEqual(ls('A'), [path.basename(y.path)]);
 });
+
+test('folder names from the renderer cannot leave the notes folder', async () => {
+  const { store, trashed, tmp, root } = setup();
+  await store.tree();
+  await store.createProject('P');
+  fs.mkdirSync(path.join(tmp, 'outside'));
+  const n = await store.createNote('P');
+  for (const bad of ['..', '../outside', 'P/../..', 'C:\\Windows', '', '.', null, 42]) {
+    await assert.rejects(store.createNote(bad), /Invalid folder name|No such project/, `createNote ${bad}`);
+    await assert.rejects(store.moveNote(n.path, bad), /Invalid folder name|No such project/, `moveNote ${bad}`);
+    await assert.rejects(store.archiveProject(bad), /Invalid folder name|No such project/, `archiveProject ${bad}`);
+    await assert.rejects(store.restoreProject(bad), /Invalid folder name|No archived project/, `restoreProject ${bad}`);
+    await assert.rejects(store.deleteProject(bad), /Invalid folder name|No such project/, `deleteProject ${bad}`);
+    await assert.rejects(store.deleteProject(bad, { archived: true }), /Invalid folder name|No such project/, `deleteProject archived ${bad}`);
+  }
+  // The inbox and the archive are folders in the notes folder but not projects.
+  await assert.rejects(store.deleteProject('Arkiv'), /No such project/);
+  await assert.rejects(store.archiveProject('Osorterat'), /No such project/);
+  await assert.rejects(store.renameProject('Arkiv', 'X'), /No such project/);
+  await assert.rejects(store.createNote('Arkiv'), /Not a project/);
+  await assert.rejects(store.moveNote(n.path, 'Arkiv'), /Not a project/);
+  assert.deepEqual(trashed, []);
+  assert.ok(fs.existsSync(path.join(tmp, 'outside')));
+  assert.ok(fs.existsSync(path.join(root, 'Arkiv')));
+});
+
+test('a broken index cannot point the inbox or archive outside the notes folder', async () => {
+  const { store, root } = setup();
+  await store.tree();
+  fs.writeFileSync(path.join(root, '.notera.json'), JSON.stringify({ inbox: '../x', archive: '..' }));
+  const t = await store.tree();
+  assert.equal(t.inboxName, 'Osorterat');
+  assert.equal(t.archiveName, 'Arkiv');
+});
+
+test('titles and search follow edits made outside Notera', async () => {
+  const { store } = setup();
+  await store.createProject('P');
+  const n = await store.createNote('P', { text: '# First\n\nalpha\n' });
+  assert.equal((await store.tree()).projects[0].notes[0].title, 'First');
+  assert.equal((await store.search('alpha')).length, 1);
+  fs.writeFileSync(n.path, '# Second title\n\nbeta gamma\n');
+  const later = new Date(Date.now() + 5000);
+  fs.utimesSync(n.path, later, later);
+  assert.equal((await store.tree()).projects[0].notes[0].title, 'Second title');
+  assert.equal((await store.search('alpha')).length, 0);
+  assert.equal((await store.search('gamma')).length, 1);
+});

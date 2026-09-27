@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { writeFileAtomicSync } = require('./atomicWrite');
 
 const DEFAULTS = {
   fontFamily: 'iA Writer Mono S',
@@ -50,7 +51,7 @@ class Settings {
   save() {
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.writeFileSync(this.file, JSON.stringify(this.data, null, 2), 'utf8');
+      writeFileAtomicSync(this.file, JSON.stringify(this.data, null, 2));
     } catch (e) { console.error('settings save failed', e); }
   }
   addRecent(file) {

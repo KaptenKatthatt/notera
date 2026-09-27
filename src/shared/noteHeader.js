@@ -54,6 +54,9 @@ function titleOf(text) {
  * Rewrite the project in the header line, keeping its labels and creation time. A text without a
  * header line gets one: after the first line when that is a heading, otherwise under a new heading
  * made from fallbackTitle.
+ * @param {string} text
+ * @param {string} project
+ * @param {{ locale?: string, created?: string, fallbackTitle?: string }} [opts]
  */
 function setProject(text, project, { locale = 'en', created, fallbackTitle = '' } = {}) {
   const lines = String(text).split('\n');
@@ -73,6 +76,7 @@ function setProject(text, project, { locale = 'en', created, fallbackTitle = '' 
 
 /** A title made safe as a Windows file name: no reserved characters, no trailing dots/spaces. */
 function sanitizeFileName(title) {
+  // eslint-disable-next-line no-control-regex -- control characters are not allowed in file names
   let s = String(title).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim();
   s = s.slice(0, 80).replace(/[. ]+$/, '');
   if (WINDOWS_RESERVED.test(s)) s = `_${s}`;
@@ -97,6 +101,7 @@ function datePrefixFor(fileName, text, now = new Date()) {
 function projectNameError(name, { taken = [], reserved = [] } = {}) {
   const n = String(name || '').trim();
   if (!n) return 'notes.nameEmpty';
+  // eslint-disable-next-line no-control-regex -- control characters are not allowed in folder names
   if (/[<>:"/\\|?*\u0000-\u001f]/.test(n) || /[. ]$/.test(n) || n.startsWith('.') || WINDOWS_RESERVED.test(n)) return 'notes.nameInvalid';
   const low = n.toLowerCase();
   if (reserved.some((r) => r.toLowerCase() === low)) return 'notes.nameReserved';

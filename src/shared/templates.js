@@ -20,7 +20,7 @@ const TEMPLATES = [
     menu: 'menu.standup',
     text: (t) => `# ${t('templates.standupTitle')} ${today()}\n\n## ${t('templates.doneLast')}\n\n\n## ${t('templates.blockers')}\n\n\n## ${t('templates.nextUp')}\n`,
     // sidhuvud for 'applicera pa paborjat dokument': '# Titel:' + genererad datum/tid
-    header: (t) => `# Titel:\n${now()}\n\n`
+    header: (_t) => `# Titel:\n${now()}\n\n`
   }
 ];
 
