@@ -5,11 +5,14 @@ import { lineCommands } from './lines.js';
 import { createKeyDispatcher } from './keybindings.js';
 import { createSettingsDialog } from './settingsDialog.js';
 import { attachTabDrag } from './tabdrag.js';
-import { COMMANDS, CATEGORIES, display } from '../shared/commands.js';
+import { display } from '../shared/commands.js';
 import { TEMPLATES } from '../shared/templates.js';
-import { renderMarkdown, countWords } from './markdown.js';
-import { bindTaskCheckboxes } from './previewTasks.js';
+import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
+import { createPreview } from './preview.js';
+import { createDialogs } from './dialogs.js';
+import { createPopups } from './popups.js';
+import { createUpdateToast } from './updateToast.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
 import { openSearchPanel, findNext, findPrevious, gotoLine } from '@codemirror/search';
 
@@ -27,6 +30,8 @@ let view;
 let isDark = false;
 const platformEol = api.platform === 'win32' ? 'CRLF' : 'LF';
 const ENCODINGS = ['utf8', 'utf8bom', 'utf16le', 'utf16be', 'ansi'];
+const AUTOSAVE_DELAY_MS = 800;   // a named file is written this long after the last keystroke
+const DRAFT_DELAY_MS = 1000;     // an untitled tab's draft is written this long after the last keystroke
 
 // ---------- helpers ----------
 function editorOpts(tab) {
@@ -60,7 +65,7 @@ function runFormat(action, v = view) {
     case 'codeBlock': return fmt.toggleCodeBlock(v);
     case 'horizontalRule': fmt.insertBlock(v, '---'); return true;
     case 'table': fmt.insertBlock(v, fmt.TABLE_TEMPLATE); return true;
-    case 'link': void insertLinkSmart(); return true;
+    case 'link': void dialogs.insertLinkSmart(); return true;
     default: return false;
   }
 }
@@ -137,7 +142,7 @@ function activateTab(tab) {
   applyKindUi();
   updateStatus();
   updateTitle();
-  schedulePreview(0);
+  preview.schedule(0);
   renderNotesBanner();
   if (sidebar) sidebar.render();
   view.focus();
@@ -194,19 +199,34 @@ attachTabDrag($('#tabbar'), {
   onDetach: (tabId) => void detachTabToWindow(tabs.find((tb) => String(tb.id) === String(tabId)))
 });
 
+const preview = createPreview({ getView: () => view, getActive: () => active, t: () => t });
+const popups = createPopups({ focusEditor: () => { if (view) view.focus(); } });
+const updates = createUpdateToast({ api, t: () => t });
+const dialogs = createDialogs({
+  api, t: () => t, getView: () => view, getSettings: () => settings, getKeys: () => keys, getSidebar: () => sidebar,
+  settingsDialogOpen: () => !!settingsDialog && settingsDialog.isOpen()
+});
+
 function newTab(init) {
   const tab = makeTab(init);
   activateTab(tab);
   return tab;
 }
 
+/**
+ * Ask what to do with a tab's unsaved changes, showing the tab first. True when the tab may go
+ * (saved, or the user chose not to save); false when the user cancelled or the save failed.
+ */
+async function resolveUnsaved(tab) {
+  activateTab(tab);
+  const answer = await api.confirmUnsaved(tabTitle(tab));
+  if (answer === 'cancel') return false;
+  if (answer === 'save') return saveTab(tab);
+  return true;
+}
+
 async function closeTab(tab) {
-  if (tab.dirty) {
-    activateTab(tab);
-    const answer = await api.confirmUnsaved(tabTitle(tab));
-    if (answer === 'cancel') return false;
-    if (answer === 'save') { const ok = await saveTab(tab); if (!ok) return false; }
-  }
+  if (tab.dirty && !(await resolveUnsaved(tab))) return false;
   clearTimeout(tab.autosaveTimer);
   await dropDraft(tab);
   // A new note closed before anything was written leaves no empty file behind.
@@ -235,12 +255,7 @@ function cycleTab(delta) {
 async function detachTabToWindow(tab) {
   if (!tab) return;
   if (tab === active) { tab.state = view.state; void flushPending(tab); }
-  if (tab.dirty && tab.path) {
-    activateTab(tab);
-    const answer = await api.confirmUnsaved(tabTitle(tab));
-    if (answer === 'cancel') return;
-    if (answer === 'save' && !(await saveTab(tab))) return;
-  }
+  if (tab.dirty && tab.path && !(await resolveUnsaved(tab))) return;
   if (!tab.path) { await flushPending(tab); await writeDraft(tab); }
   api.detachTab({ path: tab.path || null, draftId: tab.draftId || null });
   clearTimeout(tab.autosaveTimer); tab.autosaveTimer = null;
@@ -275,9 +290,24 @@ async function openDialog() {
 
 function docFor(tab) { return tab === active ? view.state.doc : tab.state.doc; }
 
+/**
+ * Run a tab's disk writes (file, draft, draft removal) one at a time, in the order they were asked
+ * for. Switching tabs starts a save without waiting for it, so without this a later autosave could
+ * land before an earlier one, or a draft write could land after the draft was removed.
+ */
+function serial(tab, fn) {
+  const next = (tab.diskQueue || Promise.resolve()).then(fn);
+  tab.diskQueue = next.catch(() => false);
+  return next;
+}
+
 /** Write a tab that already has a path, without touching which tab is active. */
-async function writeTab(tab) {
+function writeTab(tab) {
   clearTimeout(tab.autosaveTimer); tab.autosaveTimer = null;
+  return serial(tab, () => writeTabNow(tab));
+}
+
+async function writeTabNow(tab) {
   const doc = docFor(tab);
   const r = await api.writeFile({ path: tab.path, text: doc.toString(), encoding: tab.encoding, eol: tab.eol });
   if (!r.ok) { await api.showError({ kind: 'write', name: r.name, detail: r.error }); return false; }
@@ -297,16 +327,24 @@ async function saveTab(tab, forceAs = false) {
   const target = await api.saveAsDialog({ currentPath: tab.path, suggestedName: suggestedName(tab), kind: tab.kind });
   document.body.style.cursor = '';
   if (!target) return false;
-  const text = view.state.doc.toString();
-  const r = await api.writeFile({ path: target, text, encoding: tab.encoding, eol: tab.eol });
+  clearTimeout(tab.autosaveTimer); tab.autosaveTimer = null;
+  return serial(tab, () => saveTabAsNow(tab, target));
+}
+
+async function saveTabAsNow(tab, target) {
+  const doc = docFor(tab);
+  const r = await api.writeFile({ path: target, text: doc.toString(), encoding: tab.encoding, eol: tab.eol });
   if (!r.ok) { await api.showError({ kind: 'write', name: r.name, detail: r.error }); return false; }
   const kindChanged = r.kind !== tab.kind;
   tab.path = r.path; tab.name = r.name; tab.kind = r.kind; tab.mtimeMs = r.mtimeMs;
-  tab.savedDoc = view.state.doc;
-  tab.dirty = false;
+  tab.savedDoc = doc;
+  tab.dirty = !docFor(tab).eq(doc);
   tab.lastSavedAt = Date.now();
-  void dropDraft(tab);
-  if (kindChanged) { view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) }); applyKindUi(); }
+  await deleteDraftNow(tab);
+  if (kindChanged) {
+    if (tab === active) { view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) }); applyKindUi(); }
+    else tab.state = tab.state.update({ effects: reconfigureEffects(editorOpts(tab)) }).state;
+  }
   renderTabs(); updateTitle(); updateStatus();
   return true;
 }
@@ -316,32 +354,43 @@ function scheduleAutosave(tab) {
   if (tab.path) {
     if (settings.autosave === false) return;
     clearTimeout(tab.autosaveTimer);
-    tab.autosaveTimer = setTimeout(() => { if (tab.dirty) void writeTab(tab); }, 800);
+    tab.autosaveTimer = setTimeout(() => { if (tab.dirty) void writeTab(tab); }, AUTOSAVE_DELAY_MS);
   } else {
     clearTimeout(tab.draftTimer);
-    tab.draftTimer = setTimeout(() => void writeDraft(tab), 1000);
+    tab.draftTimer = setTimeout(() => void writeDraft(tab), DRAFT_DELAY_MS);
   }
 }
 
-async function writeDraft(tab) {
-  const text = docFor(tab).toString();
-  if (!text.trim()) { await dropDraft(tab); return; }
-  if (!tab.draftId) tab.draftId = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  await api.writeDraft({ id: tab.draftId, text, kind: tab.kind });
+function writeDraft(tab) {
+  clearTimeout(tab.draftTimer); tab.draftTimer = null;
+  return serial(tab, async () => {
+    const text = docFor(tab).toString();
+    if (!text.trim()) { await deleteDraftNow(tab); return; }
+    if (!tab.draftId) tab.draftId = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    await api.writeDraft({ id: tab.draftId, text, kind: tab.kind });
+  });
 }
 
-async function dropDraft(tab) {
+function dropDraft(tab) {
   clearTimeout(tab.draftTimer); tab.draftTimer = null;
+  return serial(tab, () => deleteDraftNow(tab));
+}
+
+async function deleteDraftNow(tab) {
   if (!tab.draftId) return;
   const id = tab.draftId; tab.draftId = null;
   await api.deleteDraft(id);
 }
 
-/** Write what a pending autosave or draft timer would write. False when the save failed. */
+/**
+ * Write what a pending autosave or draft timer would write, and wait for writes already under
+ * way. False when a save failed. Afterwards the file on disk holds the tab's text, so it is safe
+ * to rename or move it.
+ */
 async function flushPending(tab) {
   if (tab.autosaveTimer && tab.path && tab.dirty && !(await writeTab(tab))) return false;
   if (tab.draftTimer && !tab.path) await writeDraft(tab);
-  return true;
+  return (await tab.diskQueue) !== false;
 }
 
 async function restoreDrafts() {
@@ -379,13 +428,7 @@ async function checkExternalChange() {
 
 async function requestClose() {
   for (const tab of [...tabs]) await flushPending(tab);
-  for (const tab of [...tabs]) {
-    if (!tab.dirty) continue;
-    activateTab(tab);
-    const answer = await api.confirmUnsaved(tabTitle(tab));
-    if (answer === 'cancel') return;
-    if (answer === 'save') { const ok = await saveTab(tab); if (!ok) return; }
-  }
+  for (const tab of [...tabs]) if (tab.dirty && !(await resolveUnsaved(tab))) return;
   api.closeConfirmed();
 }
 
@@ -573,26 +616,6 @@ async function chooseNotesRoot() {
   sidebar.toast(t('notes.folderChosen', { inbox: t('notes.inbox') }));
 }
 
-/** Ask for a new project name and create it. Resolves to the name, or null. */
-async function promptProjectName() {
-  const dlg = $('#dlg-project');
-  const input = $('#project-name');
-  const err = $('#project-error');
-  input.value = '';
-  err.textContent = '';
-  for (;;) {
-    dlg.returnValue = '';
-    dlg.showModal();
-    input.focus();
-    await new Promise((res) => dlg.addEventListener('close', res, { once: true }));
-    if (dlg.returnValue !== 'ok') { view.focus(); return null; }
-    const name = input.value.trim();
-    const e = await sidebar.createProject(name);
-    if (!e) { view.focus(); return name; }
-    err.textContent = e;
-  }
-}
-
 function renderNotesBanner() {
   const el = $('#notes-banner');
   if (!el) return;
@@ -649,33 +672,6 @@ function applyKindUi() {
   for (const b of $$('#view-mode button')) b.classList.toggle('active', b.dataset.mode === mode);
 }
 
-// ---------- preview ----------
-let previewTimer = null;
-function schedulePreview(delay = 150) {
-  clearTimeout(previewTimer);
-  previewTimer = setTimeout(renderPreview, delay);
-}
-function renderPreview() {
-  if (!active) return;
-  const mode = $('#main').dataset.view;
-  if (mode === 'editor' || active.kind !== 'md') return;
-  const text = view.state.doc.toString();
-  const el = $('#preview');
-  if (!text.trim()) { el.classList.add('empty'); el.textContent = t('ui.emptyPreview'); return; }
-  el.classList.remove('empty');
-  el.innerHTML = renderMarkdown(text);
-  bindTaskCheckboxes(el, view);
-}
-function syncPreviewScroll() {
-  const pane = $('#preview-pane');
-  if ($('#main').dataset.view !== 'split') return;
-  const sc = view.scrollDOM;
-  const max = sc.scrollHeight - sc.clientHeight;
-  if (max <= 0) return;
-  const ratio = sc.scrollTop / max;
-  pane.scrollTop = ratio * (pane.scrollHeight - pane.clientHeight);
-}
-
 // ---------- settings application ----------
 function applySettings(next, prev = {}) {
   settings = next;
@@ -702,8 +698,8 @@ function applySettings(next, prev = {}) {
     updateStatus();
     updateTitle();
     renderTabs();
-    schedulePreview(0);
-    renderUpdate();
+    preview.schedule(0);
+    updates.render();
     if (settingsDialog) settingsDialog.refresh();
     if (sidebar && prev.notesRoot !== settings.notesRoot) void sidebar.refresh();
     renderNotesBanner();
@@ -731,130 +727,11 @@ function setZoom(z) {
   void api.setSettings({ zoom });
 }
 
-// ---------- popup menus (status bar) ----------
-function showPopup(anchor, items) {
-  const menu = $('#popup-menu');
-  menu.innerHTML = '';
-  for (const it of items) {
-    const b = document.createElement('button');
-    b.textContent = it.label;
-    b.classList.toggle('checked', !!it.checked);
-    b.addEventListener('click', () => { hidePopup(); it.onClick(); });
-    menu.appendChild(b);
-  }
-  menu.hidden = false;
-  const r = anchor.getBoundingClientRect();
-  menu.style.left = `${Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)}px`;
-  menu.style.top = `${r.top - menu.offsetHeight - 4}px`;
-  setTimeout(() => document.addEventListener('mousedown', onDocMouseDown), 0);
-}
-function hidePopup() {
-  const menu = $('#popup-menu');
-  const wasOpen = !menu.hidden;
-  menu.hidden = true;
-  document.removeEventListener('mousedown', onDocMouseDown);
-  closeToolbarPopups();
-  if (wasOpen && view) view.focus();
-}
-function onDocMouseDown(e) { if (!$('#popup-menu').contains(e.target) && !e.target.closest('.tb-popup')) hidePopup(); }
-function closeToolbarPopups() {
-  for (const p of $$('.tb-popup')) p.classList.remove('open');
-  for (const b of $$('.tb-drop')) b.setAttribute('aria-expanded', 'false');
-}
-
-// ---------- dialogs ----------
-async function openFontDialog() {
-  const dlg = $('#dlg-font');
-  const sel = $('#font-family');
-  const size = $('#font-size');
-  const preview = $('#font-preview');
-  let families = ['Consolas', 'Cascadia Mono', 'Cascadia Code', 'Courier New', 'Lucida Console', 'Segoe UI', 'Calibri', 'Arial', 'Times New Roman', 'Georgia', 'Verdana'];
-  try {
-    if (window.queryLocalFonts) {
-      const fonts = await window.queryLocalFonts();
-      const set = new Set(fonts.map((f) => f.family));
-      if (set.size) families = Array.from(set).sort((a, b) => a.localeCompare(b));
-    }
-  } catch { /* permission denied or unsupported: keep fallback list */ }
-  if (!families.includes(settings.fontFamily)) families.unshift(settings.fontFamily);
-  sel.innerHTML = '';
-  for (const f of families) { const o = document.createElement('option'); o.value = f; o.textContent = f; o.style.fontFamily = `"${f}"`; sel.appendChild(o); }
-  sel.value = settings.fontFamily;
-  size.value = settings.fontSize;
-  const updatePreview = () => { preview.style.fontFamily = `"${sel.value}"`; preview.style.fontSize = `${size.value}px`; };
-  sel.oninput = updatePreview; size.oninput = updatePreview; updatePreview();
-  dlg.returnValue = '';
-  dlg.showModal();
-  await new Promise((res) => dlg.addEventListener('close', res, { once: true }));
-  if (dlg.returnValue === 'ok') {
-    const fontSize = Math.max(6, Math.min(72, parseInt(size.value, 10) || 15));
-    await api.setSettings({ fontFamily: sel.value, fontSize });
-  }
-  if (!settingsDialog || !settingsDialog.isOpen()) view.focus();
-}
-
-async function insertLinkSmart() {
-  const clip = ((await api.clipboardText()) || '').trim();
-  const range = view.state.selection.main;
-  const selected = view.state.doc.sliceString(range.from, range.to).trim();
-  if (/^https?:\/\/\S+$/i.test(clip) && selected) { fmt.insertLink(view, selected, clip); return; }
-  await openLinkDialog(/^https?:\/\/\S+$/i.test(clip) ? clip : '');
-}
-
-async function openLinkDialog(prefillUrl = '') {
-  const dlg = $('#dlg-link');
-  const text = $('#link-text'), url = $('#link-url');
-  const range = view.state.selection.main;
-  const selected = view.state.doc.sliceString(range.from, range.to);
-  if (/^https?:\/\//i.test(selected)) { text.value = ''; url.value = selected; } else { text.value = selected; url.value = prefillUrl; }
-  dlg.returnValue = '';
-  dlg.showModal();
-  (text.value ? url : text).focus();
-  await new Promise((res) => dlg.addEventListener('close', res, { once: true }));
-  if (dlg.returnValue === 'ok' && url.value.trim()) fmt.insertLink(view, text.value.trim(), url.value.trim());
-  view.focus();
-}
-
 function insertTimeDate() {
   const now = new Date();
   const time = now.toLocaleTimeString(locale === 'sv' ? 'sv-SE' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   const date = now.toLocaleDateString(locale === 'sv' ? 'sv-SE' : 'en-US');
   fmt.insertAtCursor(view, `${time} ${date}`);
-}
-
-function printCurrent() {
-  if (!active) return;
-  const area = $('#print-area');
-  const text = view.state.doc.toString();
-  if (active.kind === 'md') { area.className = 'preview'; area.innerHTML = renderMarkdown(text); }
-  else { area.className = ''; area.innerHTML = ''; const pre = document.createElement('pre'); pre.textContent = text; area.appendChild(pre); }
-  window.print();
-}
-
-// The shortcut reference is generated from the live bindings, so it shows the user's own keys.
-function openShortcutsDialog() {
-  const tables = [$('#keys-table'), $('#keys-table-2')];
-  tables.forEach((tb) => { tb.innerHTML = ''; });
-  const bindings = keys.bindings();
-  const rows = [];
-  for (const cat of CATEGORIES) {
-    for (const c of COMMANDS.filter((x) => x.cat === cat && bindings[x.id].length)) {
-      if (/^goToTab[2-9]$/.test(c.id)) continue;
-      if (c.id === 'goToTab1') { rows.push([`${display(bindings.goToTab1[0])} … ${display((bindings.goToTab9 || [])[0] || '')}`, t('menu.goToTab')]); continue; }
-      rows.push([bindings[c.id].slice(0, 2).map(display).join(' / '), t(c.label).replace('&', '').replace(/…$/, '')]);
-    }
-  }
-  rows.push(['Ctrl+X / Ctrl+C', t('menu.cutCopyLine')]);
-  const half = Math.ceil(rows.length / 2);
-  rows.forEach(([k, label], i) => {
-    const tr = document.createElement('tr');
-    const a = document.createElement('td'); a.textContent = k;
-    const b = document.createElement('td'); b.textContent = label;
-    tr.append(a, b); tables[i < half ? 0 : 1].appendChild(tr);
-  });
-  const dlg = $('#dlg-keys');
-  dlg.showModal();
-  dlg.addEventListener('close', () => view.focus(), { once: true });
 }
 
 function ensureEditorVisible() {
@@ -869,7 +746,7 @@ async function handleAction(action, payload) {
     case 'newProject':
       if (!settings.notesRoot) await chooseNotesRoot();
       else if (settings.sidebarOpen && !settings.writingMode) sidebar.startNewProject();
-      else await promptProjectName();
+      else await dialogs.projectName();
       break;
     case 'archiveNote': { const info = noteInfo(active); if (info && !info.archived) await sidebar.archiveNote(active.path); break; }
     case 'chooseNotesFolder': await chooseNotesRoot(); break;
@@ -889,7 +766,7 @@ async function handleAction(action, payload) {
         const head = mtpl.header(t);
         view.dispatch({ changes: { from: 0, insert: head }, selection: { anchor: head.indexOf('\n') } });
         view.focus();
-        schedulePreview(0);
+        preview.schedule(0);
       }
       break;
     }
@@ -903,7 +780,7 @@ async function handleAction(action, payload) {
       if (tabs.length === 1) await api.closeWindow();
       else await closeTab(active);
       break;
-    case 'print': printCurrent(); break;
+    case 'print': preview.print(); break;
     case 'undo': undo(view); view.focus(); break;
     case 'redo': redo(view); view.focus(); break;
     case 'delete': deleteCharForward(view); view.focus(); break;
@@ -919,14 +796,14 @@ async function handleAction(action, payload) {
     }
     case 'goTo': ensureEditorVisible(); gotoLine(view); break;
     case 'timeDate': if (!active.readOnly) insertTimeDate(); break;
-    case 'font': await openFontDialog(); break;
+    case 'font': await dialogs.font(); break;
     case 'zoomIn': setZoom((settings.zoom || 100) + 10); break;
     case 'zoomOut': setZoom((settings.zoom || 100) - 10); break;
     case 'zoomReset': setZoom(100); break;
     case 'nextTab': cycleTab(1); break;
     case 'writingMode': await api.setSettings({ writingMode: !settings.writingMode }); break;
     case 'fullscreen': await api.toggleFullscreen(); break;
-    case 'shortcuts': openShortcutsDialog(); break;
+    case 'shortcuts': dialogs.shortcuts(); break;
     case 'moveLineUp': case 'moveLineDown': case 'copyLineUp': case 'copyLineDown': case 'deleteLine': case 'selectLine':
     case 'insertLineBelow': case 'insertLineAbove': case 'selectNextOccurrence': case 'selectAllOccurrences':
     case 'addCursorAbove': case 'addCursorBelow': case 'indentLine': case 'outdentLine':
@@ -976,37 +853,29 @@ function bindUi() {
   });
   for (const b of $$('#toolbar [data-action]')) {
     b.addEventListener('mousedown', (e) => e.preventDefault()); // keep editor focus
-    b.addEventListener('click', () => { hidePopup(); runFormat(b.dataset.action); });
+    b.addEventListener('click', () => { popups.hide(); runFormat(b.dataset.action); });
   }
   for (const b of $$('.tb-drop')) {
     b.addEventListener('mousedown', (e) => e.preventDefault());
-    b.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const popup = b.parentElement.querySelector('.tb-popup');
-      const open = popup.classList.contains('open');
-      hidePopup();
-      if (!open) { popup.classList.add('open'); b.setAttribute('aria-expanded', 'true'); setTimeout(() => document.addEventListener('mousedown', onDocMouseDown), 0); }
-    });
+    b.addEventListener('click', (e) => { e.stopPropagation(); popups.toggleToolbarPopup(b); });
   }
   for (const b of $$('#view-mode button')) b.addEventListener('click', () => api.setSettings({ viewMode: b.dataset.mode }));
   for (const b of $$('#footer [data-action]')) b.addEventListener('click', () => void handleAction(b.dataset.action));
 
   $('#st-zoom').addEventListener('click', () => setZoom(100));
-  $('#st-eol').addEventListener('click', (e) => showPopup(e.currentTarget, [
+  $('#st-eol').addEventListener('click', (e) => popups.show(e.currentTarget, [
     { label: t('ui.crlf'), checked: active.eol === 'CRLF', onClick: () => { active.eol = 'CRLF'; markDirty(); } },
     { label: t('ui.lf'), checked: active.eol === 'LF', onClick: () => { active.eol = 'LF'; markDirty(); } }
   ]));
-  $('#st-enc').addEventListener('click', (e) => showPopup(e.currentTarget, ENCODINGS.map((enc) => ({
+  $('#st-enc').addEventListener('click', (e) => popups.show(e.currentTarget, ENCODINGS.map((enc) => ({
     label: encodingLabel(enc), checked: active.encoding === enc, onClick: () => { active.encoding = enc; markDirty(); }
   }))));
   $('#st-kind').addEventListener('click', () => {
     active.kind = active.kind === 'md' ? 'txt' : 'md';
     view.dispatch({ effects: reconfigureEffects(editorOpts(active)) });
-    applyKindUi(); updateStatus(); schedulePreview(0);
+    applyKindUi(); updateStatus(); preview.schedule(0);
     view.focus();
   });
-
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') hidePopup(); });
 
   // Ctrl+wheel zoom like Notepad.
   window.addEventListener('wheel', (e) => {
@@ -1049,43 +918,6 @@ function bindUi() {
   api.onSettingsChanged((next) => applySettings(next, settings));
 }
 
-// ---------- updates ----------
-let update = { state: 'idle' };
-let updateHidden = false;
-function renderUpdate() {
-  const box = $('#update-toast');
-  if (!box) return;
-  const st = update.state;
-  const visible = !updateHidden && ['available', 'downloading', 'downloaded', 'error'].includes(st);
-  box.hidden = !visible;
-  if (!visible) return;
-  const go = $('#update-go'), later = $('#update-later'), bar = $('#update-bar');
-  later.textContent = t('update.later');
-  go.hidden = st === 'downloading';
-  later.hidden = st === 'downloading';
-  bar.hidden = st !== 'downloading';
-  bar.firstElementChild.style.width = `${update.percent || 0}%`;
-  box.dataset.state = st;
-  if (st === 'available') { $('#update-text').textContent = t('update.available', { version: update.version }); go.textContent = t('update.download'); }
-  else if (st === 'downloading') { $('#update-text').textContent = t('update.downloading', { version: update.version, percent: update.percent || 0 }); }
-  else if (st === 'downloaded') { $('#update-text').textContent = t('update.ready', { version: update.version }); go.textContent = t('update.restart'); }
-  else if (st === 'error') { $('#update-text').textContent = t('update.downloadError'); go.textContent = t('update.download'); }
-}
-function onUpdateStatus(next) {
-  if (next.state !== update.state) updateHidden = false;
-  update = next;
-  renderUpdate();
-}
-async function onUpdateGo() {
-  if (update.state === 'available' || update.state === 'error') await api.downloadUpdate();
-  else if (update.state === 'downloaded') await api.installUpdate();
-}
-async function onUpdateLater() {
-  if (update.state === 'available') await api.dismissUpdate();
-  updateHidden = true;
-  renderUpdate();
-}
-
 // Before an update restarts the app: save or keep everything. Named files are saved (or the user
 // is asked, when autosave is off); untitled text is kept as a draft and comes back after restart.
 async function prepareQuit(id) {
@@ -1095,11 +927,7 @@ async function prepareQuit(id) {
     for (const tab of [...tabs]) await flushPending(tab);
     for (const tab of [...tabs]) if (!tab.path && tab.dirty) await writeDraft(tab);
     for (const tab of [...tabs]) {
-      if (!tab.path || !tab.dirty) continue;
-      activateTab(tab);
-      const answer = await api.confirmUnsaved(tabTitle(tab));
-      if (answer === 'cancel') { ok = false; break; }
-      if (answer === 'save' && !(await saveTab(tab))) { ok = false; break; }
+      if (tab.path && tab.dirty && !(await resolveUnsaved(tab))) { ok = false; break; }
     }
   } finally {
     api.prepareQuitResult(id, ok);
@@ -1140,7 +968,7 @@ async function boot() {
         const dirty = !v.state.doc.eq(active.savedDoc);
         if (dirty !== active.dirty) { active.dirty = dirty; renderTabs(); updateTitle(); }
         if (dirty) scheduleAutosave(active);
-        schedulePreview();
+        preview.schedule();
         if (trs.some((tr) => tr.docChanged && tr.changes.touchesRange(0, tr.startState.doc.line(1).to))) {
           renderTabs(); updateTitle(); if (sidebar) sidebar.renderTitles();
         }
@@ -1153,9 +981,9 @@ async function boot() {
       }
     }
   });
-  view.scrollDOM.addEventListener('scroll', syncPreviewScroll, { passive: true });
+  view.scrollDOM.addEventListener('scroll', preview.syncScroll, { passive: true });
   settingsDialog = createSettingsDialog({
-    t: (...a) => t(...a), api, getSettings: () => settings, openFontDialog, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
+    t: (...a) => t(...a), api, getSettings: () => settings, openFontDialog: dialogs.font, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
     onClose: () => view.focus()
   });
   sidebar = createSidebar({
@@ -1163,19 +991,16 @@ async function boot() {
     liveTitle: (p) => { const tab = findTab(p); return tab ? lineTitle(tab) : null; },
     activePath: () => (active ? active.path : null),
     flush: flushAll, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
-    promptProjectName, moveTabToProject, closeTab: (tab) => closeTab(tab),
+    promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab),
     focusEditor: () => view.focus(),
     sidebarVisible: () => !!settings.sidebarOpen && !settings.writingMode,
     showSidebar: async () => { if (settings.writingMode) await api.setSettings({ writingMode: false }); if (!settings.sidebarOpen) await api.setSettings({ sidebarOpen: true }); },
     shortcutLabel: (id) => display((keys.bindings()[id] || [])[0] || '')
   });
   bindUi();
-  $('#update-go').addEventListener('click', () => void onUpdateGo());
-  $('#update-later').addEventListener('click', () => void onUpdateLater());
-  api.onUpdateStatus(onUpdateStatus);
   api.onPrepareQuit((id) => void prepareQuit(id));
   applySettings(b.settings, { __locale: b.locale });
-  if (b.update) onUpdateStatus(b.update);
+  if (b.update) updates.onStatus(b.update);
   const restored = b.restoreDrafts ? await restoreDrafts() : 0;
   if (b.filesToOpen.length) { await openPaths(b.filesToOpen); if (!tabs.length) newTab(); }
   else if (b.pendingTab) {
@@ -1189,7 +1014,7 @@ async function boot() {
   await sidebar.refresh();
   sidebar.applyI18n();
   renderNotesBanner();
-  window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, get update() { return update; }, get sidebar() { return sidebar; }, handleAction, openPaths, keys };
+  window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, get update() { return updates.state; }, get sidebar() { return sidebar; }, handleAction, openPaths, keys };
 }
 
 void boot();
