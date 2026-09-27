@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs/promises');
 const { Settings } = require('./settings');
 const files = require('./files');
+const { writeFileAtomic } = require('./atomicWrite');
 const { resolveLocale, makeT } = require('../shared/strings');
 const commands = require('../shared/commands');
 const { createUpdater } = require('./updater');
@@ -228,7 +229,7 @@ ipcMain.handle('file:stat', async (_e, p) => {
 
 ipcMain.handle('file:write', async (_e, { path: p, text, encoding, eol }) => {
   try {
-    await fs.writeFile(p, files.writeBuffer(text, encoding, eol));
+    await writeFileAtomic(p, files.writeBuffer(text, encoding, eol));
     const st = await fs.stat(p);
     settings.addRecent(p);
     buildMenu();
@@ -321,7 +322,7 @@ ipcMain.handle('draft:list', async () => {
 ipcMain.handle('draft:write', async (_e, { id, text, kind }) => {
   if (!/^[\w-]+$/.test(id)) return false;
   await fs.mkdir(draftsDir(), { recursive: true });
-  await fs.writeFile(path.join(draftsDir(), id + '.json'), JSON.stringify({ text, kind, savedAt: Date.now() }), 'utf8');
+  await writeFileAtomic(path.join(draftsDir(), id + '.json'), JSON.stringify({ text, kind, savedAt: Date.now() }));
   return true;
 });
 ipcMain.handle('draft:delete', async (_e, id) => {
