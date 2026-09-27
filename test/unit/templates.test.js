@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { TEMPLATES } = require('../../src/shared/templates');
+const { TEMPLATES, hasTemplateHeader } = require('../../src/shared/templates');
 const { makeT } = require('../../src/shared/strings');
 
 test('standup-mallen: rubrik med datum + tre underrubriker', () => {
@@ -24,8 +24,15 @@ test('standup-mallen på engelska', () => {
   assert.ok(text.includes('## To do for next meeting'));
 });
 
-test('standup-header för applicera-på-dokument: # Titel: + datum/tid', () => {
+test('apply-template header follows the UI language: # Titel: / # Title: + date and time', () => {
   const tpl = TEMPLATES.find((x) => x.id === 'standup');
-  const head = tpl.header(makeT('sv'));
-  assert.match(head, /^# Titel:\n\d{4}-\d{2}-\d{2} \d{2}:\d{2}\n\n$/);
+  assert.match(tpl.header(makeT('sv')), /^# Titel:\n\d{4}-\d{2}-\d{2} \d{2}:\d{2}\n\n$/);
+  assert.match(tpl.header(makeT('en')), /^# Title:\n\d{4}-\d{2}-\d{2} \d{2}:\d{2}\n\n$/);
+});
+
+test('a header in either language counts as already applied', () => {
+  assert.ok(hasTemplateHeader('# Titel:\n2026-09-27 10:00\n\ntext'));
+  assert.ok(hasTemplateHeader('# Title:\n2026-09-27 10:00\n\ntext'));
+  assert.ok(!hasTemplateHeader('# Titles of books\n'));
+  assert.ok(!hasTemplateHeader('text'));
 });

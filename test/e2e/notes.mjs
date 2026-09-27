@@ -29,7 +29,10 @@ put('Notera/2026-09-24 Releasechecklista.md', '# Releasechecklista\nProjekt: Not
 put('Hackytel/2026-09-10 Visdomsatlasen.md', '# Visdomsatlasen\nProjekt: Hackytel · Skapad: 2026-09-10 20:15\n\nKarta över citat.\n');
 put('Arkiv/Q2-rapport/2026-06-20 Utkast Q2.md', '# Utkast Q2\nProjekt: Q2-rapport · Skapad: 2026-06-20 09:00\n\nIntäkter upp.\n');
 fs.writeFileSync(path.join(notes, '.notera.json'), JSON.stringify({
-  version: 1, inbox: 'Osorterat', archive: 'Arkiv', projects: ['Enlantis', 'Notera', 'Hackytel'], archivedProjects: ['Q2-rapport']
+  version: 1, inbox: 'Osorterat', archive: 'Arkiv', projects: ['Enlantis', 'Notera', 'Hackytel'], archivedProjects: ['Q2-rapport'],
+  // Notes the index does not know are sorted by mtime, and the fixture writes them within the same
+  // few milliseconds, so the order is pinned here rather than left to the clock.
+  order: { Enlantis: ['2026-09-18 PBI-1234 Inloggningsfel.md', '2026-09-21 Sprintplanering v39.md'] }
 }));
 const loose = path.join(tmp, 'lösa tankar.md');
 fs.writeFileSync(loose, 'Skrev det här innan Notera hade projekt.\n');
@@ -62,7 +65,6 @@ const titlesIn = (folder) => win.evaluate((f) => {
   while (el && el.classList.contains('sb-note')) { out.push(el.querySelector('.name').textContent); el = el.nextElementSibling; }
   return out;
 }, folder);
-const activePath = () => win.evaluate(() => window.__notera.active.path);
 const activeText = () => win.evaluate(() => window.__notera.view.state.doc.toString());
 const settle = () => win.waitForTimeout(350);
 

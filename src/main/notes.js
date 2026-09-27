@@ -17,6 +17,7 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const files = require('./files');
+const { writeFileAtomic } = require('./atomicWrite');
 const H = require('../shared/noteHeader');
 
 const INDEX_FILE = '.notera.json';
@@ -28,6 +29,8 @@ const lower = (s) => String(s).toLowerCase();
 const has = (list, name) => list.some((x) => lower(x) === lower(name));
 const without = (list, name) => list.filter((x) => lower(x) !== lower(name));
 const arr = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
+/** One plain folder name: nothing that could climb out of the folder it is joined to. */
+const isSegment = (name) => typeof name === 'string' && name !== '' && name !== '.' && name !== '..' && !/[\\/:\0]/.test(name);
 
 async function exists(p) { try { await fsp.access(p); return true; } catch { return false; } }
 
@@ -66,8 +69,8 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     const order = raw.order && typeof raw.order === 'object' ? raw.order : {};
     return {
       version: 1,
-      inbox: typeof raw.inbox === 'string' && raw.inbox ? raw.inbox : names.inbox,
-      archive: typeof raw.archive === 'string' && raw.archive ? raw.archive : names.archive,
+      inbox: isSegment(raw.inbox) ? raw.inbox : names.inbox,
+      archive: isSegment(raw.archive) ? raw.archive : names.archive,
       projects: arr(raw.projects),
       order: Object.fromEntries(Object.entries(order).map(([k, v]) => [k, arr(v)])),
       pinned: arr(raw.pinned),
@@ -77,9 +80,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   async function saveIndex(idx) {
-    const tmp = indexPath + '.tmp';
-    await fsp.writeFile(tmp, JSON.stringify(idx, null, 2) + '\n', 'utf8');
-    await fsp.rename(tmp, indexPath);
+    await writeFileAtomic(indexPath, JSON.stringify(idx, null, 2) + '\n');
   }
 
   async function ensure() {
@@ -92,8 +93,25 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   // ---------- paths ----------
-  const dirOf = (folder) => path.join(root, folder);
-  const archiveDirOf = (idx, folder) => path.join(root, idx.archive, folder);
+  // Folder names arrive over IPC from the renderer, so every path built from one goes through a
+  // check that it names a single folder directly inside the notes folder (or its archive).
+  function segment(name) {
+    if (!isSegment(name)) throw new Error(`Invalid folder name: ${name}`);
+    return name;
+  }
+  const dirOf = (folder) => path.join(root, segment(folder));
+  const archiveDirOf = (idx, folder) => path.join(root, idx.archive, segment(folder));
+  /** The inbox or a project: somewhere a note may be written. Never the archive or a hidden folder. */
+  function noteDirOf(idx, folder) {
+    const dir = dirOf(folder);
+    if (folder.startsWith('.') || lower(folder) === lower(idx.archive)) throw new Error(`Not a project: ${folder}`);
+    return dir;
+  }
+  /** A project folder that exists now, by its exact name. The inbox and the archive are not projects. */
+  async function requireProject(idx, name) {
+    segment(name);
+    if (!(await projectDirs(idx)).includes(name)) throw new Error(`No such project: ${name}`);
+  }
   const pinKey = (folder, file) => `${folder}/${file}`;
 
   /** Where a path sits: an active note, an archived note, or null for anything else. */
@@ -116,7 +134,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   async function projectDirs(idx) {
-    let ents = [];
+    let ents;
     try { ents = await fsp.readdir(root, { withFileTypes: true }); } catch { return []; }
     return ents
       .filter((e) => e.isDirectory() && !e.name.startsWith('.') && lower(e.name) !== lower(idx.inbox) && lower(e.name) !== lower(idx.archive))
@@ -136,7 +154,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     const names = await listNotes(dir);
     const known = (idx.order[folder] || []).filter((n) => names.includes(n));
     const unknown = names.filter((n) => !known.includes(n));
-    const mtimes = new Map(await Promise.all(unknown.map(async (n) => [n, (await fsp.stat(path.join(dir, n))).mtimeMs])));
+    const mtimes = new Map(await Promise.all(unknown.map(async (n) => /** @type {[string, number]} */ ([n, (await fsp.stat(path.join(dir, n))).mtimeMs]))));
     unknown.sort((a, b) => mtimes.get(b) - mtimes.get(a));
     return [...unknown, ...known];
   }
@@ -154,14 +172,34 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     return { buf, ...files.readBuffer(buf, eol) };
   }
 
+  /** Note text flattened for search: no heading line, no header line, no list or quote markers. */
+  function searchBody(text) {
+    return text.split('\n').filter((l, i) => !(i === 0 && /^#\s/.test(l)) && !H.META_RE.test(l))
+      .map((l) => l.replace(/^\s*(#{1,6}\s|[-*+]\s(\[[ xX]\]\s)?|\d+\.\s|>\s?)/, '')).join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // Title and search text per note, valid while the file's size and mtime are unchanged. Every
+  // window re-reads the tree after each change, and search runs per keystroke; with the cache
+  // both cost one stat per note instead of reading every file. tree() drops entries for files
+  // that are gone.
+  const noteCache = new Map();
+  async function noteInfo(p) {
+    const st = await fsp.stat(p);
+    const hit = noteCache.get(p);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit;
+    const { text } = await readText(p);
+    const info = { mtimeMs: st.mtimeMs, size: st.size, title: H.titleOf(text), body: searchBody(text) };
+    info.bodyLower = lower(info.body);
+    noteCache.set(p, info);
+    return info;
+  }
+
   async function noteEntry(idx, folder, dir, file, archived) {
     const p = path.join(dir, file);
     let title = '';
     let mtimeMs = 0;
     try {
-      const [{ text }, st] = await Promise.all([readText(p), fsp.stat(p)]);
-      title = H.titleOf(text);
-      mtimeMs = st.mtimeMs;
+      ({ title, mtimeMs } = await noteInfo(p));
     } catch { /* unreadable: fall back to the file name */ }
     return {
       file, path: p, title: title || file.replace(NOTE_EXT, ''), hasTitle: !!title, mtimeMs,
@@ -212,7 +250,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     const next = H.setProject(r.text, project, { locale: getLocale(), created, fallbackTitle });
     if (next === r.text) return;
     const after = files.writeBuffer(next, r.encoding, r.eol);
-    await fsp.writeFile(p, after);
+    await writeFileAtomic(p, after);
     j.entries.push({ t: 'write', path: p, before: r.buf, after, oldProject: old ? old.project : null });
   }
 
@@ -230,11 +268,11 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
           else if (e.t === 'rmdir') await fsp.mkdir(e.dir, { recursive: true });
           else if (e.t === 'write') {
             const cur = await fsp.readFile(e.path).catch(() => null);
-            if (cur && cur.equals(e.after)) await fsp.writeFile(e.path, e.before);
+            if (cur && cur.equals(e.after)) await writeFileAtomic(e.path, e.before);
             else if (cur && e.oldProject) {
               // Edited since: only put the old project back into the header, keep the edits.
               const r = files.readBuffer(cur, eol);
-              await fsp.writeFile(e.path, files.writeBuffer(H.setProject(r.text, e.oldProject), r.encoding, r.eol));
+              await writeFileAtomic(e.path, files.writeBuffer(H.setProject(r.text, e.oldProject), r.encoding, r.eol));
             }
           }
         } catch { failed = true; /* a file changed or moved away since: it stays where it is */ }
@@ -289,6 +327,8 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
         const names = (await listNotes(dir)).sort((a, b) => b.localeCompare(a));
         archive.push({ name, wholeProject: has(idx.archivedProjects, name), notes: await Promise.all(names.map((f) => noteEntry(idx, name, dir, f, true))) });
       }
+      const seen = new Set([inbox, ...projects, ...archive].flatMap((g) => g.notes.map((n) => n.path)));
+      for (const p of noteCache.keys()) if (!seen.has(p)) noteCache.delete(p);
       return {
         root, inboxName: idx.inbox, archiveName: idx.archive, inbox, projects,
         archive: archive.filter((g) => g.notes.length || g.wholeProject),
@@ -311,19 +351,18 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       } catch { /* no archive */ }
       const hits = [];
       for (const s of sources) {
-        for (const file of await listNotes(s.dir)) {
+        const found = await Promise.all((await listNotes(s.dir)).map(async (file) => {
           const p = path.join(s.dir, file);
-          let text = '';
-          try { text = (await readText(p)).text; } catch { continue; }
-          const title = H.titleOf(text) || file.replace(NOTE_EXT, '');
+          let info;
+          try { info = await noteInfo(p); } catch { return null; }
+          const title = info.title || file.replace(NOTE_EXT, '');
           const inTitle = lower(title).includes(q);
-          const body = text.split('\n').filter((l, i) => !(i === 0 && /^#\s/.test(l)) && !H.META_RE.test(l))
-            .map((l) => l.replace(/^\s*(#{1,6}\s|[-*+]\s(\[[ xX]\]\s)?|\d+\.\s|>\s?)/, '')).join(' ').replace(/\s+/g, ' ').trim();
-          const at = lower(body).indexOf(q);
-          if (!inTitle && at < 0) continue;
-          const snippet = at >= 0 ? (at > 40 ? '…' : '') + body.slice(Math.max(0, at - 40), at + 80) : body.slice(0, 120);
-          hits.push({ path: p, file, title, project: s.folder, archived: s.archived, inTitle, snippet });
-        }
+          const at = info.bodyLower.indexOf(q);
+          if (!inTitle && at < 0) return null;
+          const snippet = at >= 0 ? (at > 40 ? '…' : '') + info.body.slice(Math.max(0, at - 40), at + 80) : info.body.slice(0, 120);
+          return { path: p, file, title, project: s.folder, archived: s.archived, inTitle, snippet };
+        }));
+        hits.push(...found.filter(Boolean));
       }
       hits.sort((a, b) => (a.archived - b.archived) || (b.inTitle - a.inTitle) || a.title.localeCompare(b.title));
       return hits.slice(0, limit);
@@ -331,10 +370,11 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   // ---------- notes ----------
+  /** @param {string} folder @param {{ text?: string }} [opts] */
   async function createNote(folder, { text } = {}) {
     return run(async () => {
       const idx = await ensure();
-      const dir = dirOf(folder);
+      const dir = noteDirOf(idx, folder);
       if (!(await exists(dir))) throw new Error(`No such project: ${folder}`);
       const now = new Date();
       let body = H.newNoteText(getLocale(), folder, now);
@@ -397,7 +437,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const loc = locate(idx, p);
       // A reorder whose note has meanwhile left the folder (another window moved it) does nothing.
       if (reorderOnly && (!loc || loc.archived || loc.folder !== toFolder)) return { path: p, moved: [], undoId: null };
-      const destDir = dirOf(toFolder);
+      const destDir = noteDirOf(idx, toFolder);
       if (!(await exists(destDir))) throw new Error(`No such project: ${toFolder}`);
       if (loc && !loc.archived && loc.folder === toFolder) {
         const list = await orderedFiles(idx, toFolder);
@@ -555,6 +595,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     return run(async () => {
       const idx = await ensure();
       const n = String(newName || '').trim();
+      await requireProject(idx, oldName);
       if (n === oldName) return { name: n, moved: [] };
       const err = await nameCheck(idx, n, oldName);
       if (err) return { error: err };
@@ -601,8 +642,8 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   async function archiveProject(name) {
     return run(async () => {
       const idx = await ensure();
+      await requireProject(idx, name);
       const src = dirOf(name);
-      if (!(await exists(src))) throw new Error(`No such project: ${name}`);
       const j = begin(idx);
       const dest = archiveDirOf(idx, name);
       if (!(await exists(dest))) {
@@ -654,6 +695,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   async function deleteProject(name, { archived = false } = {}) {
     return run(async () => {
       const idx = await loadIndex();
+      if (!archived) await requireProject(idx, name);
       const dir = archived ? archiveDirOf(idx, name) : dirOf(name);
       if (!(await exists(dir))) throw new Error(`No such project: ${name}`);
       await trash(dir);

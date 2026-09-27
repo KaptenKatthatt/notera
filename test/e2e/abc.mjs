@@ -71,8 +71,10 @@ await win.evaluate(() => {
 });
 await win.evaluate(() => window.__notera.handleAction('applyTemplate', 'standup'));
 const headDoc = await win.evaluate(() => window.__notera.view.state.doc.toString());
-assert.ok(headDoc.startsWith('# Titel:' + String.fromCharCode(10)), 'sidhuvud forst');
-const re = new RegExp('# Titel:' + String.fromCharCode(92) + 'n' + String.fromCharCode(92) + 'd{4}' + String.fromCharCode(92) + '-');
+// The header word follows the UI language, which here follows the machine's locale.
+const titleWord = (await win.evaluate(() => document.documentElement.lang)) === 'sv' ? 'Titel' : 'Title';
+assert.ok(headDoc.startsWith(`# ${titleWord}:` + String.fromCharCode(10)), 'sidhuvud forst');
+const re = new RegExp(`# ${titleWord}:` + String.fromCharCode(92) + 'n' + String.fromCharCode(92) + 'd{4}' + String.fromCharCode(92) + '-');
 assert.ok(re.test(headDoc), 'datumtid genererad');
 assert.ok(headDoc.endsWith('Min paborjade text'), 'text bevarad under sidhuvudet');
 const caret = await win.evaluate(() => window.__notera.view.state.selection.main.anchor);

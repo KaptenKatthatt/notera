@@ -2,13 +2,16 @@
 import { ViewPlugin } from '@codemirror/view';
 import { getSearchQuery, searchPanelOpen } from '@codemirror/search';
 
+// Counting stops here, so a one-letter search in a huge file stays fast.
+const MAX_COUNT = 5000;
+
 function count(state) {
   const q = getSearchQuery(state);
   if (!q.valid || !q.search) return null;
   const main = state.selection.main;
   let total = 0, current = 0;
   const cursor = q.getCursor(state.doc);
-  while (total < 5000) {
+  while (total < MAX_COUNT) {
     const r = cursor.next();
     if (r.done) break;
     total++;

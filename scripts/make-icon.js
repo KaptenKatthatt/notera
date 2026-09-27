@@ -31,7 +31,7 @@ app.whenReady().then(async () => {
   const out = path.join(__dirname, '..', 'build');
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(path.join(out, 'icon.png'), img.toPNG());
-  const pngToIcoMod = require('png-to-ico'); const pngToIco = pngToIcoMod.default || pngToIcoMod;
+  const pngToIcoMod = /** @type {any} */ (require('png-to-ico')); const pngToIco = pngToIcoMod.default || pngToIcoMod;
   fs.writeFileSync(path.join(out, 'icon.ico'), await pngToIco(path.join(out, 'icon.png')));
   console.log('wrote build/icon.png + build/icon.ico');
   app.exit(0);
