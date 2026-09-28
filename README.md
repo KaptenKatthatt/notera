@@ -28,7 +28,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 
 ## Projects in the sidebar
 
-Notera can keep your notes in one folder, sorted into projects. Choose the folder once (the sidebar, File > Notes folder…, or Settings > General). Notera makes one subfolder per project in it, plus `Osorterat` (Unsorted) and `Arkiv` (Archive), named in the UI language at the time. A folder in OneDrive gets you a backup for free. The files stay ordinary Markdown files, so Explorer, OneDrive and other editors see the same thing.
+Notera can keep your notes in one folder, sorted into projects. Choose the folder once (the sidebar or Settings > General). Notera makes one subfolder per project in it, plus `Osorterat` (Unsorted) and `Arkiv` (Archive), named in the UI language at the time. A folder in OneDrive gets you a backup for free. The files stay ordinary Markdown files, so Explorer, OneDrive and other editors see the same thing.
 
 - **Sidebar** (Ctrl+Shift+B or the button left of the tabs): Unsorted at the top, then your projects, then the archive. Drag notes to reorder them or to move them to another project, and drag projects to reorder them. The order, pinned notes and collapsed projects are kept in `.notera.json` in the notes folder. Hidden in writing mode.
 - **New note**: the + on a project creates a note in it straight away, with the cursor on the heading. Ctrl+T writes to Unsorted and Ctrl+Alt+N to the project you are in. Every note starts with a header line:

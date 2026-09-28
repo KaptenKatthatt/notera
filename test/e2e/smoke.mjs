@@ -28,6 +28,14 @@ const state = () => win.evaluate(() => {
     status: Array.from(document.querySelectorAll('#statusbar > *')).map((e) => e.textContent).filter(Boolean) };
 });
 
+// The File menu no longer carries tab navigation, archiving or the notes folder; the keys still work.
+const fileMenu = await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items[0].submenu.items.map((i) => i.label).filter(Boolean));
+for (const gone of ['Close tab', 'Close window', 'Next tab', 'Previous tab', 'Go to tab', 'Archive note']) {
+  assert.ok(!fileMenu.some((l) => l.replace('&', '').startsWith(gone)), `${gone} is gone from File: ${fileMenu.join('|')}`);
+}
+assert.ok(!fileMenu.some((l) => /notes folder/i.test(l)), fileMenu.join('|'));
+assert.ok(fileMenu.some((l) => l.startsWith('Print')), 'Print is still there');
+
 let s = await state();
 assert.equal(s.tabs[0].name, 'Anteckningar.md');
 assert.equal(s.tabs[0].eol, 'CRLF');
@@ -126,8 +134,11 @@ await shot('07-dark-sv-split');
 
 // Close the plain-text tab: discard via dialog is native, so drop dirtiness first.
 await win.evaluate(() => { const t = window.__notera.tabs[1]; t.dirty = false; t.savedDoc = t.state.doc; });
-await win.evaluate(() => window.__notera.handleAction('nextTab'));
-await win.evaluate(() => window.__notera.handleAction('closeTab'));
+// Real keys, since the menu no longer carries these commands.
+await win.click('.cm-content');
+await win.keyboard.press('Control+Tab');
+await win.waitForFunction(() => window.__notera.active === window.__notera.tabs[1]);
+await win.keyboard.press('Control+W');
 await win.waitForFunction(() => window.__notera.tabs.length === 1);
 
 // Window close with no dirty tabs exits cleanly
