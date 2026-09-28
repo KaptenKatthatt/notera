@@ -8,6 +8,7 @@
 const SEARCH_DELAY_MS = 120;       // search runs this long after the last keystroke
 const TOAST_MS = 3000;             // how long a plain toast stays
 const TOAST_WITH_UNDO_MS = 6000;   // a toast with an Undo button stays longer, to give time to click it
+const SUBMENU_HOVER_MS = 200;      // hover this long over a menu item before its submenu opens or closes
 
 const ICONS = {
   sidebar: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/><path d="M3 5h1.6M3 7h1.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
@@ -41,7 +42,7 @@ export function createSidebar(ctx) {
   let tree = null;
   let archiveView = false;
   let results = null; // search hits while the search field has text
-  let editing = null; // { kind: 'new' | 'rename', name, value, error }
+  let editing = null; // { kind: 'new' | 'rename' | 'renameNote', name, path?, value, error }
   let byPath = new Map(); // key(path) -> { folder, archived, note }
   let searchTimer = null;
   let searchSeq = 0;
@@ -155,6 +156,25 @@ export function createSidebar(ctx) {
     if (r && r.undoId) undoToast(r, t('notes.toastProjectRenamed', { project: r.name }));
     return '';
   }
+  async function renameNote(p, title) {
+    await ctx.flush();
+    const r = await api.notes.call('renameNote', p, title);
+    if (r && r.error) return r.error === 'failed' ? t('notes.opFailed', { error: r.message }) : t(r.error);
+    await ctx.applyResult(r);
+    ctx.retitleTab(r.path, title);
+    await refresh();
+    if (r && r.undoId) undoToast(r, t('notes.toastNoteRenamed', { title }));
+    return '';
+  }
+  function startNoteRename(p) {
+    const info = noteInfo(p);
+    if (!info) return;
+    const title = isUntitled(info.note) ? '' : titleFor(info.note);
+    editing = { kind: 'renameNote', path: p, name: title, value: title, error: '' };
+    render();
+    const ed = $('#sb-edit');
+    if (ed) { ed.select(); ed.scrollIntoView({ block: 'nearest' }); }
+  }
   async function setCollapsed(name, collapsed) {
     const g = findGroup(name);
     if (g) g.collapsed = collapsed;
@@ -167,6 +187,11 @@ export function createSidebar(ctx) {
     const title = titleFor(n);
     const active = ctx.activePath() && key(ctx.activePath()) === key(n.path);
     const untitled = isUntitled(n);
+    if (editing && editing.kind === 'renameNote' && key(editing.path) === key(n.path)) {
+      return `<div class="sb-row sb-note editing${active ? ' active' : ''}" data-path="${esc(n.path)}" data-folder="${esc(folder)}">
+        <input class="sb-edit" id="sb-edit" value="${esc(editing.value)}" placeholder="${esc(t('notes.untitledNote'))}" autocomplete="off" spellcheck="false" aria-label="${esc(t('notes.noteName'))}" /></div>`
+        + (editing.error ? `<div class="sb-err">${esc(editing.error)}</div>` : '');
+    }
     return `<div class="sb-row sb-note${active ? ' active' : ''}${untitled ? ' untitled' : ''}" data-drag="note" data-drop="note" data-path="${esc(n.path)}" data-folder="${esc(folder)}" title="${esc(n.file)}">
       ${n.pinned ? ICONS.pin : ''}<span class="name">${esc(title)}</span>
       <span class="acts"><button type="button" data-act="note-menu" title="${esc(t('notes.more'))}" aria-label="${esc(t('notes.more'))}">${ICONS.dots}</button></span></div>`;
@@ -337,55 +362,108 @@ export function createSidebar(ctx) {
   }
 
   // ---------- menus ----------
+  // A context menu with at most one level of submenu. The submenu folds out beside its item on
+  // hover (after a short delay, so crossing an item on the way does not flicker), on click, and on
+  // Right arrow or Enter; Left arrow or Escape folds it back.
   const menu = $('#sb-menu');
+  let menuItems = [];
+  let subItems = [];
+  let subOf = null; // the menu button whose submenu is open
+  let subTimer = 0;
+  const itemsHtml = (entries) => entries.map((it, i) => (it.sep ? '<div class="sep"></div>'
+    : `<button type="button" role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''}" ${it.disabled ? 'disabled' : ''}${it.sub ? ' aria-haspopup="menu" aria-expanded="false"' : ''}>${it.icon || '<span class="ico-space"></span>'}<span class="lab">${esc(it.label)}</span>${it.sub ? '<span class="sub">›</span>' : ''}</button>`)).join('');
+  const subEl = () => /** @type {HTMLElement} */ (menu.querySelector('.sb-submenu'));
+  const firstButton = (el) => /** @type {HTMLElement | null} */ (el.querySelector(':scope > button:not([disabled])'));
+
   function showMenu(anchor, items, title, point) {
     closeMenu();
     anchor?.closest?.('.sb-row')?.classList.add('menu-open');
-    const draw = (entries, head, isSub) => {
-      menu.innerHTML = (isSub ? `<button type="button" data-i="back">${ICONS.back}<span class="lab">${esc(t('notes.back'))}</span></button><div class="sep"></div>` : '')
-        + (head ? `<div class="mh">${esc(head)}</div>` : '')
-        + entries.map((it, i) => (it.sep ? '<div class="sep"></div>'
-          : `<button type="button" data-i="${i}" class="${it.danger ? 'danger' : ''}" ${it.disabled ? 'disabled' : ''}>${it.icon || '<span class="ico-space"></span>'}<span class="lab">${esc(it.label)}</span>${it.sub ? '<span class="sub">›</span>' : ''}</button>`)).join('');
-      menu.onclick = (e) => {
-        const b = e.target.closest('button');
-        if (!b) return;
-        e.stopPropagation();
-        if (b.dataset.i === 'back') { draw(items, title, false); return; }
-        const it = entries[+b.dataset.i];
-        if (it.sub) { draw(it.sub(), it.label, true); return; }
-        closeMenu();
-        void it.act?.();
-      };
-      place();
-    };
-    const place = () => {
-      menu.hidden = false;
-      const w = menu.offsetWidth, h = menu.offsetHeight;
-      let left, top;
-      if (point) { left = point.x; top = point.y; } else {
-        const r = anchor.getBoundingClientRect();
-        left = r.right - w; top = r.bottom + 4;
-        if (left < 6) left = r.left;
-        if (top + h > window.innerHeight - 6) top = r.top - h - 4;
-      }
-      menu.style.left = `${Math.max(6, Math.min(left, window.innerWidth - w - 6))}px`;
-      menu.style.top = `${Math.max(6, Math.min(top, window.innerHeight - h - 6))}px`;
-    };
-    draw(items, title, false);
-    menu.querySelector('button:not([disabled])')?.focus();
+    menuItems = items;
+    menu.innerHTML = (title ? `<div class="mh">${esc(title)}</div>` : '') + itemsHtml(items)
+      + '<div class="sb-menu sb-submenu" role="menu" hidden></div>';
+    menu.hidden = false;
+    const w = menu.offsetWidth, h = menu.offsetHeight;
+    let left, top;
+    if (point) { left = point.x; top = point.y; } else {
+      const r = anchor.getBoundingClientRect();
+      left = r.right - w; top = r.bottom + 4;
+      if (left < 6) left = r.left;
+      if (top + h > window.innerHeight - 6) top = r.top - h - 4;
+    }
+    menu.style.left = `${Math.max(6, Math.min(left, window.innerWidth - w - 6))}px`;
+    menu.style.top = `${Math.max(6, Math.min(top, window.innerHeight - h - 6))}px`;
+    firstButton(menu)?.focus();
+  }
+  function openSub(btn, focus) {
+    clearTimeout(subTimer);
+    if (subOf !== btn) {
+      closeSub();
+      const sub = subEl();
+      subItems = menuItems[+btn.dataset.i].sub();
+      sub.innerHTML = itemsHtml(subItems);
+      sub.hidden = false;
+      subOf = btn;
+      btn.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+      // Beside the menu, on the right unless there is no room; top item level with its parent.
+      const m = menu.getBoundingClientRect(), r = btn.getBoundingClientRect();
+      const w = sub.offsetWidth, h = sub.offsetHeight;
+      let left = m.right - 2;
+      if (left + w > window.innerWidth - 6) left = m.left - w + 2;
+      sub.style.left = `${Math.max(6, left)}px`;
+      sub.style.top = `${Math.max(6, Math.min(r.top - 5, window.innerHeight - h - 6))}px`;
+    }
+    if (focus) firstButton(subEl())?.focus();
+  }
+  function closeSub() {
+    clearTimeout(subTimer);
+    if (!subOf) return;
+    const sub = subEl();
+    if (sub) { sub.hidden = true; sub.innerHTML = ''; }
+    subOf.classList.remove('open');
+    subOf.setAttribute('aria-expanded', 'false');
+    subOf = null;
   }
   function closeMenu() {
     if (menu.hidden) return;
+    closeSub();
     menu.hidden = true;
     for (const el of document.querySelectorAll('.sb-row.menu-open')) el.classList.remove('menu-open');
   }
+  menu.addEventListener('click', (e) => {
+    const b = /** @type {HTMLElement} */ (e.target).closest('button');
+    if (!b) return;
+    e.stopPropagation();
+    const inSub = subEl().contains(b);
+    const it = (inSub ? subItems : menuItems)[+b.dataset.i];
+    if (!it) return;
+    // A click opens the submenu; Enter (a click without a pointer) also moves into it.
+    if (it.sub) { openSub(b, e.detail === 0); return; }
+    closeMenu();
+    void it.act?.();
+  });
+  menu.addEventListener('mouseover', (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (subEl()?.contains(target)) { clearTimeout(subTimer); return; }
+    const b = target.closest('button');
+    if (!b || b === subOf) { clearTimeout(subTimer); return; }
+    clearTimeout(subTimer);
+    const it = menuItems[+b.dataset.i];
+    if (it && it.sub) subTimer = window.setTimeout(() => openSub(b, false), SUBMENU_HOVER_MS);
+    else if (subOf) subTimer = window.setTimeout(closeSub, SUBMENU_HOVER_MS);
+  });
   document.addEventListener('mousedown', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(); }, true);
   window.addEventListener('blur', closeMenu);
   menu.addEventListener('keydown', (e) => {
-    const btns = [...menu.querySelectorAll('button:not([disabled])')];
-    const i = btns.indexOf(document.activeElement);
+    const active = /** @type {HTMLElement} */ (document.activeElement);
+    const sub = subEl();
+    const inSub = sub.contains(active);
+    const btns = [...(inSub ? sub : menu).querySelectorAll(':scope > button:not([disabled])')];
+    const i = btns.indexOf(active);
     if (e.key === 'ArrowDown') { e.preventDefault(); btns[(i + 1) % btns.length]?.focus(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); btns[(i - 1 + btns.length) % btns.length]?.focus(); }
+    else if (e.key === 'ArrowRight' && !inSub && active.getAttribute('aria-haspopup')) { e.preventDefault(); openSub(active, true); }
+    else if ((e.key === 'ArrowLeft' || e.key === 'Escape') && inSub) { e.preventDefault(); const parent = subOf; closeSub(); parent?.focus(); }
     else if (e.key === 'Escape') { e.preventDefault(); closeMenu(); }
   });
 
@@ -408,6 +486,7 @@ export function createSidebar(ctx) {
     const n = info.note;
     showMenu(anchor, [
       { label: t('notes.open'), icon: ICONS.note, act: () => ctx.openNote(p) },
+      { label: t('notes.rename'), icon: ICONS.edit, act: () => startNoteRename(p) },
       { label: n.pinned ? t('notes.unpin') : t('notes.pin'), icon: ICONS.pin.replace('class="pin"', ''), act: () => togglePin(p, !n.pinned) },
       { label: t('notes.moveTo'), icon: ICONS.move, sub: () => moveTargets(info.folder, (f) => moveTo(p, f)) },
       { sep: true },
@@ -516,7 +595,7 @@ export function createSidebar(ctx) {
     render();
   });
 
-  // Inline name editing (new project, rename project).
+  // Inline name editing (new project, rename project, rename note).
   list.addEventListener('input', (e) => { if (e.target.id === 'sb-edit' && editing) editing.value = e.target.value; });
   list.addEventListener('keydown', (e) => {
     if (e.target.id !== 'sb-edit' || !editing) return;
@@ -535,7 +614,9 @@ export function createSidebar(ctx) {
     const ed = editing;
     if (!ed) return;
     const value = ed.value.trim();
-    const err = ed.kind === 'new' ? await createProject(value) : await renameProject(ed.name, value);
+    const err = ed.kind === 'new' ? await createProject(value)
+      : ed.kind === 'renameNote' ? (value === ed.name ? '' : await renameNote(ed.path, value))
+        : await renameProject(ed.name, value);
     if (editing !== ed) return;
     if (err) {
       if (fromBlur) { editing = null; render(); toast(err); return; }

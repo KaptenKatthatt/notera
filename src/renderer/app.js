@@ -531,6 +531,22 @@ function onTreeChanged() {
   renderTabs(); updateTitle(); updateStatus(); renderNotesBanner();
 }
 
+/**
+ * A note renamed from the sidebar: its heading on disk changed. A tab that still holds unsaved
+ * text gets the new heading too, so saving it later does not rename the file back.
+ */
+function retitleTab(p, title) {
+  const tab = findTab(p);
+  if (!tab) return;
+  tab.lastTitle = title;
+  const line = docFor(tab).line(1);
+  if (headingOf(line.text) === title) return;
+  const insert = `# ${title}`;
+  const changes = headingOf(line.text) === null ? { from: 0, insert: insert + '\n' } : { from: line.from, to: line.to, insert };
+  if (tab === active) view.dispatch({ changes }); else tab.state = tab.state.update({ changes }).state;
+  renderTabs(); updateTitle();
+}
+
 /** When the cursor leaves the title line, the file is renamed after the heading. */
 async function maybeRenameNote(tab) {
   if (!tab || !tab.path || tab.readOnly || tab.discarded || !tabs.includes(tab)) return;
@@ -635,6 +651,18 @@ function applySidebarLayout() {
 }
 
 // ---------- status bar ----------
+// Dropped first when the status bar is too narrow for everything. The cursor position, the file
+// location and the mode button always stay.
+const STATUS_DROP_ORDER = ['#st-chars', '#st-zoom', '#st-words', '#st-enc', '#st-sel'];
+function fitStatus() {
+  const bar = $('#statusbar');
+  for (const sel of STATUS_DROP_ORDER) $(sel).classList.remove('st-drop');
+  for (const sel of STATUS_DROP_ORDER) {
+    if (bar.scrollWidth <= bar.clientWidth) break;
+    $(sel).classList.add('st-drop');
+  }
+}
+
 function updateStatus() {
   if (!active) return;
   const s = view.state;
@@ -646,7 +674,6 @@ function updateStatus() {
   $('#st-chars').textContent = t('ui.chars', { n: s.doc.length });
   $('#st-words').textContent = active.kind === 'md' ? t('ui.words', { n: countWords(s.doc.toString()) }) : '';
   $('#st-zoom').textContent = t('ui.zoom', { n: settings.zoom || 100 });
-  $('#st-eol').textContent = active.eol === 'CRLF' ? t('ui.crlf') : t('ui.lf');
   $('#st-enc').textContent = encodingLabel(active.encoding);
   $('#st-kind').textContent = active.kind === 'md' ? t('ui.markdown') : t('ui.plainText');
   $('#st-kind').title = active.kind === 'md' ? t('ui.switchToText') : t('ui.switchToMarkdown');
@@ -662,6 +689,7 @@ function updateStatus() {
   }
   const state = active.recovered && active.dirty ? t('ui.recovered') : active.dirty ? t('ui.unsaved') : (active.path ? t('ui.saved') : '');
   $('#ft-status').textContent = [tabTitle(active), state].filter(Boolean).join(' · ');
+  fitStatus();
 }
 
 function applyKindUi() {
@@ -864,10 +892,6 @@ function bindUi() {
   for (const b of $$('#footer [data-action]')) b.addEventListener('click', () => void handleAction(b.dataset.action));
 
   $('#st-zoom').addEventListener('click', () => setZoom(100));
-  $('#st-eol').addEventListener('click', (e) => popups.show(e.currentTarget, [
-    { label: t('ui.crlf'), checked: active.eol === 'CRLF', onClick: () => { active.eol = 'CRLF'; markDirty(); } },
-    { label: t('ui.lf'), checked: active.eol === 'LF', onClick: () => { active.eol = 'LF'; markDirty(); } }
-  ]));
   $('#st-enc').addEventListener('click', (e) => popups.show(e.currentTarget, ENCODINGS.map((enc) => ({
     label: encodingLabel(enc), checked: active.encoding === enc, onClick: () => { active.encoding = enc; markDirty(); }
   }))));
@@ -999,13 +1023,14 @@ async function boot() {
     liveTitle: (p) => { const tab = findTab(p); return tab ? lineTitle(tab) : null; },
     activePath: () => (active ? active.path : null),
     flush: flushAll, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
-    promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab),
+    promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab), retitleTab,
     focusEditor: () => view.focus(),
     sidebarVisible: () => !!settings.sidebarOpen && !settings.writingMode,
     showSidebar: async () => { if (settings.writingMode) await api.setSettings({ writingMode: false }); if (!settings.sidebarOpen) await api.setSettings({ sidebarOpen: true }); },
     shortcutLabel: (id) => display((keys.bindings()[id] || [])[0] || '')
   });
   bindUi();
+  new ResizeObserver(fitStatus).observe($('#statusbar'));
   api.onPrepareQuit((id) => void prepareQuit(id));
   applySettings(b.settings, { __locale: b.locale });
   if (b.update) updates.onStatus(b.update);

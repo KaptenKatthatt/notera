@@ -74,6 +74,14 @@ function setProject(text, project, { locale = 'en', created, fallbackTitle = '' 
   return [heading, meta, '', ...lines].join('\n');
 }
 
+/** Set the heading on the first line to title; a text whose first line is no heading gets one on top. */
+function setTitle(text, title) {
+  const lines = String(text).split('\n');
+  const heading = `# ${String(title).trim()}`;
+  if (/^#(\s|$)/.test(lines[0] || '')) lines[0] = heading; else lines.unshift(heading);
+  return lines.join('\n');
+}
+
 /** A title made safe as a Windows file name: no reserved characters, no trailing dots/spaces. */
 function sanitizeFileName(title) {
   // eslint-disable-next-line no-control-regex -- control characters are not allowed in file names
@@ -110,6 +118,6 @@ function projectNameError(name, { taken = [], reserved = [] } = {}) {
 }
 
 module.exports = {
-  LABELS, META_RE, formatDate, formatDateTime, metaLine, newNoteText, parseMeta, titleOf, setProject,
+  LABELS, META_RE, formatDate, formatDateTime, metaLine, newNoteText, parseMeta, titleOf, setProject, setTitle,
   sanitizeFileName, baseName, datePrefixFor, projectNameError
 };

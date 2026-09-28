@@ -243,9 +243,14 @@ body.no-formatting-bar #toolbar { display: none; }
 #statusbar {
   display: flex; align-items: center; gap: 4px; padding: 0 6px; height: 26px;
   background: var(--bg-chrome); border-top: 1px solid var(--border); color: var(--fg-muted); font-size: 12px;
+  overflow: hidden;
 }
 body.no-statusbar #statusbar { display: none; }
+/* One line each, never wrapped: the file location shrinks first, then fitStatus() in app.js drops
+   the least useful fields until the rest fits. */
+#statusbar > * { flex: none; white-space: nowrap; }
 #statusbar > span { padding: 0 8px; }
+#statusbar > .st-drop { display: none; }
 .st-btn { border: none; background: transparent; padding: 0 8px; height: 22px; border-radius: 4px; color: inherit; cursor: default; }
 .st-btn:hover { background: var(--bg-hover); color: var(--fg); }
 
@@ -508,6 +513,8 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; }
 .sb-menu .ico-space { width: 14px; flex: none; }
 .sb-menu .sub { color: var(--fg-muted); }
 .sb-menu .sep { height: 1px; background: var(--border); margin: 4px 2px; }
+.sb-menu button.open { background: var(--bg-hover); }
+.sb-submenu { max-height: calc(100vh - 12px); overflow-y: auto; }
 .sb-menu .mh { padding: 5px 10px 4px; font-size: 11px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Banner (choose a notes folder / archived note) */
@@ -519,7 +526,8 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; }
 body.writing #notes-banner { display: none; }
 
 /* Status bar: where the note lives */
-#st-note { max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#statusbar > #st-note { flex: 0 1 auto; min-width: 96px; max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
+#statusbar > .spacer { flex: 1 1 0; min-width: 0; }
 
 /* Toast with undo */
 #notes-toast {

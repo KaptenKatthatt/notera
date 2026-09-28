@@ -148,8 +148,10 @@ assert.equal(await noteRow('PBI-1234').locator('.pin').count(), 1);
 // 7. Move via the menu, into a new project made on the spot
 await noteRow('Visdomsatlasen').hover();
 await noteRow('Visdomsatlasen').locator('[data-act="note-menu"]').click();
-await win.click('#sb-menu button:has-text("Flytta till")');
-await win.click('#sb-menu button:has-text("Nytt projekt…")');
+await win.hover('#sb-menu button:has-text("Flytta till")');
+await win.waitForSelector('#sb-menu .sb-submenu:not([hidden])');
+await shot('33b-notes-menu-submenu');
+await win.click('#sb-menu .sb-submenu button:has-text("Nytt projekt…")');
 await win.fill('#project-name', 'Kund X');
 await win.click('#project-ok');
 await win.waitForFunction(() => document.querySelector('#sb-list .sb-proj[data-folder="Kund X"]'));
@@ -210,6 +212,31 @@ await win.waitForFunction(() => /Q2 2026[\\/]2026-06-20 Utkast Q2\.md$/.test(win
 assert.match(read('Q2 2026', '2026-06-20 Utkast Q2.md'), /Projekt: Q2 2026/);
 assert.match((await activeText()).split('\n')[1], /^Projekt: Q2 2026/);
 
+// 11b. Rename a note from its right-click menu: heading and file name follow, the open tab too, undo
+await noteRow('Utkast Q2').click({ button: 'right' });
+await win.click('#sb-menu button:has-text("Byt namn")');
+assert.equal(await win.inputValue('#sb-edit'), 'Utkast Q2');
+assert.equal(await win.evaluate(() => { const e = document.querySelector('#sb-edit'); return e.selectionStart === 0 && e.selectionEnd === e.value.length; }), true);
+await win.fill('#sb-edit', 'Kvartalsrapport Q2');
+await shot('39-notes-rename-note');
+await win.keyboard.press('Enter');
+await win.waitForFunction(() => /Q2 2026[\\/]2026-06-20 Kvartalsrapport Q2\.md$/.test(window.__notera.active.path));
+await win.waitForFunction(() => !document.querySelector('#sb-edit'));
+assert.deepEqual(ls('Q2 2026'), ['2026-06-20 Kvartalsrapport Q2.md']);
+assert.match(read('Q2 2026', '2026-06-20 Kvartalsrapport Q2.md'), /^# Kvartalsrapport Q2\nProjekt: Q2 2026/);
+assert.equal((await activeText()).split('\n')[0], '# Kvartalsrapport Q2');
+assert.deepEqual(await titlesIn('Q2 2026'), ['Kvartalsrapport Q2']);
+await win.click('#notes-toast button');
+await win.waitForFunction(() => /Q2 2026[\\/]2026-06-20 Utkast Q2\.md$/.test(window.__notera.active.path));
+assert.match(read('Q2 2026', '2026-06-20 Utkast Q2.md'), /^# Utkast Q2\n/);
+// Escape leaves the name alone.
+await noteRow('Utkast Q2').click({ button: 'right' });
+await win.click('#sb-menu button:has-text("Byt namn")');
+await win.fill('#sb-edit', 'Nej');
+await win.keyboard.press('Escape');
+await settle();
+assert.deepEqual(ls('Q2 2026'), ['2026-06-20 Utkast Q2.md']);
+
 // 12. Delete a project with notes (dialog answered "Delete project")
 await win.locator(row('Hackytel')).hover();
 await win.click(`${row('Hackytel')} [data-act="proj-menu"]`);
@@ -222,11 +249,44 @@ assert.ok((await app.evaluate(() => globalThis.__asked)).some((m) => /Hackytel/.
 await win.evaluate((p) => window.__notera.openPaths([p]), loose);
 await win.waitForFunction(() => /lösa tankar/.test(window.__notera.active.path));
 await win.click('.tab.active', { button: 'right' });
-await win.click('#sb-menu button:has-text("Flytta till projekt")');
-await win.click('#sb-menu button:has-text("Notera")');
+// Hovering "Move to project" folds the submenu out beside the menu; hovering another item folds it back.
+await win.hover('#sb-menu button:has-text("Flytta till projekt")');
+await win.waitForSelector('#sb-menu .sb-submenu:not([hidden]) button:has-text("Notera")');
+const [mb, sb] = await Promise.all([win.locator('#sb-menu').boundingBox(), win.locator('#sb-menu .sb-submenu').boundingBox()]);
+assert.ok(sb.x >= mb.x + mb.width - 4 || sb.x + sb.width <= mb.x + 4, `submenu beside the menu, not over it: ${JSON.stringify({ mb, sb })}`);
+await shot('41-notes-tab-menu-submenu');
+await win.hover('#sb-menu button:has-text("Stäng flik")');
+await win.waitForSelector('#sb-menu .sb-submenu', { state: 'hidden' });
+// Keyboard: Right arrow opens it with focus inside, Left arrow goes back.
+await win.focus('#sb-menu button:has-text("Flytta till projekt")');
+await win.keyboard.press('ArrowRight');
+await win.waitForFunction(() => document.activeElement?.closest('.sb-submenu'));
+await win.keyboard.press('ArrowLeft');
+await win.waitForFunction(() => document.activeElement?.textContent.startsWith('Flytta till projekt') && document.querySelector('#sb-menu .sb-submenu').hidden);
+await win.hover('#sb-menu button:has-text("Flytta till projekt")');
+await win.hover('#sb-menu .sb-submenu button:has-text("Notera")');
+await win.click('#sb-menu .sb-submenu button:has-text("Notera")');
 await win.waitForFunction(() => /Notera[\\/]\d{4}-\d{2}-\d{2} lösa tankar\.md$/.test(window.__notera.active.path));
 assert.ok(!fs.existsSync(loose));
 assert.match(await activeText(), /^# lösa tankar\nProjekt: Notera · Skapad: .+\n\nSkrev det här/);
+
+// 13b. The new-project dialog: Cancel creates nothing, Enter in the name field creates the project
+await win.click('.tab.active', { button: 'right' });
+await win.click('#sb-menu button:has-text("Flytta till projekt")');
+await win.click('#sb-menu button:has-text("Nytt projekt…")');
+await win.fill('#project-name', 'Ångrat');
+await win.click('#dlg-project [data-close="cancel"]');
+await win.waitForFunction(() => !document.querySelector('#dlg-project').open);
+assert.ok(!ls().includes('Ångrat'));
+await win.click('.tab.active', { button: 'right' });
+await win.click('#sb-menu button:has-text("Flytta till projekt")');
+await win.click('#sb-menu button:has-text("Nytt projekt…")');
+await win.fill('#project-name', 'Kund Y');
+await shot('40-notes-new-project-dialog');
+await win.press('#project-name', 'Enter');
+await win.waitForFunction(() => /Kund Y[\\/]\d{4}-\d{2}-\d{2} lösa tankar\.md$/.test(window.__notera.active.path));
+assert.equal(await win.evaluate(() => document.querySelector('#dlg-project').open), false);
+assert.deepEqual(ls('Kund Y').length, 1);
 
 // 14. Dark theme
 await win.evaluate(() => window.notera.setSettings({ theme: 'dark' }));

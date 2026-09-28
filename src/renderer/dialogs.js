@@ -24,6 +24,13 @@ export function createDialogs(ctx) {
   const { api } = ctx;
   const view = () => ctx.getView();
 
+  // Cancel is a plain button, not a submit button: Enter in a text field submits the form with its
+  // first submit button, and that has to be the primary action (Create, Insert, Apply).
+  document.addEventListener('click', (e) => {
+    const b = /** @type {HTMLElement} */ (e.target).closest('dialog [data-close]');
+    if (b) /** @type {HTMLDialogElement} */ (b.closest('dialog')).close(/** @type {HTMLElement} */ (b).dataset.close);
+  });
+
   async function font() {
     const settings = ctx.getSettings();
     const sel = $('#font-family');
