@@ -133,7 +133,8 @@ await shot('05-plain-text-tab');
 await win.evaluate(() => { window.__notera.handleAction('font'); });
 await win.waitForSelector('#dlg-font[open]');
 await shot('06-font-dialog');
-await win.click('#dlg-font button[value="cancel"]');
+await win.click('#dlg-font [data-close="cancel"]');
+await win.waitForFunction(() => !document.querySelector('#dlg-font').open);
 
 // Zoom + Swedish + dark theme
 await win.evaluate(() => window.notera.setSettings({ zoom: 150, language: 'sv', theme: 'dark' }));
@@ -160,6 +161,16 @@ await win.keyboard.press('Control+Tab');
 await win.waitForFunction(() => window.__notera.active === window.__notera.tabs[1]);
 await win.keyboard.press('Control+W');
 await win.waitForFunction(() => window.__notera.tabs.length === 1);
+
+// Link dialog (Swedish UI now): Enter in a field inserts the link; Cancel used to be the form's default button
+await win.evaluate(() => { const v = window.__notera.view; v.dispatch({ selection: { anchor: v.state.doc.length } }); window.__notera.handleAction('link'); });
+await win.waitForSelector('#dlg-link[open]');
+await win.fill('#link-text', 'Notera');
+await win.fill('#link-url', 'https://example.com');
+await win.press('#link-url', 'Enter');
+await win.waitForFunction(() => !document.querySelector('#dlg-link').open);
+s = await state();
+assert.ok(s.doc.endsWith('[Notera](https://example.com)'), s.doc);
 
 // Window close with no dirty tabs exits cleanly
 await win.evaluate(() => window.__notera.handleAction('new'));

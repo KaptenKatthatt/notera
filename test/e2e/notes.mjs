@@ -253,6 +253,24 @@ await win.waitForFunction(() => /Notera[\\/]\d{4}-\d{2}-\d{2} lösa tankar\.md$/
 assert.ok(!fs.existsSync(loose));
 assert.match(await activeText(), /^# lösa tankar\nProjekt: Notera · Skapad: .+\n\nSkrev det här/);
 
+// 13b. The new-project dialog: Cancel creates nothing, Enter in the name field creates the project
+await win.click('.tab.active', { button: 'right' });
+await win.click('#sb-menu button:has-text("Flytta till projekt")');
+await win.click('#sb-menu button:has-text("Nytt projekt…")');
+await win.fill('#project-name', 'Ångrat');
+await win.click('#dlg-project [data-close="cancel"]');
+await win.waitForFunction(() => !document.querySelector('#dlg-project').open);
+assert.ok(!ls().includes('Ångrat'));
+await win.click('.tab.active', { button: 'right' });
+await win.click('#sb-menu button:has-text("Flytta till projekt")');
+await win.click('#sb-menu button:has-text("Nytt projekt…")');
+await win.fill('#project-name', 'Kund Y');
+await shot('40-notes-new-project-dialog');
+await win.press('#project-name', 'Enter');
+await win.waitForFunction(() => /Kund Y[\\/]\d{4}-\d{2}-\d{2} lösa tankar\.md$/.test(window.__notera.active.path));
+assert.equal(await win.evaluate(() => document.querySelector('#dlg-project').open), false);
+assert.deepEqual(ls('Kund Y').length, 1);
+
 // 14. Dark theme
 await win.evaluate(() => window.notera.setSettings({ theme: 'dark' }));
 await win.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
