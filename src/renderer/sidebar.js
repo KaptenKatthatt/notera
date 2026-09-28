@@ -41,7 +41,7 @@ export function createSidebar(ctx) {
   let tree = null;
   let archiveView = false;
   let results = null; // search hits while the search field has text
-  let editing = null; // { kind: 'new' | 'rename', name, value, error }
+  let editing = null; // { kind: 'new' | 'rename' | 'renameNote', name, path?, value, error }
   let byPath = new Map(); // key(path) -> { folder, archived, note }
   let searchTimer = null;
   let searchSeq = 0;
@@ -155,6 +155,25 @@ export function createSidebar(ctx) {
     if (r && r.undoId) undoToast(r, t('notes.toastProjectRenamed', { project: r.name }));
     return '';
   }
+  async function renameNote(p, title) {
+    await ctx.flush();
+    const r = await api.notes.call('renameNote', p, title);
+    if (r && r.error) return r.error === 'failed' ? t('notes.opFailed', { error: r.message }) : t(r.error);
+    await ctx.applyResult(r);
+    ctx.retitleTab(r.path, title);
+    await refresh();
+    if (r && r.undoId) undoToast(r, t('notes.toastNoteRenamed', { title }));
+    return '';
+  }
+  function startNoteRename(p) {
+    const info = noteInfo(p);
+    if (!info) return;
+    const title = isUntitled(info.note) ? '' : titleFor(info.note);
+    editing = { kind: 'renameNote', path: p, name: title, value: title, error: '' };
+    render();
+    const ed = $('#sb-edit');
+    if (ed) { ed.select(); ed.scrollIntoView({ block: 'nearest' }); }
+  }
   async function setCollapsed(name, collapsed) {
     const g = findGroup(name);
     if (g) g.collapsed = collapsed;
@@ -167,6 +186,11 @@ export function createSidebar(ctx) {
     const title = titleFor(n);
     const active = ctx.activePath() && key(ctx.activePath()) === key(n.path);
     const untitled = isUntitled(n);
+    if (editing && editing.kind === 'renameNote' && key(editing.path) === key(n.path)) {
+      return `<div class="sb-row sb-note editing${active ? ' active' : ''}" data-path="${esc(n.path)}" data-folder="${esc(folder)}">
+        <input class="sb-edit" id="sb-edit" value="${esc(editing.value)}" placeholder="${esc(t('notes.untitledNote'))}" autocomplete="off" spellcheck="false" aria-label="${esc(t('notes.noteName'))}" /></div>`
+        + (editing.error ? `<div class="sb-err">${esc(editing.error)}</div>` : '');
+    }
     return `<div class="sb-row sb-note${active ? ' active' : ''}${untitled ? ' untitled' : ''}" data-drag="note" data-drop="note" data-path="${esc(n.path)}" data-folder="${esc(folder)}" title="${esc(n.file)}">
       ${n.pinned ? ICONS.pin : ''}<span class="name">${esc(title)}</span>
       <span class="acts"><button type="button" data-act="note-menu" title="${esc(t('notes.more'))}" aria-label="${esc(t('notes.more'))}">${ICONS.dots}</button></span></div>`;
@@ -408,6 +432,7 @@ export function createSidebar(ctx) {
     const n = info.note;
     showMenu(anchor, [
       { label: t('notes.open'), icon: ICONS.note, act: () => ctx.openNote(p) },
+      { label: t('notes.rename'), icon: ICONS.edit, act: () => startNoteRename(p) },
       { label: n.pinned ? t('notes.unpin') : t('notes.pin'), icon: ICONS.pin.replace('class="pin"', ''), act: () => togglePin(p, !n.pinned) },
       { label: t('notes.moveTo'), icon: ICONS.move, sub: () => moveTargets(info.folder, (f) => moveTo(p, f)) },
       { sep: true },
@@ -516,7 +541,7 @@ export function createSidebar(ctx) {
     render();
   });
 
-  // Inline name editing (new project, rename project).
+  // Inline name editing (new project, rename project, rename note).
   list.addEventListener('input', (e) => { if (e.target.id === 'sb-edit' && editing) editing.value = e.target.value; });
   list.addEventListener('keydown', (e) => {
     if (e.target.id !== 'sb-edit' || !editing) return;
@@ -535,7 +560,9 @@ export function createSidebar(ctx) {
     const ed = editing;
     if (!ed) return;
     const value = ed.value.trim();
-    const err = ed.kind === 'new' ? await createProject(value) : await renameProject(ed.name, value);
+    const err = ed.kind === 'new' ? await createProject(value)
+      : ed.kind === 'renameNote' ? (value === ed.name ? '' : await renameNote(ed.path, value))
+        : await renameProject(ed.name, value);
     if (editing !== ed) return;
     if (err) {
       if (fromBlur) { editing = null; render(); toast(err); return; }

@@ -210,6 +210,31 @@ await win.waitForFunction(() => /Q2 2026[\\/]2026-06-20 Utkast Q2\.md$/.test(win
 assert.match(read('Q2 2026', '2026-06-20 Utkast Q2.md'), /Projekt: Q2 2026/);
 assert.match((await activeText()).split('\n')[1], /^Projekt: Q2 2026/);
 
+// 11b. Rename a note from its right-click menu: heading and file name follow, the open tab too, undo
+await noteRow('Utkast Q2').click({ button: 'right' });
+await win.click('#sb-menu button:has-text("Byt namn")');
+assert.equal(await win.inputValue('#sb-edit'), 'Utkast Q2');
+assert.equal(await win.evaluate(() => { const e = document.querySelector('#sb-edit'); return e.selectionStart === 0 && e.selectionEnd === e.value.length; }), true);
+await win.fill('#sb-edit', 'Kvartalsrapport Q2');
+await shot('39-notes-rename-note');
+await win.keyboard.press('Enter');
+await win.waitForFunction(() => /Q2 2026[\\/]2026-06-20 Kvartalsrapport Q2\.md$/.test(window.__notera.active.path));
+await win.waitForFunction(() => !document.querySelector('#sb-edit'));
+assert.deepEqual(ls('Q2 2026'), ['2026-06-20 Kvartalsrapport Q2.md']);
+assert.match(read('Q2 2026', '2026-06-20 Kvartalsrapport Q2.md'), /^# Kvartalsrapport Q2\nProjekt: Q2 2026/);
+assert.equal((await activeText()).split('\n')[0], '# Kvartalsrapport Q2');
+assert.deepEqual(await titlesIn('Q2 2026'), ['Kvartalsrapport Q2']);
+await win.click('#notes-toast button');
+await win.waitForFunction(() => /Q2 2026[\\/]2026-06-20 Utkast Q2\.md$/.test(window.__notera.active.path));
+assert.match(read('Q2 2026', '2026-06-20 Utkast Q2.md'), /^# Utkast Q2\n/);
+// Escape leaves the name alone.
+await noteRow('Utkast Q2').click({ button: 'right' });
+await win.click('#sb-menu button:has-text("Byt namn")');
+await win.fill('#sb-edit', 'Nej');
+await win.keyboard.press('Escape');
+await settle();
+assert.deepEqual(ls('Q2 2026'), ['2026-06-20 Utkast Q2.md']);
+
 // 12. Delete a project with notes (dialog answered "Delete project")
 await win.locator(row('Hackytel')).hover();
 await win.click(`${row('Hackytel')} [data-act="proj-menu"]`);

@@ -92,6 +92,48 @@ test('create note, rename after title, pin and order', async () => {
   assert.ok(ls('Enlantis').includes('loose.md'));
 });
 
+test('noteHeader: setTitle replaces the heading or adds one', () => {
+  assert.equal(H.setTitle('# Old\nProjekt: A · Skapad: c\n\nbody', ' New '), '# New\nProjekt: A · Skapad: c\n\nbody');
+  assert.equal(H.setTitle('# \nmeta', 'Named'), '# Named\nmeta');
+  assert.equal(H.setTitle('#\nmeta', 'Named'), '# Named\nmeta');
+  assert.equal(H.setTitle('plain text', 'Idea'), '# Idea\nplain text');
+});
+
+test('rename a note by hand: heading and file name follow, pin kept, undo puts both back', async () => {
+  const { store, read, ls } = setup();
+  await store.createProject('Enlantis');
+  const n = await store.createNote('Enlantis');
+  const r0 = await store.renameForTitle(n.path, 'Old');
+  fs.writeFileSync(r0.path, read('Enlantis', path.basename(r0.path)).replace('# ', '# Old') + 'body\n');
+  await store.setPinned(r0.path, true);
+
+  const r = await store.renameNote(r0.path, 'Sprint: v40?');
+  assert.equal(path.basename(r.path), `${today} Sprint v40.md`);
+  assert.deepEqual(r.moved, [{ from: r0.path, to: r.path }]);
+  assert.ok(r.undoId);
+  const text = read('Enlantis', path.basename(r.path));
+  assert.match(text, /^# Sprint: v40\?\nProjekt: Enlantis · Skapad: /);
+  assert.ok(text.endsWith('body\n'));
+  const tree = await store.tree();
+  assert.equal(tree.projects[0].notes[0].path, r.path);
+  assert.equal(tree.projects[0].notes[0].pinned, true);
+  // A second rename by the heading-follows-file rule leaves it where it is.
+  assert.deepEqual((await store.renameForTitle(r.path, 'Sprint: v40?')).moved, []);
+
+  assert.equal((await store.renameNote(r.path, '  ')).error, 'notes.nameEmpty');
+  assert.deepEqual(ls('Enlantis').filter((f) => !f.startsWith('.')), [path.basename(r.path)]);
+
+  const u = await store.undo(r.undoId);
+  assert.equal(u.ok, true);
+  assert.deepEqual(u.moved, [{ from: r.path, to: r0.path }]);
+  assert.match(read('Enlantis', path.basename(r0.path)), /^# Old\n/);
+
+  // Only the case changes: the file is renamed in place.
+  const c = await store.renameNote(r0.path, 'OLD');
+  assert.equal(path.basename(c.path), `${today} OLD.md`);
+  assert.deepEqual(ls('Enlantis').filter((f) => !f.startsWith('.')), [`${today} OLD.md`]);
+});
+
 test('move between projects rewrites the header; undo puts it back', async () => {
   const { store, read, ls } = setup();
   await store.createProject('Enlantis');

@@ -531,6 +531,22 @@ function onTreeChanged() {
   renderTabs(); updateTitle(); updateStatus(); renderNotesBanner();
 }
 
+/**
+ * A note renamed from the sidebar: its heading on disk changed. A tab that still holds unsaved
+ * text gets the new heading too, so saving it later does not rename the file back.
+ */
+function retitleTab(p, title) {
+  const tab = findTab(p);
+  if (!tab) return;
+  tab.lastTitle = title;
+  const line = docFor(tab).line(1);
+  if (headingOf(line.text) === title) return;
+  const insert = `# ${title}`;
+  const changes = headingOf(line.text) === null ? { from: 0, insert: insert + '\n' } : { from: line.from, to: line.to, insert };
+  if (tab === active) view.dispatch({ changes }); else tab.state = tab.state.update({ changes }).state;
+  renderTabs(); updateTitle();
+}
+
 /** When the cursor leaves the title line, the file is renamed after the heading. */
 async function maybeRenameNote(tab) {
   if (!tab || !tab.path || tab.readOnly || tab.discarded || !tabs.includes(tab)) return;
@@ -999,7 +1015,7 @@ async function boot() {
     liveTitle: (p) => { const tab = findTab(p); return tab ? lineTitle(tab) : null; },
     activePath: () => (active ? active.path : null),
     flush: flushAll, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
-    promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab),
+    promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab), retitleTab,
     focusEditor: () => view.focus(),
     sidebarVisible: () => !!settings.sidebarOpen && !settings.writingMode,
     showSidebar: async () => { if (settings.writingMode) await api.setSettings({ writingMode: false }); if (!settings.sidebarOpen) await api.setSettings({ sidebarOpen: true }); },

@@ -34,6 +34,14 @@ const isSegment = (name) => typeof name === 'string' && name !== '' && name !== 
 
 async function exists(p) { try { await fsp.access(p); return true; } catch { return false; } }
 
+/** Rename within one folder. A change of case only takes a detour, which Windows needs. */
+async function renameFile(from, to) {
+  if (lower(from) !== lower(to)) return moveFile(from, to);
+  const tmp = path.join(path.dirname(to), `.${path.basename(to)}.renaming`);
+  await fsp.rename(from, tmp);
+  await fsp.rename(tmp, to);
+}
+
 async function moveFile(from, to) {
   if (await exists(to)) throw new Error(`Target exists: ${to}`);
   await fsp.mkdir(path.dirname(to), { recursive: true });
@@ -220,7 +228,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     for (const j of journals.values()) {
       for (const e of j.entries) {
         // Undo brings the file back under its new name, which is what its heading says now.
-        if (e.t === 'move' && e.to === from) { e.to = to; e.from = path.join(path.dirname(e.from), path.basename(to)); }
+        if ((e.t === 'move' || e.t === 'rename') && e.to === from) { e.to = to; e.from = path.join(path.dirname(e.from), path.basename(to)); }
         if (e.t === 'write' && e.path === from) e.path = to;
       }
     }
@@ -264,15 +272,17 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       for (const e of [...j.entries].reverse()) {
         try {
           if (e.t === 'move') { await moveFile(e.to, e.from); moved.push({ from: e.to, to: e.from }); }
+          else if (e.t === 'rename') { await renameFile(e.to, e.from); moved.push({ from: e.to, to: e.from }); }
           else if (e.t === 'mkdir') await fsp.rmdir(e.dir).catch(() => {});
           else if (e.t === 'rmdir') await fsp.mkdir(e.dir, { recursive: true });
           else if (e.t === 'write') {
             const cur = await fsp.readFile(e.path).catch(() => null);
             if (cur && cur.equals(e.after)) await writeFileAtomic(e.path, e.before);
-            else if (cur && e.oldProject) {
-              // Edited since: only put the old project back into the header, keep the edits.
+            else if (cur && (e.oldProject || e.oldTitle !== undefined)) {
+              // Edited since: only put the old project or heading back, keep the edits.
               const r = files.readBuffer(cur, eol);
-              await writeFileAtomic(e.path, files.writeBuffer(H.setProject(r.text, e.oldProject), r.encoding, r.eol));
+              const text = e.oldProject ? H.setProject(r.text, e.oldProject) : H.setTitle(r.text, e.oldTitle);
+              await writeFileAtomic(e.path, files.writeBuffer(text, r.encoding, r.eol));
             }
           }
         } catch { failed = true; /* a file changed or moved away since: it stays where it is */ }
@@ -395,35 +405,64 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     });
   }
 
-  /** Rename an active note after its heading: "2026-09-25 Title.md". A no-op for anything else. */
+  /**
+   * Give an active note the file name its heading asks for: "2026-09-25 Title.md". Keeps its place
+   * in the list and its pin. Returns the new path, or null when the name already fits.
+   */
+  async function renameToTitle(idx, loc, p, title, text, j) {
+    const dir = path.dirname(p);
+    const ext = path.extname(loc.file) || '.md';
+    const base = H.baseName(H.datePrefixFor(loc.file, text), title, untitled());
+    const name = await uniqueName(dir, base, ext, loc.file);
+    if (name === loc.file) return null;
+    const to = path.join(dir, name);
+    const list = await orderedFiles(idx, loc.folder);
+    await renameFile(p, to);
+    if (j) { j.entries.push({ t: 'rename', from: p, to }); j.moved.push({ from: p, to }); } else retargetJournals(p, to);
+    // Same place in the list, same pin: only the name changes.
+    const at = list.indexOf(loc.file);
+    if (at >= 0) list[at] = name; else list.unshift(name);
+    idx.order[loc.folder] = list;
+    idx.pinned = idx.pinned.map((k) => (k === pinKey(loc.folder, loc.file) ? pinKey(loc.folder, name) : k));
+    await saveIndex(idx);
+    return to;
+  }
+
+  /** Rename an active note after its heading. A no-op for anything else. */
   async function renameForTitle(p, title) {
     return run(async () => {
       const idx = await loadIndex();
       const loc = locate(idx, p);
       if (!loc || loc.archived || !(await exists(p))) return { path: p, moved: [] };
-      const dir = path.dirname(p);
-      const ext = path.extname(loc.file) || '.md';
-      const needsText = !/^\d{4}-\d{2}-\d{2}/.test(loc.file);
-      const text = needsText ? (await readText(p)).text : '';
-      const base = H.baseName(H.datePrefixFor(loc.file, text), title, untitled());
-      const name = await uniqueName(dir, base, ext, loc.file);
-      if (name === loc.file) return { path: p, moved: [] };
-      const to = path.join(dir, name);
-      const list = await orderedFiles(idx, loc.folder);
-      if (lower(name) === lower(loc.file)) {
-        // Only the case changed: Windows needs a detour through a temporary name.
-        const tmp = path.join(dir, `.${name}.renaming`);
-        await fsp.rename(p, tmp);
-        await fsp.rename(tmp, to);
-      } else await moveFile(p, to);
-      retargetJournals(p, to);
-      // Same place in the list, same pin: only the name changes.
-      const at = list.indexOf(loc.file);
-      if (at >= 0) list[at] = name; else list.unshift(name);
-      idx.order[loc.folder] = list;
-      idx.pinned = idx.pinned.map((k) => (k === pinKey(loc.folder, loc.file) ? pinKey(loc.folder, name) : k));
-      await saveIndex(idx);
-      return { path: to, moved: [{ from: p, to }] };
+      const text = /^\d{4}-\d{2}-\d{2}/.test(loc.file) ? '' : (await readText(p)).text;
+      const to = await renameToTitle(idx, loc, p, title, text, null);
+      return to ? { path: to, moved: [{ from: p, to }] } : { path: p, moved: [] };
+    });
+  }
+
+  /**
+   * Rename a note by hand: the heading becomes the new title and the file name follows it, the
+   * same way it does when the heading is edited in the editor. Undoable.
+   */
+  async function renameNote(p, title) {
+    return run(async () => {
+      const name = String(title || '').trim();
+      if (!name) return { error: 'notes.nameEmpty' };
+      const idx = await loadIndex();
+      const loc = locate(idx, p);
+      if (!loc || loc.archived) throw new Error(`Not an active note: ${p}`);
+      const j = begin(idx);
+      const r = await readText(p);
+      const oldTitle = H.titleOf(r.text);
+      const next = H.setTitle(r.text, name);
+      if (next !== r.text) {
+        const after = files.writeBuffer(next, r.encoding, r.eol);
+        await writeFileAtomic(p, after);
+        j.entries.push({ t: 'write', path: p, before: r.buf, after, oldTitle });
+      }
+      const to = await renameToTitle(idx, loc, p, name, next, j);
+      if (!j.entries.length) return { path: p, moved: [] };
+      return { path: to || p, moved: j.moved, undoId: commit(j) };
     });
   }
 
@@ -712,7 +751,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   return {
-    root, ensure, tree, search, createNote, renameForTitle, moveNote, reorderNote, setPinned, archiveNote, restoreNote,
+    root, ensure, tree, search, createNote, renameForTitle, renameNote, moveNote, reorderNote, setPinned, archiveNote, restoreNote,
     deleteNote, discardEmpty, createProject, renameProject, reorderProject, setCollapsed, archiveProject, restoreProject,
     deleteProject, countNotes, undo, locate: async (p) => locate(await loadIndex(), p)
   };

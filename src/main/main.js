@@ -367,7 +367,7 @@ function getNotesStore() {
 
 const NOTES_READS = new Set(['tree', 'search', 'countNotes', 'locate']);
 const NOTES_WRITES = new Set([
-  'createNote', 'renameForTitle', 'moveNote', 'reorderNote', 'setPinned', 'archiveNote', 'restoreNote', 'deleteNote', 'discardEmpty',
+  'createNote', 'renameForTitle', 'renameNote', 'moveNote', 'reorderNote', 'setPinned', 'archiveNote', 'restoreNote', 'deleteNote', 'discardEmpty',
   'createProject', 'renameProject', 'reorderProject', 'setCollapsed', 'archiveProject', 'restoreProject', 'deleteProject', 'undo'
 ]);
 ipcMain.handle('notes:call', async (_e, method, ...args) => {
