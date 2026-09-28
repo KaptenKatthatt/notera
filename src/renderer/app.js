@@ -7,6 +7,7 @@ import { createSettingsDialog } from './settingsDialog.js';
 import { attachTabDrag } from './tabdrag.js';
 import { display } from '../shared/commands.js';
 import { TEMPLATES, hasTemplateHeader } from '../shared/templates.js';
+import { skinOf } from '../shared/themes.js';
 import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
 import { createPreview } from './preview.js';
@@ -679,6 +680,7 @@ function applySettings(next, prev = {}) {
   const root = document.documentElement.style;
   root.setProperty('--zoom-base', String((settings.zoom || 100) / 100));
   document.body.classList.toggle('writing', !!settings.writingMode);
+  applySkin(settings.theme);
   root.setProperty('--editor-font', `"${settings.fontFamily || 'Consolas'}", Consolas, "Cascadia Mono", monospace`);
   root.setProperty('--editor-size', `${settings.fontSize || 15}px`);
   document.body.classList.toggle('no-statusbar', settings.statusBar === false);
@@ -937,6 +939,13 @@ function applyTheme(dark) {
   isDark = !!dark;
   document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
   if (view) reconfigureAll();
+}
+
+// A named theme repaints on top of the dark base; the base itself still comes from applyTheme().
+function applySkin(theme) {
+  const skin = skinOf(theme);
+  if (skin) document.documentElement.dataset.skin = skin;
+  else delete document.documentElement.dataset.skin;
 }
 
 function markDirty() {

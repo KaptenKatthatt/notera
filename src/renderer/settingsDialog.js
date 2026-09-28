@@ -2,6 +2,7 @@
 import {
   COMMANDS, BY_ID, CATEGORIES, display, fromEvent, isAllowed, normalize, conflict, withBinding, isCustomized, effectiveBindings
 } from '../shared/commands.js';
+import { THEMES } from '../shared/themes.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -48,7 +49,10 @@ export function createSettingsDialog(ctx) {
     };
 
     section(t('settings.appearance'));
-    row(t('settings.theme'), select('theme', [['system', cleanLabel('menu.themeSystem')], ['light', cleanLabel('menu.themeLight')], ['dark', cleanLabel('menu.themeDark')]]));
+    row(t('settings.theme'), select('theme', [
+      ['system', cleanLabel('menu.themeSystem')], ['light', cleanLabel('menu.themeLight')], ['dark', cleanLabel('menu.themeDark')],
+      ...Object.entries(THEMES).map(([id, th]) => [id, cleanLabel(th.label)])
+    ]));
     row(t('settings.language'), select('language', [['auto', cleanLabel('menu.langAuto')], ['en', 'English'], ['sv', 'Svenska']]));
     const fontBox = document.createElement('span'); fontBox.className = 'set-inline';
     const fontName = document.createElement('span'); fontName.textContent = `${s.fontFamily}, ${s.fontSize} px`;

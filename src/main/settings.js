@@ -10,7 +10,7 @@ const DEFAULTS = {
   statusBar: true,
   lineNumbers: false,
   formattingBar: true,
-  theme: 'system',      // 'system' | 'light' | 'dark'
+  theme: 'system',      // 'system' | 'light' | 'dark' | a named theme from shared/themes.js
   language: 'auto',     // 'auto' | 'en' | 'sv'
   zoom: 100,
   viewMode: 'editor',   // 'editor' | 'split' | 'preview'

@@ -70,7 +70,7 @@ function enterPastHeader(view) {
 const noteKeys = Prec.high(keymap.of([{ key: 'Enter', run: enterPastHeader }]));
 
 const mdHighlight = HighlightStyle.define([
-  { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--fg)' },
+  { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--md-h)' },
   { tag: t.strong, fontWeight: '700' },
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, textDecoration: 'line-through' },

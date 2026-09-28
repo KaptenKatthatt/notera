@@ -179,7 +179,8 @@ body.no-formatting-bar #toolbar { display: none; }
 .cm-editor { height: 100%; font-size: calc(var(--editor-size) * var(--zoom)); background: var(--bg); color: var(--fg); }
 .cm-editor.cm-focused { outline: none; }
 .cm-scroller { font-family: var(--editor-font); line-height: 1.65; }
-.cm-content { padding: 12px 0; caret-color: var(--fg); }
+.cm-content { padding: 12px 0; caret-color: var(--caret, var(--fg)); }
+.cm-editor .cm-cursorLayer .cm-cursor { border-left-color: var(--caret, var(--fg)); }
 .cm-line { padding: 0 16px; }
 .cm-placeholder { color: var(--md-meta); }
 .cm-gutters { background: var(--bg); color: var(--md-meta); border-right: 1px solid var(--border); }
@@ -544,3 +545,89 @@ body.writing #notes-banner { display: none; }
 .cm-note-meta { color: var(--md-meta); }
 .dlg-error { color: var(--danger); font-size: 12px; min-height: 16px; margin: -4px 0 10px 100px; }
 .set-path { font-family: var(--editor-font); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+
+/* ---------- Named themes (shared/themes.js) ----------
+   Both sit on the dark base (data-theme="dark" is always set with them) and only repaint it.
+   Declared last so they win over the base blocks of equal specificity above. */
+
+/* CodeMirror's dark base theme paints the active line teal and outranks .cm-activeLine above. */
+html[data-skin] .cm-editor .cm-content .cm-line.cm-activeLine { background: var(--active-line); }
+
+/* Those guys: Claude Code. Claude's warm near-black, its orange, the periwinkle it uses for
+   code and suggestions, a terminal font for the chrome and a serif for reading. */
+html[data-skin="those-guys"] {
+  --bg: #262624;
+  --bg-chrome: #1f1e1d;
+  --bg-hover: #30302e;
+  --bg-active: #262624;
+  --bg-popup: #30302e;
+  --fg: #faf9f5;
+  --fg-muted: #a6a39a;
+  --border: #3d3d3a;
+  --accent: #d77757;
+  --accent-fg: #1f1e1d;
+  --selection: rgba(215, 119, 87, 0.3);
+  --active-line: #2b2b29;
+  --code-bg: #1f1e1d;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --ui-font: "Cascadia Mono", Consolas, "iA Writer Mono S", monospace;
+  --md-h: #d77757;
+  --md-link: #b1b9f9;
+  --md-quote: #999999;
+  --md-code: #b1b9f9;
+  --md-meta: #6b6a65;
+  --search-bg: #262624;
+  --search-match: rgba(177, 185, 249, 0.3);
+  --search-current: rgba(215, 119, 87, 0.6);
+  --caret: #d77757;
+  --sel-row: rgba(215, 119, 87, 0.16);
+  --danger: #ff6b80;
+  --flash: #5c3a2c;
+}
+html[data-skin="those-guys"] .tab.active { box-shadow: inset 0 2px 0 var(--accent); }
+html[data-skin="those-guys"] .tab .dot { width: auto; height: auto; background: none; color: var(--accent); line-height: 1; }
+html[data-skin="those-guys"] .tab .dot::before { content: "\273B"; }
+html[data-skin="those-guys"] .cm-panel.cm-search, html[data-skin="those-guys"] .cm-panel.cm-gotoLine { border-color: #6b6a65; }
+html[data-skin="those-guys"] .preview { font-family: "Tiempos Text", Charter, Georgia, Cambria, serif; }
+html[data-skin="those-guys"] .preview h1, html[data-skin="those-guys"] .preview h2, html[data-skin="those-guys"] .preview h3 { color: var(--md-h); }
+html[data-skin="those-guys"] .kb-error { color: var(--danger); }
+
+/* The Other guys: Codex. Near-black and neutral greys, white primary buttons with dark text,
+   cyan for code and links the way the CLI prints them, a magenta nod on the unsaved dot. */
+html[data-skin="other-guys"] {
+  --bg: #111111;
+  --bg-chrome: #181818;
+  --bg-hover: #262626;
+  --bg-active: #111111;
+  --bg-popup: #1c1c1c;
+  --fg: #ececec;
+  --fg-muted: #8f8f8f;
+  --border: #2a2a2a;
+  --accent: #ececec;
+  --accent-fg: #111111;
+  --selection: rgba(255, 255, 255, 0.16);
+  --active-line: #161616;
+  --code-bg: #1c1c1c;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --ui-font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --md-h: #ffffff;
+  --md-link: #5ec4d6;
+  --md-quote: #8f8f8f;
+  --md-code: #5ec4d6;
+  --md-meta: #555555;
+  --search-bg: #1c1c1c;
+  --search-match: rgba(94, 196, 214, 0.25);
+  --search-current: rgba(94, 196, 214, 0.55);
+  --caret: #ffffff;
+  --sel-row: rgba(255, 255, 255, 0.08);
+  --danger: #ff7b72;
+  --flash: #3a3a3a;
+}
+html[data-skin="other-guys"] .tab .dot { background: #d38aea; }
+html[data-skin="other-guys"] .dlg-actions button.primary,
+html[data-skin="other-guys"] .set-pane button.primary,
+html[data-skin="other-guys"] .ut-actions button.primary,
+html[data-skin="other-guys"] .sb-setup button.primary,
+html[data-skin="other-guys"] .nb-banner button.primary { border-radius: 999px; padding-left: 14px; padding-right: 14px; }
+html[data-skin="other-guys"] .cm-panel.cm-search, html[data-skin="other-guys"] .cm-panel.cm-gotoLine { border-radius: 14px; }
+html[data-skin="other-guys"] .kb-error { color: var(--danger); }

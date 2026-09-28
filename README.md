@@ -15,7 +15,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Markdown formatting: bold, italic, strikethrough, headings, bullet/numbered/task lists, quote, inline code, code block, link, horizontal rule, table. Each toggles on and off.
 - Editor, split and preview views for Markdown. Preview links open in the browser.
 - Find, find next/previous, replace, regex, whole word, match case, go to line.
-- Zoom (Ctrl+wheel too), font family and size, word wrap, line numbers, light/dark/system theme.
+- Zoom (Ctrl+wheel too), font family and size, word wrap, line numbers, light/dark/system theme, plus two named dark themes: "Those guys" (looks like Claude Code) and "The Other guys" (looks like Codex).
 - Opening a file from Explorer reuses the running window as a new tab.
 - Print: rendered Markdown for `.md`, plain text for `.txt`.
 - Autosave (View > Autosave, on by default): a file with a name is written 0.8 s after you stop typing. Untitled tabs are kept as drafts under `%APPDATA%\Notera\drafts` and come back on the next start.
