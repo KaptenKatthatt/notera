@@ -371,7 +371,7 @@ export function createSidebar(ctx) {
   let subOf = null; // the menu button whose submenu is open
   let subTimer = 0;
   const itemsHtml = (entries) => entries.map((it, i) => (it.sep ? '<div class="sep"></div>'
-    : `<button type="button" role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''}" ${it.disabled ? 'disabled' : ''}${it.sub ? ' aria-haspopup="menu" aria-expanded="false"' : ''}>${it.icon || '<span class="ico-space"></span>'}<span class="lab">${esc(it.label)}</span>${it.sub ? '<span class="sub">›</span>' : ''}</button>`)).join('');
+    : `<button type="button" role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''}" ${it.disabled ? 'disabled' : ''}${it.sub ? ' aria-haspopup="menu" aria-expanded="false"' : ''}>${it.icon || '<span class="ico-space"></span>'}<span class="lab">${esc(it.label)}</span>${it.key ? `<kbd class="key">${it.key}</kbd>` : ''}${it.sub ? '<span class="sub">›</span>' : ''}</button>`)).join('');
   const subEl = () => /** @type {HTMLElement} */ (menu.querySelector('.sb-submenu'));
   const firstButton = (el) => /** @type {HTMLElement | null} */ (el.querySelector(':scope > button:not([disabled])'));
 
@@ -465,6 +465,14 @@ export function createSidebar(ctx) {
     else if (e.key === 'ArrowRight' && !inSub && active.getAttribute('aria-haspopup')) { e.preventDefault(); openSub(active, true); }
     else if ((e.key === 'ArrowLeft' || e.key === 'Escape') && inSub) { e.preventDefault(); const parent = subOf; closeSub(); parent?.focus(); }
     else if (e.key === 'Escape') { e.preventDefault(); closeMenu(); }
+    else if (!inSub && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      // A letter runs the item that shows it (A archive, D delete, R rename), as in Claude Desktop.
+      const it = menuItems.find((m) => m.key && m.key === e.key.toUpperCase() && !m.disabled);
+      if (!it) return;
+      e.preventDefault();
+      closeMenu();
+      void it.act?.();
+    }
   });
 
   /** "Move to" targets: Unsorted, every project except the current one, and "New project…". */
@@ -486,21 +494,21 @@ export function createSidebar(ctx) {
     const n = info.note;
     showMenu(anchor, [
       { label: t('notes.open'), icon: ICONS.note, act: () => ctx.openNote(p) },
-      { label: t('notes.rename'), icon: ICONS.edit, act: () => startNoteRename(p) },
+      { label: t('notes.rename'), icon: ICONS.edit, key: 'R', act: () => startNoteRename(p) },
       { label: n.pinned ? t('notes.unpin') : t('notes.pin'), icon: ICONS.pin.replace('class="pin"', ''), act: () => togglePin(p, !n.pinned) },
       { label: t('notes.moveTo'), icon: ICONS.move, sub: () => moveTargets(info.folder, (f) => moveTo(p, f)) },
       { sep: true },
-      { label: t('notes.archive'), icon: ICONS.archive, act: () => archiveNote(p) },
-      { label: t('notes.delete'), icon: ICONS.trash, danger: true, act: () => deleteNote(p) }
+      { label: t('notes.archive'), icon: ICONS.archive, key: 'A', act: () => archiveNote(p) },
+      { label: t('notes.delete'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteNote(p) }
     ], titleFor(n), point);
   }
   function projMenu(name, anchor, point) {
     showMenu(anchor, [
       { label: t('notes.newNote'), icon: ICONS.plus, act: () => ctx.createNote(name) },
-      { label: t('notes.rename'), icon: ICONS.edit, act: () => { editing = { kind: 'rename', name, value: name, error: '' }; render(); } },
+      { label: t('notes.rename'), icon: ICONS.edit, key: 'R', act: () => { editing = { kind: 'rename', name, value: name, error: '' }; render(); } },
       { sep: true },
-      { label: t('notes.archiveProject'), icon: ICONS.archive, act: () => archiveProject(name) },
-      { label: t('notes.deleteProject'), icon: ICONS.trash, danger: true, act: () => deleteProject(name) }
+      { label: t('notes.archiveProject'), icon: ICONS.archive, key: 'A', act: () => archiveProject(name) },
+      { label: t('notes.deleteProject'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteProject(name) }
     ], name, point);
   }
   function archivedNoteMenu(p, anchor, point) {
@@ -510,14 +518,14 @@ export function createSidebar(ctx) {
       { label: t('notes.open'), icon: ICONS.note, act: () => ctx.openNote(p) },
       { label: t('notes.restoreTo', { project: folderLabel(info.folder) }), icon: ICONS.restore, act: () => restoreNote(p) },
       { sep: true },
-      { label: t('notes.deleteForever'), icon: ICONS.trash, danger: true, act: () => deleteNote(p) }
+      { label: t('notes.deleteForever'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteNote(p) }
     ], info.note.title, point);
   }
   function archivedProjectMenu(name, anchor, point) {
     showMenu(anchor, [
       { label: t('notes.restoreProject'), icon: ICONS.restore, act: () => restoreProject(name) },
       { sep: true },
-      { label: t('notes.deleteForever'), icon: ICONS.trash, danger: true, act: () => deleteProject(name, true) }
+      { label: t('notes.deleteForever'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteProject(name, true) }
     ], folderLabel(name), point);
   }
 
@@ -537,7 +545,7 @@ export function createSidebar(ctx) {
     if (info) {
       items.push({ label: t('notes.showInSidebar'), icon: ICONS.sidebar, act: () => reveal(tab.path) });
       if (info.archived) items.push({ label: t('notes.restore'), icon: ICONS.restore, act: () => restoreNote(tab.path) });
-      else items.push({ label: t('notes.archive'), icon: ICONS.archive, act: () => archiveNote(tab.path) });
+      else items.push({ label: t('notes.archive'), icon: ICONS.archive, key: 'A', act: () => archiveNote(tab.path) });
     }
     items.push({ sep: true }, { label: t('notes.closeTab'), icon: ICONS.close, act: () => ctx.closeTab(tab) });
     showMenu(null, items, tab.path ? (info ? titleFor(info.note) : tab.path) : null, point);

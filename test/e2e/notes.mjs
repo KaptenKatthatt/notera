@@ -140,6 +140,8 @@ assert.deepEqual((await titlesIn('Enlantis')).slice(0, 3), ['PBI-2001 Export: fe
 await noteRow('PBI-1234').hover();
 await noteRow('PBI-1234').locator('[data-act="note-menu"]').click();
 await shot('33-notes-menu');
+// The letters Claude Desktop uses sit on the right: R rename, A archive, D delete.
+assert.deepEqual(await win.$$eval('#sb-menu > button', (bs) => bs.map((b) => b.querySelector('.key')?.textContent ?? '')), ['', 'R', '', '', 'A', 'D']);
 await win.click('#sb-menu button:has-text("Fäst överst")');
 await settle();
 assert.equal((await titlesIn('Enlantis'))[0], 'PBI-1234 Inloggningsfel');
@@ -162,7 +164,7 @@ assert.match(read('Kund X', '2026-09-10 Visdomsatlasen.md'), /Projekt: Kund X/);
 // 8. Archive the open note: read-only with a banner; restore from the banner
 await noteRow('PBI-2001').click();
 await noteRow('PBI-2001').locator('[data-act="note-menu"]').click();
-await win.click('#sb-menu button:has-text("Arkivera")');
+await win.keyboard.press('a'); // A archives, like clicking Arkivera
 await win.waitForFunction(() => /Arkiv[\\/]Enlantis/.test(window.__notera.active.path));
 await win.waitForFunction(() => document.querySelector('#sb-foot .count')?.textContent === '2');
 assert.equal(await win.evaluate(() => window.__notera.view.state.readOnly), true);
@@ -231,7 +233,8 @@ await win.waitForFunction(() => /Q2 2026[\\/]2026-06-20 Utkast Q2\.md$/.test(win
 assert.match(read('Q2 2026', '2026-06-20 Utkast Q2.md'), /^# Utkast Q2\n/);
 // Escape leaves the name alone.
 await noteRow('Utkast Q2').click({ button: 'right' });
-await win.click('#sb-menu button:has-text("Byt namn")');
+await win.keyboard.press('r'); // R renames
+await win.waitForSelector('#sb-edit');
 await win.fill('#sb-edit', 'Nej');
 await win.keyboard.press('Escape');
 await settle();
@@ -240,7 +243,7 @@ assert.deepEqual(ls('Q2 2026'), ['2026-06-20 Utkast Q2.md']);
 // 12. Delete a project with notes (dialog answered "Delete project")
 await win.locator(row('Hackytel')).hover();
 await win.click(`${row('Hackytel')} [data-act="proj-menu"]`);
-await win.click('#sb-menu button:has-text("Ta bort projekt")');
+await win.keyboard.press('d'); // D deletes
 await settle();
 assert.ok(!ls().includes('Hackytel'));
 assert.ok((await app.evaluate(() => globalThis.__asked)).some((m) => /Hackytel/.test(m)));
