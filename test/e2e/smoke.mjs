@@ -80,6 +80,24 @@ assert.ok(s.status.some((x) => /^Ln \d+, Col \d+$/.test(x)), s.status.join('|'))
 // The status bar no longer shows line endings; the file keeps its own (checked on save below).
 assert.ok(!s.status.some((x) => /CRLF|\(LF\)/.test(x)), s.status.join('|'));
 assert.equal(await win.locator('#st-eol').count(), 0);
+// Narrow windows: every field stays on one line inside the bar; the least useful ones drop out.
+const statusFit = () => win.evaluate(() => {
+  const bar = document.querySelector('#statusbar').getBoundingClientRect();
+  const shown = [...document.querySelectorAll('#statusbar > *')].filter((e) => !e.hidden && getComputedStyle(e).display !== 'none');
+  return { bad: shown.filter((e) => { const r = e.getBoundingClientRect(); return r.height > bar.height || r.right > bar.right + 0.5 || r.top < bar.top; }).map((e) => e.id),
+    shown: shown.map((e) => e.id).filter(Boolean) };
+});
+for (const w of [900, 600, 480]) {
+  await app.evaluate(({ BrowserWindow }, w) => BrowserWindow.getAllWindows()[0].setSize(w, 600), w);
+  await win.waitForFunction((w) => innerWidth <= w, w);
+  await win.waitForTimeout(100);
+  const fit = await statusFit();
+  assert.deepEqual(fit.bad, [], `status bar at ${w}px: ${fit.bad.join(',')}`);
+  assert.ok(fit.shown.includes('st-pos') && fit.shown.includes('st-kind'), fit.shown.join(','));
+  if (w === 480) await shot('02b-statusbar-narrow');
+}
+await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1000, 700));
+await win.waitForFunction(() => innerWidth > 900);
 assert.ok(s.status.includes('UTF-8'));
 assert.ok(s.status.some((x) => /\d+ words/.test(x)));
 

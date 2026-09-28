@@ -651,6 +651,18 @@ function applySidebarLayout() {
 }
 
 // ---------- status bar ----------
+// Dropped first when the status bar is too narrow for everything. The cursor position, the file
+// location and the mode button always stay.
+const STATUS_DROP_ORDER = ['#st-chars', '#st-zoom', '#st-words', '#st-enc', '#st-sel'];
+function fitStatus() {
+  const bar = $('#statusbar');
+  for (const sel of STATUS_DROP_ORDER) $(sel).classList.remove('st-drop');
+  for (const sel of STATUS_DROP_ORDER) {
+    if (bar.scrollWidth <= bar.clientWidth) break;
+    $(sel).classList.add('st-drop');
+  }
+}
+
 function updateStatus() {
   if (!active) return;
   const s = view.state;
@@ -677,6 +689,7 @@ function updateStatus() {
   }
   const state = active.recovered && active.dirty ? t('ui.recovered') : active.dirty ? t('ui.unsaved') : (active.path ? t('ui.saved') : '');
   $('#ft-status').textContent = [tabTitle(active), state].filter(Boolean).join(' · ');
+  fitStatus();
 }
 
 function applyKindUi() {
@@ -1017,6 +1030,7 @@ async function boot() {
     shortcutLabel: (id) => display((keys.bindings()[id] || [])[0] || '')
   });
   bindUi();
+  new ResizeObserver(fitStatus).observe($('#statusbar'));
   api.onPrepareQuit((id) => void prepareQuit(id));
   applySettings(b.settings, { __locale: b.locale });
   if (b.update) updates.onStatus(b.update);
