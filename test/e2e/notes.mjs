@@ -148,8 +148,10 @@ assert.equal(await noteRow('PBI-1234').locator('.pin').count(), 1);
 // 7. Move via the menu, into a new project made on the spot
 await noteRow('Visdomsatlasen').hover();
 await noteRow('Visdomsatlasen').locator('[data-act="note-menu"]').click();
-await win.click('#sb-menu button:has-text("Flytta till")');
-await win.click('#sb-menu button:has-text("Nytt projekt…")');
+await win.hover('#sb-menu button:has-text("Flytta till")');
+await win.waitForSelector('#sb-menu .sb-submenu:not([hidden])');
+await shot('33b-notes-menu-submenu');
+await win.click('#sb-menu .sb-submenu button:has-text("Nytt projekt…")');
 await win.fill('#project-name', 'Kund X');
 await win.click('#project-ok');
 await win.waitForFunction(() => document.querySelector('#sb-list .sb-proj[data-folder="Kund X"]'));
@@ -247,8 +249,23 @@ assert.ok((await app.evaluate(() => globalThis.__asked)).some((m) => /Hackytel/.
 await win.evaluate((p) => window.__notera.openPaths([p]), loose);
 await win.waitForFunction(() => /lösa tankar/.test(window.__notera.active.path));
 await win.click('.tab.active', { button: 'right' });
-await win.click('#sb-menu button:has-text("Flytta till projekt")');
-await win.click('#sb-menu button:has-text("Notera")');
+// Hovering "Move to project" folds the submenu out beside the menu; hovering another item folds it back.
+await win.hover('#sb-menu button:has-text("Flytta till projekt")');
+await win.waitForSelector('#sb-menu .sb-submenu:not([hidden]) button:has-text("Notera")');
+const [mb, sb] = await Promise.all([win.locator('#sb-menu').boundingBox(), win.locator('#sb-menu .sb-submenu').boundingBox()]);
+assert.ok(sb.x >= mb.x + mb.width - 4 || sb.x + sb.width <= mb.x + 4, `submenu beside the menu, not over it: ${JSON.stringify({ mb, sb })}`);
+await shot('41-notes-tab-menu-submenu');
+await win.hover('#sb-menu button:has-text("Stäng flik")');
+await win.waitForSelector('#sb-menu .sb-submenu', { state: 'hidden' });
+// Keyboard: Right arrow opens it with focus inside, Left arrow goes back.
+await win.focus('#sb-menu button:has-text("Flytta till projekt")');
+await win.keyboard.press('ArrowRight');
+await win.waitForFunction(() => document.activeElement?.closest('.sb-submenu'));
+await win.keyboard.press('ArrowLeft');
+await win.waitForFunction(() => document.activeElement?.textContent.startsWith('Flytta till projekt') && document.querySelector('#sb-menu .sb-submenu').hidden);
+await win.hover('#sb-menu button:has-text("Flytta till projekt")');
+await win.hover('#sb-menu .sb-submenu button:has-text("Notera")');
+await win.click('#sb-menu .sb-submenu button:has-text("Notera")');
 await win.waitForFunction(() => /Notera[\\/]\d{4}-\d{2}-\d{2} lösa tankar\.md$/.test(window.__notera.active.path));
 assert.ok(!fs.existsSync(loose));
 assert.match(await activeText(), /^# lösa tankar\nProjekt: Notera · Skapad: .+\n\nSkrev det här/);

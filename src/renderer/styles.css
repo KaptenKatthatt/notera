@@ -513,6 +513,8 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; }
 .sb-menu .ico-space { width: 14px; flex: none; }
 .sb-menu .sub { color: var(--fg-muted); }
 .sb-menu .sep { height: 1px; background: var(--border); margin: 4px 2px; }
+.sb-menu button.open { background: var(--bg-hover); }
+.sb-submenu { max-height: calc(100vh - 12px); overflow-y: auto; }
 .sb-menu .mh { padding: 5px 10px 4px; font-size: 11px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Banner (choose a notes folder / archived note) */
