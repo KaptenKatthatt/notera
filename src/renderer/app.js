@@ -662,7 +662,6 @@ function updateStatus() {
   $('#st-chars').textContent = t('ui.chars', { n: s.doc.length });
   $('#st-words').textContent = active.kind === 'md' ? t('ui.words', { n: countWords(s.doc.toString()) }) : '';
   $('#st-zoom').textContent = t('ui.zoom', { n: settings.zoom || 100 });
-  $('#st-eol').textContent = active.eol === 'CRLF' ? t('ui.crlf') : t('ui.lf');
   $('#st-enc').textContent = encodingLabel(active.encoding);
   $('#st-kind').textContent = active.kind === 'md' ? t('ui.markdown') : t('ui.plainText');
   $('#st-kind').title = active.kind === 'md' ? t('ui.switchToText') : t('ui.switchToMarkdown');
@@ -880,10 +879,6 @@ function bindUi() {
   for (const b of $$('#footer [data-action]')) b.addEventListener('click', () => void handleAction(b.dataset.action));
 
   $('#st-zoom').addEventListener('click', () => setZoom(100));
-  $('#st-eol').addEventListener('click', (e) => popups.show(e.currentTarget, [
-    { label: t('ui.crlf'), checked: active.eol === 'CRLF', onClick: () => { active.eol = 'CRLF'; markDirty(); } },
-    { label: t('ui.lf'), checked: active.eol === 'LF', onClick: () => { active.eol = 'LF'; markDirty(); } }
-  ]));
   $('#st-enc').addEventListener('click', (e) => popups.show(e.currentTarget, ENCODINGS.map((enc) => ({
     label: encodingLabel(enc), checked: active.encoding === enc, onClick: () => { active.encoding = enc; markDirty(); }
   }))));

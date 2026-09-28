@@ -10,7 +10,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 
 - Opens and saves `.md` and `.txt` files. The file extension decides the mode; the status bar button switches it by hand.
 - Save as opens in the current file's folder. A new file opens in the folder you last used.
-- Remembers encoding (UTF-8, UTF-8 with BOM, UTF-16 LE/BE, ANSI) and line endings (CRLF or LF) per file and writes them back unchanged. Both can be changed from the status bar.
+- Remembers encoding (UTF-8, UTF-8 with BOM, UTF-16 LE/BE, ANSI) and line endings (CRLF or LF) per file and writes them back unchanged. The encoding can be changed from the status bar.
 - Tabs with unsaved-change dots, a save prompt on close, and reload prompts when a file changed on disk.
 - Markdown formatting: bold, italic, strikethrough, headings, bullet/numbered/task lists, quote, inline code, code block, link, horizontal rule, table. Each toggles on and off.
 - Editor, split and preview views for Markdown. Preview links open in the browser.

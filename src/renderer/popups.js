@@ -1,4 +1,4 @@
-// popups.js: the small menus that open from the status bar (line endings, encoding) and the
+// popups.js: the small menus that open from the status bar (encoding) and the
 // formatting toolbar's drop-downs. One of them is open at a time; a click elsewhere or Escape
 // closes it.
 

@@ -77,7 +77,9 @@ await shot('03-after-format');
 // Status bar content
 s = await state();
 assert.ok(s.status.some((x) => /^Ln \d+, Col \d+$/.test(x)), s.status.join('|'));
-assert.ok(s.status.includes('Windows (CRLF)'));
+// The status bar no longer shows line endings; the file keeps its own (checked on save below).
+assert.ok(!s.status.some((x) => /CRLF|\(LF\)/.test(x)), s.status.join('|'));
+assert.equal(await win.locator('#st-eol').count(), 0);
 assert.ok(s.status.includes('UTF-8'));
 assert.ok(s.status.some((x) => /\d+ words/.test(x)));
 
