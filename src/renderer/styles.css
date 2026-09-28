@@ -512,6 +512,8 @@ body.sb-dragging, body.sb-dragging * { cursor: grabbing !important; }
 .sb-menu button[disabled] { opacity: 0.45; }
 .sb-menu .ico-space { width: 14px; flex: none; }
 .sb-menu .sub { color: var(--fg-muted); }
+.sb-menu .key { margin-left: 16px; font: inherit; font-size: 12px; color: var(--fg-muted); }
+.sb-menu button.danger .key { color: var(--fg-muted); }
 .sb-menu .sep { height: 1px; background: var(--border); margin: 4px 2px; }
 .sb-menu button.open { background: var(--bg-hover); }
 .sb-submenu { max-height: calc(100vh - 12px); overflow-y: auto; }
