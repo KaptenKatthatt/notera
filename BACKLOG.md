@@ -7,3 +7,4 @@ Brain dump of ideas, in the order they were said. Not prioritised yet.
 - Remove the line-ending indicator from the bottom status bar.
 - Bug: in the new-project dialog, pressing Enter after typing the name acts as cancel and closes the dialog without creating the project. Enter should mean create.
 - In a tab's right-click menu, hovering "Move to project" does not open the submenu; it only opens on click. It should open on hover too.
+- Bug: in the taskbar right-click menu (jump list), the "Notera" app entry still shows the icon on a white background. The other entries in the same menu show it correctly. Photo: [backlog-jumplist-icon.jpg](backlog-jumplist-icon.jpg).
