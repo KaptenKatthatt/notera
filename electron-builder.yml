@@ -13,6 +13,11 @@ files:
   - build/icon.png
   - package.json
 asar: true
+# A loose copy of the icon for the installer to point the shortcuts and the taskbar pin at
+# (see build/installer.nsh): files inside app.asar are invisible to Windows.
+extraResources:
+  - from: build/icon.ico
+    to: notera.ico
 win:
   target:
     - nsis
