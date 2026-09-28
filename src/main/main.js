@@ -9,6 +9,7 @@ const { resolveLocale, makeT } = require('../shared/strings');
 const commands = require('../shared/commands');
 const { createUpdater } = require('./updater');
 const templates = require('../shared/templates');
+const { THEMES, themeSource, skinOf } = require('../shared/themes');
 const { createNotesStore } = require('./notes');
 
 const isDev = !app.isPackaged;
@@ -54,7 +55,7 @@ function broadcast(channel, payload) {
 
 function updateSettings(patch) {
   const next = settings.set(patch);
-  if ('theme' in patch) { nativeTheme.themeSource = next.theme; broadcast('theme:changed', nativeTheme.shouldUseDarkColors); }
+  if ('theme' in patch) { nativeTheme.themeSource = themeSource(next.theme); broadcast('theme:changed', nativeTheme.shouldUseDarkColors); }
   if ('language' in patch) refreshLocale();
   if ('writingMode' in patch) for (const w of BrowserWindow.getAllWindows()) applyMenuBar(w, next.writingMode);
   if ('checkUpdates' in patch && next.checkUpdates && updater) void updater.check();
@@ -84,7 +85,7 @@ function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null)
     minWidth: 480,
     minHeight: 320,
     title: t('appName'),
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1f1f1f' : '#ffffff',
+    backgroundColor: THEMES[skinOf(settings.get('theme'))]?.background || (nativeTheme.shouldUseDarkColors ? '#1f1f1f' : '#ffffff'),
     autoHideMenuBar: false,
     icon: path.join(__dirname, '../../build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
@@ -568,7 +569,11 @@ function buildMenu() {
         { type: 'separator' },
         {
           label: t('menu.theme'),
-          submenu: [radio(t('menu.themeSystem'), 'theme', 'system'), radio(t('menu.themeLight'), 'theme', 'light'), radio(t('menu.themeDark'), 'theme', 'dark')]
+          submenu: [
+            radio(t('menu.themeSystem'), 'theme', 'system'), radio(t('menu.themeLight'), 'theme', 'light'), radio(t('menu.themeDark'), 'theme', 'dark'),
+            { type: 'separator' },
+            ...Object.entries(THEMES).map(([id, th]) => radio(t(th.label), 'theme', id))
+          ]
         },
         {
           label: t('menu.language'),
@@ -631,7 +636,7 @@ if (!gotLock) {
   app.whenReady().then(() => {
     settings = new Settings(path.join(app.getPath('userData'), 'settings.json'));
     refreshLocale();
-    nativeTheme.themeSource = settings.get('theme') || 'system';
+    nativeTheme.themeSource = themeSource(settings.get('theme'));
     nativeTheme.on('updated', () => broadcast('theme:changed', nativeTheme.shouldUseDarkColors));
     updater = createUpdater({ broadcast, getSettings: () => settings.get() });
     buildMenu();
