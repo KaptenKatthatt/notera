@@ -80,6 +80,7 @@ export function createSettingsDialog(ctx) {
     toggle('wordWrap', t('settings.wordWrap'), true);
     toggle('narrowColumn', t('settings.narrowColumn'), true);
     toggle('lineNumbers', t('settings.lineNumbers'));
+    toggle('spellcheck', t('settings.spellcheck'));
 
     // Ctrl+W: the same thing as moving the key between Close tab and Close window under Keyboard shortcuts.
     section(t('settings.tabsWindows'));
