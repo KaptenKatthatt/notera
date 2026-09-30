@@ -61,13 +61,25 @@ export function createThemeApplier(ctx) {
 
   function isDark() { return document.documentElement.dataset.theme === 'dark'; }
 
+  /** A message in the same card, without the themes-folder button; '' hides it. */
+  function notice(text) {
+    const box = $('#theme-toast');
+    if (!text && !shownError.startsWith('notice|')) return;
+    shownError = text ? `notice|${text}` : '';
+    box.hidden = !text;
+    $('#theme-toast-folder').hidden = true;
+    if (text) $('#theme-toast-text').textContent = text;
+  }
+
   function renderError(error) {
     const box = $('#theme-toast');
     if (!box) return;
     const key = error ? `${error.theme}|${error.line}|${error.message}` : '';
     if (key === shownError && (!error || !box.hidden)) return;
+    if (!error && shownError.startsWith('notice|')) return;
     shownError = key;
     box.hidden = !error;
+    $('#theme-toast-folder').hidden = false;
     if (!error) return;
     const t = ctx.t();
     $('#theme-toast-text').textContent = error.line
@@ -80,6 +92,7 @@ export function createThemeApplier(ctx) {
 
   return {
     apply,
+    notice,
     isDark,
     /** Re-render texts after a language change. */
     refresh() { if ($('#theme-toast').hidden) return; shownError = ''; renderError(current && current.error); },

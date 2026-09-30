@@ -14,7 +14,11 @@ The folder name is the theme's id: lowercase letters, digits, `-`, `_` and `.`. 
 
 ## The quickest start
 
-Extend a theme you like and change one thing:
+Pick the theme you want to start from, press Ctrl+Shift+P and run **New theme from current** (Nytt tema från nuvarande). Give it a name: Notera creates the folder, writes a `theme.json` that extends the theme you had on, switches to it and opens the file in a tab. Change a colour and save; the window repaints as you save, and with autosave on, as you type.
+
+Browse themes (Bläddra bland teman) in the same palette lists every theme, and the arrow keys show each one on your open document before you pick it.
+
+By hand, a theme that extends one you like and changes one thing looks like this:
 
 ```jsonc
 {

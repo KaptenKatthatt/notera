@@ -9,7 +9,8 @@ const { resolveLocale, makeT } = require('../shared/strings');
 const commands = require('../shared/commands');
 const { createUpdater } = require('./updater');
 const templates = require('../shared/templates');
-const { DEFAULT_THEME, MODES } = require('../shared/themeFormat');
+const { DEFAULT_THEME, MODES, parseJsonc, migrateThemeSettings } = require('../shared/themeFormat');
+const fsSync = require('fs');
 const { createThemeStore, describeError, SCHEME } = require('./themes');
 const { createNotesStore } = require('./notes');
 
@@ -77,6 +78,70 @@ function themeBackground() {
   const v = themeState.payload?.variants?.[nativeTheme.shouldUseDarkColors ? 'dark' : 'light'];
   const bg = v?.vars?.['--bg'];
   return typeof bg === 'string' && /^#[0-9a-f]{3,8}$/i.test(bg) ? bg : (nativeTheme.shouldUseDarkColors ? '#101010' : '#ffffff');
+}
+
+/**
+ * "New theme from current": a folder in the user's themes with a theme.json that extends the
+ * active theme and repeats a few of its colours as a starting point. Switches to it.
+ */
+async function createThemeFromCurrent(name) {
+  const clean = name.trim().slice(0, 60) || t('palette.defaultThemeName');
+  const base = themeStore.has(settings.get('theme')) ? settings.get('theme') : DEFAULT_THEME;
+  const slug = clean.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'my-theme';
+  let id = slug;
+  for (let n = 2; themeStore.has(id) || fsSync.existsSync(path.join(themeStore.userDir, id)); n++) id = `${slug}-${n}`;
+  const payload = themeStore.payload(base, locale);
+  const pick = (v, key) => v?.vars?.[key];
+  const variant = (v) => ({
+    colors: { 'editor.background': pick(v, '--bg'), 'editor.foreground': pick(v, '--fg'), 'button.background': pick(v, '--accent') },
+    notera: { colors: { heading: pick(v, '--md-h') } }
+  });
+  const body = {
+    $schema: 'https://raw.githubusercontent.com/KaptenKatthatt/notera/master/theme.schema.json',
+    name: clean,
+    extends: base,
+    dark: variant(payload.variants.dark),
+    light: variant(payload.variants.light)
+  };
+  const intro = `// ${t('palette.newThemeComment1', { base: payload.name })}\n// ${t('palette.newThemeComment2')}\n`;
+  const json = JSON.stringify(body, null, 2);
+  const text = json.replace(/^\{\n/, `{\n  ${intro.trim().split('\n').join('\n  ')}\n`) + '\n';
+  const dir = path.join(themeStore.userDir, id);
+  await fs.mkdir(dir, { recursive: true });
+  const file = path.join(dir, 'theme.json');
+  await writeFileAtomic(file, text);
+  themeStore.scan();
+  updateSettings({ theme: id });
+  buildMenu();
+  return { id, file };
+}
+
+// Settings Notera keeps up to date by itself; an open settings.json tab holds them as they were
+// when it was opened, so saving it must not roll them back.
+const APP_MANAGED = new Set(['recentFiles', 'lastDir', 'windowBounds', 'sidebarWidth']);
+
+/**
+ * Re-read settings.json after it was edited by hand and apply what changed. A file that does not
+ * parse changes nothing and says where it broke.
+ */
+function reloadSettingsFile() {
+  let raw;
+  try { raw = parseJsonc(fsSync.readFileSync(settings.file, 'utf8')); }
+  catch (e) { return { error: describeError('settings.json', e) }; }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: { theme: 'settings.json', message: 'not an object', line: 1, column: 1 } };
+  const next = migrateThemeSettings(raw);
+  const cur = settings.get();
+  const patch = {};
+  for (const [k, v] of Object.entries(next)) {
+    if (k in cur && !APP_MANAGED.has(k) && JSON.stringify(cur[k]) !== JSON.stringify(v)) patch[k] = v;
+  }
+  if (Object.keys(patch).length) updateSettings(patch);
+  return { changed: Object.keys(patch) };
+}
+
+function samePath(a, b) {
+  const norm = (p) => (process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p));
+  return norm(a) === norm(b);
 }
 
 function openThemesFolder() {
@@ -288,6 +353,13 @@ ipcMain.handle('update:install', async () => {
 ipcMain.handle('settings:get', () => settings.get());
 ipcMain.handle('themes:list', () => themeStore.list(locale));
 ipcMain.handle('themes:openFolder', () => openThemesFolder());
+// The theme picker previews a theme in the asking window only, without saving the setting.
+ipcMain.handle('themes:preview', (_e, id) => {
+  try { return { dark: nativeTheme.shouldUseDarkColors, theme: themeStore.payload(String(id), locale), error: null }; }
+  catch (e) { return { dark: nativeTheme.shouldUseDarkColors, theme: null, error: describeError(String(id), e) }; }
+});
+ipcMain.handle('themes:create', (_e, name) => createThemeFromCurrent(String(name || '')));
+ipcMain.handle('settings:path', () => settings.file);
 ipcMain.handle('settings:set', (_e, patch) => updateSettings(patch));
 
 ipcMain.handle('file:openDialog', async (e) => {
@@ -323,10 +395,13 @@ ipcMain.handle('file:stat', async (_e, p) => {
 ipcMain.handle('file:write', async (_e, { path: p, text, encoding, eol }) => {
   try {
     await writeFileAtomic(p, files.writeBuffer(text, encoding, eol));
-    const st = await fs.stat(p);
-    settings.addRecent(p);
+    // settings.json saved by hand is applied, not added to recent files: addRecent would write the
+    // settings still in memory straight over the file that was just saved.
+    const isSettings = samePath(p, settings.file);
+    const settingsReload = isSettings ? reloadSettingsFile() : null;
+    if (!isSettings) settings.addRecent(p);
     buildMenu();
-    return { ok: true, path: p, name: path.basename(p), kind: files.kindForPath(p), mtimeMs: st.mtimeMs };
+    return { ok: true, path: p, name: path.basename(p), kind: files.kindForPath(p), mtimeMs: (await fs.stat(p)).mtimeMs, settingsReload };
   } catch (err) {
     return { ok: false, path: p, name: path.basename(p), error: err.message };
   }
@@ -598,7 +673,7 @@ function buildMenu() {
         { type: 'separator' },
         cmd('print'),
         { type: 'separator' },
-        cmd('settings'),
+        cmd('settings'), cmd('openSettingsJson'),
         { type: 'separator' },
         { label: label('exit'), accelerator: exitAccel, registerAccelerator: false, click: () => quitAll() }
       ]
@@ -654,6 +729,8 @@ function buildMenu() {
     {
       label: t('menu.view'),
       submenu: [
+        cmd('commandPalette'),
+        { type: 'separator' },
         { label: t('menu.zoom'), submenu: [cmd('zoomIn'), cmd('zoomOut'), cmd('zoomReset')] },
         { type: 'separator' },
         viewRadio('viewEditor', 'editor'), viewRadio('viewSplit', 'split'), viewRadio('viewPreview', 'preview'),
@@ -675,7 +752,8 @@ function buildMenu() {
             radio(t('menu.themeSystem'), 'mode', 'system'), radio(t('menu.themeLight'), 'mode', 'light'), radio(t('menu.themeDark'), 'mode', 'dark'),
             { type: 'separator' },
             check('effects'),
-            { label: t('menu.openThemesFolder'), click: () => openThemesFolder() }
+            cmd('pickTheme'), cmd('newThemeFromCurrent'),
+            cmd('openThemesFolder', { click: () => openThemesFolder() })
           ]
         },
         {
