@@ -341,7 +341,10 @@ async function detachTabToWindow(tab) {
 
 // ---------- files ----------
 async function openPaths(paths) {
-  for (const p of paths) {
+  // A VS Code extension dropped on the window (or opened) imports its theme instead of opening as text.
+  const vsix = paths.find((p) => /\.vsix$/i.test(p));
+  if (vsix && palette) void palette.importVsix(vsix);
+  for (const p of paths.filter((x) => !/\.vsix$/i.test(x))) {
     const existing = tabs.find((x) => x.path === p);
     if (existing) { activateTab(existing); continue; }
     const r = await api.readFile(p);
@@ -953,6 +956,7 @@ async function handleAction(action, payload) {
     case 'pickTheme': await palette.pickTheme(); break;
     case 'newThemeFromCurrent': palette.newTheme(); break;
     case 'openThemesFolder': await api.openThemesFolder(); break;
+    case 'importVsCodeTheme': await palette.importVsCode(); break;
     case 'openSettingsJson': await openPaths([settingsFile || await api.settingsPath()]); break;
     case 'about': await api.about(); break;
     default:
@@ -1128,7 +1132,7 @@ async function boot() {
   palette = createPalette({
     t: () => t, api, getSettings: () => settings, run: (id) => handleAction(id), focusEditor: () => view.focus(),
     previewTheme: (msg) => paintTheme(msg), restoreTheme: () => { if (themeMsg) paintTheme(themeMsg); },
-    openPaths: (paths) => openPaths(paths)
+    openPaths: (paths) => openPaths(paths), notice: (text) => themes.notice(text)
   });
   sidebar = createSidebar({
     api, t: () => t, settings: () => settings, pathKey,

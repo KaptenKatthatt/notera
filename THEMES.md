@@ -46,6 +46,18 @@ Values at the top level are shared by both variants, and the `light` and `dark` 
 }
 ```
 
+## Importing a VS Code theme
+
+Ctrl+Shift+P, **Import VS Code theme** (Importera VS Code-tema) lists every colour theme installed in VS Code on this computer (also Insiders, VSCodium, Cursor and VS Code's own built-in themes). The arrow keys show each one on your open document before anything is written. Enter copies it into your themes folder as a Notera theme and switches to it. The list also offers **Choose a .vsix file**, and a `.vsix` dropped on the window works too.
+
+When the extension has both a light and a dark theme, Notera pairs them, so GitHub Dark Default comes with GitHub Light Default and Catppuccin Mocha with Latte, and the Light and Dark modes both work. A dark-only theme such as Dracula is used in both modes. Only the colours Notera reads and the Markdown rules of `tokenColors` are kept, so the imported `theme.json` is short enough to read. Importing the same theme again replaces the earlier copy.
+
+An imported theme is an ordinary theme: add a `notera` section to it for heading colours, fonts and effects. SynthWave '84's glow, for example, is not part of its colour theme (in VS Code an extension injects it), so it comes over without it. Give it back like this:
+
+```jsonc
+"notera": { "effects": { "glow": { "target": "headings", "strength": 0.7 }, "cursor": { "style": "line", "glow": 0.6 } } }
+```
+
 ## Colours: VS Code's keys
 
 `colors` uses VS Code's own workbench colour names, so you can copy the `colors` block of any VS Code theme into a variant as it is. Notera reads the keys below and ignores the rest. Anything you leave out is derived from the background and text colours.

@@ -56,8 +56,8 @@ const cases = [
   { id: 'default', mode: 'dark', bg: 'rgb(16, 16, 16)', accent: '#4cc2ff', h1: 'rgb(238, 238, 238)', caret: 'rgb(238, 238, 238)' },
   { id: 'those-guys', mode: 'dark', bg: 'rgb(38, 38, 36)', accent: '#d77757', h1: 'rgb(215, 119, 87)', caret: 'rgb(215, 119, 87)' },
   { id: 'those-guys', mode: 'light', bg: 'rgb(250, 249, 245)', accent: '#c6613f', h1: 'rgb(198, 97, 63)', caret: 'rgb(198, 97, 63)' },
-  { id: 'other-guys', mode: 'dark', bg: 'rgb(17, 17, 17)', accent: '#ececec', h1: 'rgb(236, 236, 236)', caret: 'rgb(255, 255, 255)' },
-  { id: 'other-guys', mode: 'light', bg: 'rgb(255, 255, 255)', accent: '#0d0d0d', h1: 'rgb(13, 13, 13)', caret: 'rgb(13, 13, 13)' }
+  { id: 'other-guys', mode: 'dark', bg: 'rgb(17, 17, 17)', accent: '#ececec', h1: 'rgb(255, 255, 255)', caret: 'rgb(255, 255, 255)' },
+  { id: 'other-guys', mode: 'light', bg: 'rgb(255, 255, 255)', accent: '#0d0d0d', h1: 'rgb(0, 0, 0)', caret: 'rgb(13, 13, 13)' }
 ];
 for (const c of cases) {
   await win.evaluate(([id, mode]) => window.notera.setSettings({ theme: id, mode }), [c.id, c.mode]);

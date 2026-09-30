@@ -82,6 +82,24 @@
     "dark": {
       "$ref": "#/definitions/variant",
       "description": "Values for the Dark mode, merged over the shared ones."
+    },
+    "importedFrom": {
+      "description": "Set by Import VS Code theme: the extension and the themes this file came from.",
+      "type": "object",
+      "properties": {
+        "extension": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "themes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "definitions": {

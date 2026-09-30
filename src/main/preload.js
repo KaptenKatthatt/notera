@@ -55,6 +55,13 @@ contextBridge.exposeInMainWorld('notera', {
   previewTheme: (id) => ipcRenderer.invoke('themes:preview', id),
   createTheme: (name) => ipcRenderer.invoke('themes:create', name),
   settingsPath: () => ipcRenderer.invoke('settings:path'),
+  vscode: {
+    list: () => ipcRenderer.invoke('vscode:list'),
+    openVsix: () => ipcRenderer.invoke('vscode:openVsix'),
+    readVsix: (file) => ipcRenderer.invoke('vscode:readVsix', file),
+    preview: (key) => ipcRenderer.invoke('vscode:preview', key),
+    importTheme: (key) => ipcRenderer.invoke('vscode:import', key)
+  },
   notes: {
     call: (method, ...args) => ipcRenderer.invoke('notes:call', method, ...args),
     chooseRoot: () => ipcRenderer.invoke('notes:chooseRoot'),

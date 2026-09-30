@@ -107,6 +107,19 @@ function createThemeStore({ builtinDir, userDir }) {
     };
   }
 
+  /**
+   * The payload for a theme that is not on disk yet (a VS Code theme being previewed). It may
+   * extend installed themes like any other.
+   */
+  function payloadFromRaw(rawTheme, id, locale) {
+    const saved = index;
+    index = new Map(index);
+    index.set(id, { dir: '', builtin: false });
+    cache.set(id, { raw: rawTheme });
+    try { return payload(id, locale); }
+    finally { index = saved; cache.delete(id); }
+  }
+
   /** The theme's folder on disk, if it is known. */
   function dirOf(id) { return index.get(id)?.dir || null; }
 
@@ -142,7 +155,7 @@ function createThemeStore({ builtinDir, userDir }) {
   function close() { clearTimeout(timer); if (watcher) watcher.close(); }
 
   scan();
-  return { scan, list, payload, raw, dirOf, serve, watch, close, has: (id) => index.has(id), userDir };
+  return { scan, list, payload, payloadFromRaw, raw, dirOf, serve, watch, close, has: (id) => index.has(id), userDir };
 }
 
 function safeRel(rel) {

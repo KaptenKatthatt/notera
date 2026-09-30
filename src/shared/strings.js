@@ -20,7 +20,7 @@ const en = {
     view: '&View', zoom: 'Zoom', zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomReset: 'Restore default zoom',
     statusBar: 'Status bar', narrowColumn: 'Narrow text column', wordWrap: 'Word wrap', lineNumbers: 'Line numbers', formattingBar: 'Formatting toolbar',
     editorOnly: 'Write', split: 'Split', previewOnly: 'Read', theme: 'Theme', themeSystem: 'Use system setting',
-    themeLight: 'Light', themeDark: 'Dark', themeBroken: '{name} (broken)', openThemesFolder: 'Open themes folder', effects: 'Theme effects', commandPalette: 'Command palette…', pickTheme: 'Browse themes…', newThemeFromCurrent: 'New theme from current…', openSettingsJson: 'Open settings (JSON)', language: 'Language', langAuto: 'Automatic', langEn: 'English', langSv: 'Svenska',
+    themeLight: 'Light', themeDark: 'Dark', themeBroken: '{name} (broken)', openThemesFolder: 'Open themes folder', effects: 'Theme effects', commandPalette: 'Command palette…', pickTheme: 'Browse themes…', newThemeFromCurrent: 'New theme from current…', openSettingsJson: 'Open settings (JSON)', importVsCodeTheme: 'Import VS Code theme…', language: 'Language', langAuto: 'Automatic', langEn: 'English', langSv: 'Svenska',
     help: '&Help', about: 'About Notera', toggleDevTools: 'Developer tools',
     writingMode: 'Writing mode', fullscreen: 'Full screen', autosave: 'Autosave', hideMarkers: 'Hide Markdown markers',
     shortcuts: 'Keyboard shortcuts',
@@ -81,7 +81,12 @@ const en = {
     defaultThemeName: 'My theme', newThemeComment1: 'Built on "{base}". Change any value and save: Notera repaints right away.',
     newThemeComment2: 'Every key is described in THEMES.md: https://github.com/KaptenKatthatt/notera/blob/master/THEMES.md',
     settingsError: 'settings.json could not be read: line {line}: {message}. The previous settings still apply.',
-    on: 'on', off: 'off'
+    on: 'on', off: 'off',
+    vscode: 'Pick a VS Code theme (arrow keys preview it)', vscodeNone: 'No VS Code themes found on this computer',
+    vsixItem: 'Choose a .vsix file…', vsixDetail: 'a VS Code extension file', withPair: 'with {name}', darkOnly: 'dark only', lightOnly: 'light only',
+    vsixNoThemes: '{name} has no colour themes.', vsixError: '{name} could not be read: {message}',
+    importedComment1: 'Imported from VS Code: {name} ({version}). The colours are the VS Code theme\'s own.',
+    importedComment2: 'Add a "notera" section for heading colours, fonts and effects: see THEMES.md.'
   },
   theme: {
     error: 'The theme "{theme}" could not be loaded: {message}', errorAt: 'The theme "{theme}" could not be loaded: theme.json line {line}: {message}',
@@ -114,7 +119,7 @@ const sv = {
     view: '&Visa', zoom: 'Zoom', zoomIn: 'Zooma in', zoomOut: 'Zooma ut', zoomReset: 'Återställ standardzoom',
     statusBar: 'Statusfält', narrowColumn: 'Begränsad textbredd', wordWrap: 'Radbyte', lineNumbers: 'Radnummer', formattingBar: 'Formateringsfält',
     editorOnly: 'Skriv', split: 'Delad', previewOnly: 'Läs', theme: 'Tema', themeSystem: 'Följ systemet',
-    themeLight: 'Ljust', themeDark: 'Mörkt', themeBroken: '{name} (trasigt)', openThemesFolder: 'Öppna temamappen', effects: 'Temaeffekter', commandPalette: 'Kommandopalett…', pickTheme: 'Bläddra bland teman…', newThemeFromCurrent: 'Nytt tema från nuvarande…', openSettingsJson: 'Öppna inställningar (JSON)', language: 'Språk', langAuto: 'Automatiskt', langEn: 'English', langSv: 'Svenska',
+    themeLight: 'Ljust', themeDark: 'Mörkt', themeBroken: '{name} (trasigt)', openThemesFolder: 'Öppna temamappen', effects: 'Temaeffekter', commandPalette: 'Kommandopalett…', pickTheme: 'Bläddra bland teman…', newThemeFromCurrent: 'Nytt tema från nuvarande…', openSettingsJson: 'Öppna inställningar (JSON)', importVsCodeTheme: 'Importera VS Code-tema…', language: 'Språk', langAuto: 'Automatiskt', langEn: 'English', langSv: 'Svenska',
     help: '&Hjälp', about: 'Om Notera', toggleDevTools: 'Utvecklarverktyg',
     writingMode: 'Skrivläge', fullscreen: 'Helskärm', autosave: 'Spara automatiskt', hideMarkers: 'Dölj Markdown-tecken',
     shortcuts: 'Kortkommandon',
@@ -175,7 +180,12 @@ const sv = {
     defaultThemeName: 'Mitt tema', newThemeComment1: 'Bygger på "{base}". Ändra ett värde och spara: Notera målar om direkt.',
     newThemeComment2: 'Alla nycklar beskrivs i THEMES.md: https://github.com/KaptenKatthatt/notera/blob/master/THEMES.md',
     settingsError: 'settings.json gick inte att läsa: rad {line}: {message}. De förra inställningarna gäller fortfarande.',
-    on: 'på', off: 'av'
+    on: 'på', off: 'av',
+    vscode: 'Välj ett VS Code-tema (piltangenterna förhandsvisar)', vscodeNone: 'Hittade inga VS Code-teman på datorn',
+    vsixItem: 'Välj en .vsix-fil…', vsixDetail: 'en fil med ett VS Code-tillägg', withPair: 'med {name}', darkOnly: 'bara mörkt', lightOnly: 'bara ljust',
+    vsixNoThemes: '{name} innehåller inga färgteman.', vsixError: '{name} gick inte att läsa: {message}',
+    importedComment1: 'Importerat från VS Code: {name} ({version}). Färgerna är VS Code-temats egna.',
+    importedComment2: 'Lägg till en "notera"-sektion för rubrikfärger, typsnitt och effekter: se THEMES.md.'
   },
   theme: {
     error: 'Temat "{theme}" gick inte att läsa in: {message}', errorAt: 'Temat "{theme}" gick inte att läsa in: theme.json rad {line}: {message}',
