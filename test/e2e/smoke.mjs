@@ -137,7 +137,7 @@ await win.click('#dlg-font [data-close="cancel"]');
 await win.waitForFunction(() => !document.querySelector('#dlg-font').open);
 
 // Zoom + Swedish + dark theme
-await win.evaluate(() => window.notera.setSettings({ zoom: 150, language: 'sv', theme: 'dark' }));
+await win.evaluate(() => window.notera.setSettings({ zoom: 150, language: 'sv', mode: 'dark' }));
 await win.waitForFunction(() => window.__notera.settings.zoom === 150 && document.documentElement.lang === 'sv');
 await win.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
 await win.waitForTimeout(300);

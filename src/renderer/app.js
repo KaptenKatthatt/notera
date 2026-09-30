@@ -7,7 +7,7 @@ import { createSettingsDialog } from './settingsDialog.js';
 import { attachTabDrag } from './tabdrag.js';
 import { display } from '../shared/commands.js';
 import { fillPlaceholders, cursorAfterHeading, standupTemplate, BUILTIN } from '../shared/templates.js';
-import { skinOf } from '../shared/themes.js';
+import { createThemeApplier } from './themeApply.js';
 import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
 import { createPreview } from './preview.js';
@@ -29,6 +29,8 @@ let active = null;
 let nextId = 1;
 let view;
 let isDark = false;
+let themes = null;
+let themeList = [];   // every installed theme, for the settings dialog
 const platformEol = api.platform === 'win32' ? 'CRLF' : 'LF';
 const ENCODINGS = ['utf8', 'utf8bom', 'utf16le', 'utf16be', 'ansi'];
 const AUTOSAVE_DELAY_MS = 800;   // a named file is written this long after the last keystroke
@@ -772,7 +774,6 @@ function applySettings(next, prev = {}) {
   root.setProperty('--zoom-base', String((settings.zoom || 100) / 100));
   document.body.classList.toggle('writing', !!settings.writingMode);
   document.body.classList.toggle('narrow', settings.narrowColumn !== false);
-  applySkin(settings.theme);
   root.setProperty('--editor-font', `"${settings.fontFamily || 'Consolas'}", Consolas, "Cascadia Mono", monospace`);
   root.setProperty('--editor-size', `${settings.fontSize || 15}px`);
   document.body.classList.toggle('no-statusbar', settings.statusBar === false);
@@ -785,6 +786,7 @@ function applySettings(next, prev = {}) {
   } else locale = newLocale;
   t = makeT(locale);
   applyI18n();
+  if (themes) themes.refresh();
   if (view) {
     const reconfigure = prev.wordWrap !== settings.wordWrap || prev.lineNumbers !== settings.lineNumbers || prev.language !== settings.language || prev.hideMarkers !== settings.hideMarkers || prev.spellcheck !== settings.spellcheck;
     if (reconfigure) reconfigureAll();
@@ -1006,7 +1008,7 @@ function bindUi() {
   window.addEventListener('focus', () => { void checkExternalChange(); if (sidebar) void sidebar.refresh(); });
   window.addEventListener('blur', () => { if (active) void maybeRenameNote(active); });
   api.notes.onChanged(async (ev) => { await applyResult(ev); await sidebar.refresh(); });
-  api.onThemeChanged((dark) => applyTheme(dark));
+  api.onThemeChanged((msg) => applyTheme(msg));
 
   api.onMenu((action, payload) => void handleAction(action, payload));
   api.onOpenFiles((paths) => void openPaths(paths));
@@ -1030,17 +1032,14 @@ async function prepareQuit(id) {
   }
 }
 
-function applyTheme(dark) {
-  isDark = !!dark;
-  document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-  if (view) reconfigureAll();
-}
-
-// A named theme repaints on top of the dark base; the base itself still comes from applyTheme().
-function applySkin(theme) {
-  const skin = skinOf(theme);
-  if (skin) document.documentElement.dataset.skin = skin;
-  else delete document.documentElement.dataset.skin;
+// The theme and its mode come from main as one message (see themeApply.js). CodeMirror only needs
+// reconfiguring when the variant on screen flips between light and dark.
+function applyTheme(msg) {
+  if (!themes) themes = createThemeApplier({ t: () => t, openFolder: () => void api.openThemesFolder() });
+  const flipped = themes.apply(msg);
+  isDark = themes.isDark();
+  if (view && flipped) reconfigureAll();
+  void api.listThemes().then((list) => { themeList = list; if (settingsDialog) settingsDialog.refresh(); });
 }
 
 function markDirty() {
@@ -1059,7 +1058,7 @@ async function boot() {
   keys = createKeyDispatcher({ run: (id) => void handleAction(id) });
   bootLocale = b.locale;
   locale = b.locale;
-  applyTheme(b.dark);
+  applyTheme(b.theme);
   view = new EditorView({
     parent: $('#editor'),
     state: EditorState.create({ doc: '' }),
@@ -1086,7 +1085,7 @@ async function boot() {
   });
   view.scrollDOM.addEventListener('scroll', preview.syncScroll, { passive: true });
   settingsDialog = createSettingsDialog({
-    t: (...a) => t(...a), api, getSettings: () => settings, openFontDialog: dialogs.font, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
+    t: (...a) => t(...a), api, getSettings: () => settings, getThemes: () => themeList, openFontDialog: dialogs.font, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
     onClose: () => view.focus()
   });
   sidebar = createSidebar({
@@ -1119,7 +1118,7 @@ async function boot() {
   await sidebar.refresh();
   sidebar.applyI18n();
   renderNotesBanner();
-  window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, get update() { return updates.state; }, get sidebar() { return sidebar; }, handleAction, openPaths, keys };
+  window.__notera = { get tabs() { return tabs; }, get active() { return active; }, get view() { return view; }, get settings() { return settings; }, get update() { return updates.state; }, get sidebar() { return sidebar; }, get theme() { return themes && themes.current; }, handleAction, openPaths, keys };
 }
 
 void boot();

@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell, nativeTheme, clipboard, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell, nativeTheme, clipboard, session, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const { Settings } = require('./settings');
@@ -9,7 +9,8 @@ const { resolveLocale, makeT } = require('../shared/strings');
 const commands = require('../shared/commands');
 const { createUpdater } = require('./updater');
 const templates = require('../shared/templates');
-const { THEMES, themeSource, skinOf } = require('../shared/themes');
+const { DEFAULT_THEME, MODES } = require('../shared/themeFormat');
+const { createThemeStore, describeError, SCHEME } = require('./themes');
 const { createNotesStore } = require('./notes');
 
 const isDev = !app.isPackaged;
@@ -27,6 +28,13 @@ const closeConfirmed = new WeakSet(); // windows whose renderer has settled unsa
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
 let updater;
 let notesStore = null;
+let themeStore = null;
+/** The active theme as the window paints it, and the last load error if any. */
+let themeState = { payload: null, error: null };
+
+// Theme files (fonts, images, style.css) reach the window over notera-theme://<id>/<path>.
+// Registered before the app is ready, as Electron requires for privileged schemes.
+protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 
 function parseFileArgs(argv, cwd) {
   const args = process.defaultApp ? argv.slice(2) : argv.slice(1);
@@ -38,6 +46,42 @@ function parseFileArgs(argv, cwd) {
 function refreshLocale() {
   locale = resolveLocale(settings.get('language'), app.getLocale());
   t = makeT(locale);
+}
+
+// ---------- themes ----------
+/**
+ * Load the theme in settings. A broken theme keeps the one already on screen (Default at startup)
+ * and records the error, so a half-saved theme.json never blanks the window.
+ */
+function loadActiveTheme() {
+  const id = settings.get('theme');
+  try {
+    themeState = { payload: themeStore.payload(themeStore.has(id) ? id : DEFAULT_THEME, locale), error: null };
+  } catch (e) {
+    const error = describeError(id, e);
+    if (!themeState.payload) {
+      try { themeState = { payload: themeStore.payload(DEFAULT_THEME, locale), error }; return; } catch { /* Default itself is missing */ }
+    }
+    themeState = { payload: themeState.payload, error };
+  }
+}
+
+function themeMessage() {
+  return { dark: nativeTheme.shouldUseDarkColors, theme: themeState.payload, error: themeState.error };
+}
+
+function broadcastTheme() { broadcast('theme:changed', themeMessage()); }
+
+/** The window background before the page paints: the active variant's editor background. */
+function themeBackground() {
+  const v = themeState.payload?.variants?.[nativeTheme.shouldUseDarkColors ? 'dark' : 'light'];
+  const bg = v?.vars?.['--bg'];
+  return typeof bg === 'string' && /^#[0-9a-f]{3,8}$/i.test(bg) ? bg : (nativeTheme.shouldUseDarkColors ? '#101010' : '#ffffff');
+}
+
+function openThemesFolder() {
+  const dir = themeStore.userDir;
+  void fs.mkdir(dir, { recursive: true }).catch(() => {}).then(() => shell.openPath(dir));
 }
 
 function focusedWindow() {
@@ -92,9 +136,13 @@ function broadcast(channel, payload) {
 }
 
 function updateSettings(patch) {
+  // The old single `theme` setting also held the mode; accept it from older callers.
+  if (MODES.includes(patch.theme)) patch = { ...patch, theme: DEFAULT_THEME, mode: patch.theme };
   const next = settings.set(patch);
-  if ('theme' in patch) { nativeTheme.themeSource = themeSource(next.theme); broadcast('theme:changed', nativeTheme.shouldUseDarkColors); }
   if ('language' in patch) refreshLocale();
+  if ('mode' in patch) nativeTheme.themeSource = MODES.includes(next.mode) ? next.mode : 'system';
+  if ('theme' in patch || 'language' in patch) loadActiveTheme();
+  if ('theme' in patch || 'mode' in patch || 'language' in patch) broadcastTheme();
   if ('writingMode' in patch) for (const w of BrowserWindow.getAllWindows()) applyMenuBar(w, next.writingMode);
   if ('checkUpdates' in patch && next.checkUpdates && updater) void updater.check();
   if ('spellcheck' in patch) session.defaultSession.setSpellCheckerEnabled(!!next.spellcheck);
@@ -124,7 +172,7 @@ function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null)
     minWidth: 480,
     minHeight: 320,
     title: t('appName'),
-    backgroundColor: THEMES[skinOf(settings.get('theme'))]?.background || (nativeTheme.shouldUseDarkColors ? '#1f1f1f' : '#ffffff'),
+    backgroundColor: themeBackground(),
     autoHideMenuBar: false,
     icon: path.join(__dirname, '../../build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
@@ -182,7 +230,7 @@ ipcMain.handle('app:bootstrap', (e) => {
   draftsClaimed = true;
   return {
     settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, pendingTab, platform: process.platform, isDev,
-    dark: nativeTheme.shouldUseDarkColors, restoreDrafts, update: updater ? { ...updater.getState(), reason: updater.reason() } : null
+    dark: nativeTheme.shouldUseDarkColors, theme: themeMessage(), restoreDrafts, update: updater ? { ...updater.getState(), reason: updater.reason() } : null
   };
 });
 
@@ -238,6 +286,8 @@ ipcMain.handle('update:install', async () => {
   return updater.install();
 });
 ipcMain.handle('settings:get', () => settings.get());
+ipcMain.handle('themes:list', () => themeStore.list(locale));
+ipcMain.handle('themes:openFolder', () => openThemesFolder());
 ipcMain.handle('settings:set', (_e, patch) => updateSettings(patch));
 
 ipcMain.handle('file:openDialog', async (e) => {
@@ -618,10 +668,13 @@ function buildMenu() {
         { type: 'separator' },
         {
           label: t('menu.theme'),
+          // Two choices, one pick each: the theme, then the mode that picks its light or dark version.
           submenu: [
-            radio(t('menu.themeSystem'), 'theme', 'system'), radio(t('menu.themeLight'), 'theme', 'light'), radio(t('menu.themeDark'), 'theme', 'dark'),
+            ...themeStore.list(locale).map((th) => ({ ...radio(th.error ? t('menu.themeBroken', { name: th.name }) : th.name, 'theme', th.id), enabled: !th.error })),
             { type: 'separator' },
-            ...Object.entries(THEMES).map(([id, th]) => radio(t(th.label), 'theme', id))
+            radio(t('menu.themeSystem'), 'mode', 'system'), radio(t('menu.themeLight'), 'mode', 'light'), radio(t('menu.themeDark'), 'mode', 'dark'),
+            { type: 'separator' },
+            { label: t('menu.openThemesFolder'), click: () => openThemesFolder() }
           ]
         },
         {
@@ -685,8 +738,12 @@ if (!gotLock) {
   app.whenReady().then(() => {
     settings = new Settings(path.join(app.getPath('userData'), 'settings.json'));
     refreshLocale();
-    nativeTheme.themeSource = themeSource(settings.get('theme'));
-    nativeTheme.on('updated', () => broadcast('theme:changed', nativeTheme.shouldUseDarkColors));
+    themeStore = createThemeStore({ builtinDir: path.join(__dirname, '../../themes'), userDir: path.join(app.getPath('userData'), 'themes') });
+    protocol.handle(SCHEME, (req) => themeStore.serve(req));
+    loadActiveTheme();
+    nativeTheme.themeSource = MODES.includes(settings.get('mode')) ? settings.get('mode') : 'system';
+    nativeTheme.on('updated', () => broadcastTheme());
+    themeStore.watch(() => { loadActiveTheme(); buildMenu(); broadcastTheme(); });
     updater = createUpdater({ broadcast, getSettings: () => settings.get() });
     setupSpellcheck();
     buildMenu();

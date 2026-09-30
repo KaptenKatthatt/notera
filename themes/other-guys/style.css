@@ -1,0 +1,7 @@
+/* The Other guys: Codex's pill buttons and rounded search panel. Loaded after styles.css. */
+.dlg-actions button.primary,
+.set-pane button.primary,
+.ut-actions button.primary,
+.sb-setup button.primary,
+.nb-banner button.primary { border-radius: 999px; padding-left: 14px; padding-right: 14px; }
+.cm-panel.cm-search, .cm-panel.cm-gotoLine { border-radius: 14px; }

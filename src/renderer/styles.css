@@ -13,6 +13,7 @@
   --active-line: #f6f8fa;
   --code-bg: #f8f8f8;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  --plain-ui-font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --ui-font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --editor-font: "iA Writer Mono S", Consolas, "Cascadia Mono", "Courier New", monospace;
   --editor-size: 15px;
@@ -33,34 +34,10 @@
 @font-face { font-family: "iA Writer Mono S"; src: url("../../fonts/iAWriterMonoS-Italic.ttf"); font-weight: 400; font-style: italic; }
 @font-face { font-family: "iA Writer Mono S"; src: url("../../fonts/iAWriterMonoS-BoldItalic.ttf"); font-weight: 700; font-style: italic; }
 html { color-scheme: light; }
-html[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #101010;
-  --bg-chrome: #1c1c1c;
-  --bg-hover: #2c2c2c;
-  --bg-active: #101010;
-  --bg-popup: #232323;
-  --fg: #eeeeee;
-  --fg-muted: #a0a0a0;
-  --border: #333333;
-  --accent: #4cc2ff;
-  --accent-fg: #002b45;
-  --selection: #2a4a6b;
-  --active-line: #161616;
-  --code-bg: #1c1a1a;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --md-h: #eeeeee;
-  --md-link: #5584aa;
-  --md-quote: #7a7d84;
-  --md-code: #f0a36b;
-  --md-meta: #4f525a;
-  --search-bg: #22221f;
-  --search-match: #725b18;
-  --search-current: #b36b20;
-}
-}
+html[data-theme="dark"] { color-scheme: dark; }
 
-* { box-sizing: border-box; }
+/* No global `* { box-sizing: border-box }`: from the first week a stray `}` above it made Chromium
+   drop that rule, and every layout since was tuned without it. Set it per component instead. */
 html, body { height: 100%; margin: 0; }
 body {
   display: flex;
@@ -113,7 +90,7 @@ button { font: inherit; color: inherit; }
 .tab:hover { background: var(--bg-hover); color: var(--fg); }
 .tab.active { background: var(--bg-active); color: var(--fg); border-color: var(--border); }
 .tab .name { overflow: hidden; text-overflow: ellipsis; }
-.tab .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.tab .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dirty-dot, var(--accent)); flex: none; }
 .tab .close {
   border: none; background: transparent; width: 20px; height: 20px; border-radius: 4px;
   display: grid; place-items: center; color: var(--fg-muted); padding: 0; line-height: 1;
@@ -187,7 +164,7 @@ body.no-formatting-bar #toolbar { display: none; }
 
 .cm-editor { height: 100%; font-size: calc(var(--editor-size) * var(--zoom)); background: var(--bg); color: var(--fg); }
 .cm-editor.cm-focused { outline: none; }
-.cm-scroller { font-family: var(--editor-font); line-height: 1.65; }
+.cm-scroller { font-family: var(--theme-editor-font, var(--editor-font)); line-height: 1.65; }
 .cm-content { padding: 12px 0; caret-color: var(--caret, var(--fg)); }
 .cm-editor .cm-cursorLayer .cm-cursor { border-left-color: var(--caret, var(--fg)); }
 .cm-line { padding: 0 16px; }
@@ -224,7 +201,7 @@ body.no-formatting-bar #toolbar { display: none; }
 .cm-panel.cm-search [name="close"] { position: static; margin-left: auto; font-size: 18px; color: var(--fg-muted); background: transparent; border: none; padding: 0 6px; }
 
 /* ---------- Preview ---------- */
-.preview { padding: 18px 28px 40px; max-width: 860px; font-size: calc(15px * var(--zoom)); line-height: 1.6; font-family: var(--ui-font); }
+.preview { padding: 18px 28px 40px; max-width: 860px; font-size: calc(15px * var(--zoom)); line-height: 1.6; font-family: var(--read-font, var(--ui-font)); }
 .preview.empty { color: var(--fg-muted); font-style: italic; }
 .preview h1, .preview h2, .preview h3, .preview h4 { line-height: 1.25; margin: 1.2em 0 0.5em; }
 .preview h1 { font-size: 2em; border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
@@ -232,7 +209,7 @@ body.no-formatting-bar #toolbar { display: none; }
 .preview h3 { font-size: 1.25em; }
 .preview p { margin: 0 0 1em; }
 .preview a { color: var(--md-link); }
-.preview code { font-family: var(--editor-font); font-size: 0.9em; background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+.preview code { font-family: var(--theme-editor-font, var(--editor-font)); font-size: 0.9em; background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
 .preview pre { background: var(--code-bg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; }
 .preview pre code { background: none; padding: 0; }
 .preview blockquote { margin: 0 0 1em; padding: 0.2em 1em; border-left: 4px solid var(--border); color: var(--md-quote); }
@@ -291,7 +268,7 @@ dialog input:focus, dialog select:focus { outline: none; border-color: var(--acc
 /* ---------- Writing mode (Omawrite) ---------- */
 #footer {
   display: none; position: absolute; left: 0; right: 0; bottom: 0; height: 36px; padding: 0 12px; align-items: center; gap: 12px;
-  color: var(--fg-muted); font-family: var(--editor-font); font-size: 11px; pointer-events: none;
+  color: var(--fg-muted); font-family: var(--theme-editor-font, var(--editor-font)); font-size: 11px; pointer-events: none;
 }
 #footer > * { pointer-events: auto; }
 #footer .ft-btn { border: none; background: transparent; color: var(--fg-muted); opacity: 0.55; padding: 4px; border-radius: 4px; display: grid; place-items: center; }
@@ -315,7 +292,7 @@ body.writing .cm-gutters { display: none; }
 .keys-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; margin: 0 0 14px; }
 table.keys { border-collapse: collapse; font-size: 13px; }
 table.keys td { padding: 3px 14px 3px 0; }
-table.keys td:first-child { color: var(--fg-muted); font-family: var(--editor-font); white-space: nowrap; }
+table.keys td:first-child { color: var(--fg-muted); font-family: var(--theme-editor-font, var(--editor-font)); white-space: nowrap; }
 #dlg-keys { max-height: 90vh; overflow: auto; min-width: 640px; }
 
 /* ---------- Settings ---------- */
@@ -351,7 +328,7 @@ dialog .set-check { display: flex; grid-template-columns: none; }
 .kb-tag { font-size: 11px; color: var(--accent); border: 1px solid var(--accent); border-radius: 10px; padding: 0 6px; }
 .kb-keys { display: flex; flex-wrap: wrap; gap: 6px; }
 .kb-chip { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); overflow: hidden; }
-.kb-chip kbd { font-family: var(--editor-font); font-size: 12px; padding: 2px 6px; }
+.kb-chip kbd { font-family: var(--theme-editor-font, var(--editor-font)); font-size: 12px; padding: 2px 6px; }
 .kb-x { border: none; border-left: 1px solid var(--border); background: transparent; color: var(--fg-muted); padding: 0 6px; height: 22px; }
 .kb-x:hover { background: var(--bg-hover); color: var(--fg); }
 .kb-actions { display: flex; gap: 6px; justify-content: flex-end; }
@@ -360,8 +337,7 @@ dialog .set-check { display: flex; grid-template-columns: none; }
 .kb-add { border: 1px solid var(--border); background: var(--bg); border-radius: 5px; width: 26px; height: 24px; color: var(--fg); }
 .kb-add:hover { background: var(--bg-hover); }
 .kb-record { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: flex-end; font-size: 12.5px; padding-bottom: 2px; }
-.kb-error { color: #c42b1c; }
-html[data-theme="dark"] .kb-error { color: #ff99a4; }
+.kb-error { color: var(--danger); }
 
 /* ---------- Update toast ---------- */
 #update-toast {
@@ -369,6 +345,11 @@ html[data-theme="dark"] .kb-error { color: #ff99a4; }
   background: var(--bg-popup); color: var(--fg); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); font-size: 13px;
 }
 body.writing #update-toast { bottom: 44px; }
+#theme-toast {
+  position: fixed; left: 16px; bottom: 40px; z-index: 36; width: 380px; max-width: calc(100% - 32px); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--bg-popup); color: var(--fg); border: 1px solid var(--danger); border-radius: 10px; box-shadow: var(--shadow); font-size: 13px;
+}
+#theme-toast-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .ut-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .ut-actions button { padding: 5px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--fg); }
 .ut-actions button:hover { background: var(--bg-hover); }
@@ -387,15 +368,20 @@ body.writing #update-toast { bottom: 44px; }
 @media print {
   body > *:not(#print-area) { display: none !important; }
   body { overflow: visible; user-select: text; }
-  #print-area { display: block; color: #000; background: #fff; }
+  /* Printing is always plain: Default's light palette and fonts, whatever the theme. */
+  #print-area {
+    display: block; color: #000; background: #fff;
+    --fg: #222324; --fg-muted: #6b6b6b; --border: #dcdcdc; --bg-chrome: #f4f4f3; --code-bg: #f8f8f8;
+    --md-h: #222324; --md-link: #2077b2; --md-quote: #6b6b6b; --md-code: #8b3a00; --md-meta: #aeb1b5;
+    --read-font: var(--plain-ui-font); --theme-editor-font: var(--editor-font);
+  }
   #print-area pre { white-space: pre-wrap; font-family: var(--editor-font); font-size: 11pt; }
 }
 
 #preview input[type="checkbox"], .preview input[type="checkbox"] { cursor: pointer; }
 
 /* ---------- Notes sidebar ---------- */
-:root { --sb-width: 264px; --sel-row: rgba(0, 103, 192, 0.12); --danger: #c42b1c; --flash: #fff1a8; }
-html[data-theme="dark"] { --sel-row: rgba(76, 194, 255, 0.16); --danger: #ff99a4; --flash: #5a4a10; }
+:root { --sb-width: 264px; }
 #shell { flex: 1; display: flex; min-height: 0; }
 #workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 #sidebar {
@@ -564,90 +550,7 @@ body.writing #notes-banner { display: none; }
 /* Archived note: read-only editor */
 .cm-note-meta { color: var(--md-meta); }
 .dlg-error { color: var(--danger); font-size: 12px; min-height: 16px; margin: -4px 0 10px 100px; }
-.set-path { font-family: var(--editor-font); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
-
-/* ---------- Named themes (shared/themes.js) ----------
-   Both sit on the dark base (data-theme="dark" is always set with them) and only repaint it.
-   Declared last so they win over the base blocks of equal specificity above. */
+.set-path { font-family: var(--theme-editor-font, var(--editor-font)); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 
 /* CodeMirror's dark base theme paints the active line teal and outranks .cm-activeLine above. */
-html[data-skin] .cm-editor .cm-content .cm-line.cm-activeLine { background: var(--active-line); }
-
-/* Those guys: Claude Code. Claude's warm near-black, its orange, the periwinkle it uses for
-   code and suggestions, a terminal font for the chrome and a serif for reading. */
-html[data-skin="those-guys"] {
-  --bg: #262624;
-  --bg-chrome: #1f1e1d;
-  --bg-hover: #30302e;
-  --bg-active: #262624;
-  --bg-popup: #30302e;
-  --fg: #faf9f5;
-  --fg-muted: #a6a39a;
-  --border: #3d3d3a;
-  --accent: #d77757;
-  --accent-fg: #1f1e1d;
-  --selection: rgba(215, 119, 87, 0.3);
-  --active-line: #2b2b29;
-  --code-bg: #1f1e1d;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
-  --ui-font: "Cascadia Mono", Consolas, "iA Writer Mono S", monospace;
-  --md-h: #d77757;
-  --md-link: #b1b9f9;
-  --md-quote: #999999;
-  --md-code: #b1b9f9;
-  --md-meta: #6b6a65;
-  --search-bg: #262624;
-  --search-match: rgba(177, 185, 249, 0.3);
-  --search-current: rgba(215, 119, 87, 0.6);
-  --caret: #d77757;
-  --sel-row: rgba(215, 119, 87, 0.16);
-  --danger: #ff6b80;
-  --flash: #5c3a2c;
-}
-html[data-skin="those-guys"] .tab.active { box-shadow: inset 0 2px 0 var(--accent); }
-html[data-skin="those-guys"] .tab .dot { width: auto; height: auto; background: none; color: var(--accent); line-height: 1; }
-html[data-skin="those-guys"] .tab .dot::before { content: "\273B"; }
-html[data-skin="those-guys"] .cm-panel.cm-search, html[data-skin="those-guys"] .cm-panel.cm-gotoLine { border-color: #6b6a65; }
-html[data-skin="those-guys"] .preview { font-family: "Tiempos Text", Charter, Georgia, Cambria, serif; }
-html[data-skin="those-guys"] .preview h1, html[data-skin="those-guys"] .preview h2, html[data-skin="those-guys"] .preview h3 { color: var(--md-h); }
-html[data-skin="those-guys"] .kb-error { color: var(--danger); }
-
-/* The Other guys: Codex. Near-black and neutral greys, white primary buttons with dark text,
-   cyan for code and links the way the CLI prints them, a magenta nod on the unsaved dot. */
-html[data-skin="other-guys"] {
-  --bg: #111111;
-  --bg-chrome: #181818;
-  --bg-hover: #262626;
-  --bg-active: #111111;
-  --bg-popup: #1c1c1c;
-  --fg: #ececec;
-  --fg-muted: #8f8f8f;
-  --border: #2a2a2a;
-  --accent: #ececec;
-  --accent-fg: #111111;
-  --selection: rgba(255, 255, 255, 0.16);
-  --active-line: #161616;
-  --code-bg: #1c1c1c;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  --ui-font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --md-h: #ffffff;
-  --md-link: #5ec4d6;
-  --md-quote: #8f8f8f;
-  --md-code: #5ec4d6;
-  --md-meta: #555555;
-  --search-bg: #1c1c1c;
-  --search-match: rgba(94, 196, 214, 0.25);
-  --search-current: rgba(94, 196, 214, 0.55);
-  --caret: #ffffff;
-  --sel-row: rgba(255, 255, 255, 0.08);
-  --danger: #ff7b72;
-  --flash: #3a3a3a;
-}
-html[data-skin="other-guys"] .tab .dot { background: #d38aea; }
-html[data-skin="other-guys"] .dlg-actions button.primary,
-html[data-skin="other-guys"] .set-pane button.primary,
-html[data-skin="other-guys"] .ut-actions button.primary,
-html[data-skin="other-guys"] .sb-setup button.primary,
-html[data-skin="other-guys"] .nb-banner button.primary { border-radius: 999px; padding-left: 14px; padding-right: 14px; }
-html[data-skin="other-guys"] .cm-panel.cm-search, html[data-skin="other-guys"] .cm-panel.cm-gotoLine { border-radius: 14px; }
-html[data-skin="other-guys"] .kb-error { color: var(--danger); }
+.cm-editor .cm-content .cm-line.cm-activeLine { background: var(--active-line); }

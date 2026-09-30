@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { writeFileAtomicSync } = require('./atomicWrite');
+const { migrateThemeSettings } = require('../shared/themeFormat');
 
 const DEFAULTS = {
   fontFamily: 'iA Writer Mono S',
@@ -10,7 +11,8 @@ const DEFAULTS = {
   statusBar: true,
   lineNumbers: false,
   formattingBar: true,
-  theme: 'system',      // 'system' | 'light' | 'dark' | a named theme from shared/themes.js
+  theme: 'default',     // a theme id: a folder in themes/ or <userData>/themes/
+  mode: 'system',       // 'system' | 'light' | 'dark': which variant of the theme to show
   language: 'auto',     // 'auto' | 'en' | 'sv'
   zoom: 100,
   viewMode: 'editor',   // 'editor' | 'split' | 'preview'
@@ -41,7 +43,7 @@ class Settings {
   load() {
     try {
       const raw = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-      this.data = { ...DEFAULTS, ...raw };
+      this.data = { ...DEFAULTS, ...migrateThemeSettings(raw) };
     } catch { this.data = { ...DEFAULTS }; }
   }
   get(key) { return key ? this.data[key] : { ...this.data }; }
