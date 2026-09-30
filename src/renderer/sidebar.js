@@ -547,7 +547,12 @@ export function createSidebar(ctx) {
       if (info.archived) items.push({ label: t('notes.restore'), icon: ICONS.restore, act: () => restoreNote(tab.path) });
       else items.push({ label: t('notes.archive'), icon: ICONS.archive, key: 'A', act: () => archiveNote(tab.path) });
     }
-    items.push({ sep: true }, { label: t('notes.closeTab'), icon: ICONS.close, act: () => ctx.closeTab(tab) });
+    const closeMany = (which, label) => ({
+      label: t(label), disabled: !ctx.tabsToClose(tab, which).length,
+      act: () => ctx.closeTabs(tab, which)
+    });
+    items.push({ sep: true }, { label: t('notes.closeTab'), icon: ICONS.close, act: () => ctx.closeTab(tab) },
+      closeMany('others', 'notes.closeOthers'), closeMany('right', 'notes.closeToRight'), closeMany('all', 'notes.closeAll'));
     showMenu(null, items, tab.path ? (info ? titleFor(info.note) : tab.path) : null, point);
   }
 
