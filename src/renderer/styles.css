@@ -164,7 +164,10 @@ body.no-formatting-bar #toolbar { display: none; }
 
 .cm-editor { height: 100%; font-size: calc(var(--editor-size) * var(--zoom)); background: var(--bg); color: var(--fg); }
 .cm-editor.cm-focused { outline: none; }
-.cm-scroller { font-family: var(--theme-editor-font, var(--editor-font)); line-height: 1.65; }
+/* #editor, not just .cm-scroller: CodeMirror's base theme sets `.cm-scroller { font-family: monospace }`
+   with a higher specificity, which until 0.10 hid the font chosen in Settings. */
+#editor .cm-scroller { font-family: var(--theme-editor-font, var(--editor-font)); }
+.cm-scroller { line-height: 1.65; }
 .cm-content { padding: 12px 0; caret-color: var(--caret, var(--fg)); }
 .cm-editor .cm-cursorLayer .cm-cursor { border-left-color: var(--caret, var(--fg)); }
 .cm-line { padding: 0 16px; }
@@ -554,3 +557,105 @@ body.writing #notes-banner { display: none; }
 
 /* CodeMirror's dark base theme paints the active line teal and outranks .cm-activeLine above. */
 .cm-editor .cm-content .cm-line.cm-activeLine { background: var(--active-line); }
+
+/* ---------- Headings per level (themes set --md-h1..6 and heading fonts) ---------- */
+.cm-line.cm-h1 { --h-color: var(--md-h1, var(--md-h)); font-family: var(--heading1-font, var(--heading-font)); }
+.cm-line.cm-h2 { --h-color: var(--md-h2, var(--md-h)); }
+.cm-line.cm-h3 { --h-color: var(--md-h3, var(--md-h)); }
+.cm-line.cm-h4 { --h-color: var(--md-h4, var(--md-h)); }
+.cm-line.cm-h5 { --h-color: var(--md-h5, var(--md-h)); }
+.cm-line.cm-h6 { --h-color: var(--md-h6, var(--md-h)); }
+.cm-line.cm-h:not(.cm-h1) { font-family: var(--heading-font); }
+/* An unset variable makes these invalid, so the heading keeps the colour and font it had.
+   :where() keeps them below any theme style.css rule such as `.preview h1 { color: ... }`. */
+:where(#preview) h1 { color: var(--md-h1); font-family: var(--read-heading-font, var(--heading1-font, var(--heading-font))); }
+:where(#preview) h2 { color: var(--md-h2); }
+:where(#preview) h3 { color: var(--md-h3); }
+:where(#preview) h4 { color: var(--md-h4); }
+:where(#preview) h5 { color: var(--md-h5); }
+:where(#preview) h6 { color: var(--md-h6); }
+:where(#preview) :is(h2, h3, h4, h5, h6) { font-family: var(--read-heading-font, var(--heading-font)); }
+
+/* ---------- Theme effects (effects.js sets the fx-* classes on <html>) ----------
+   fx-e-* is the editor, fx-r-* the preview. #preview, not .preview, so printing stays plain. */
+html.fx-e-glow-headings .cm-line.cm-h,
+html.fx-e-glow-all .cm-content {
+  text-shadow: 0 0 calc(1px + 4px * var(--fx-glow-e)) var(--fx-glow-color-e, currentColor), 0 0 calc(4px + 14px * var(--fx-glow-e)) var(--fx-glow-color-e, currentColor);
+}
+html.fx-r-glow-headings #preview :is(h1, h2, h3, h4, h5, h6),
+html.fx-r-glow-all #preview {
+  text-shadow: 0 0 calc(1px + 4px * var(--fx-glow-r)) var(--fx-glow-color-r, currentColor), 0 0 calc(4px + 14px * var(--fx-glow-r)) var(--fx-glow-color-r, currentColor);
+}
+/* Gradient headings: the gradient is clipped to the text, and a drop-shadow stands in for the
+   glow, since a text-shadow would paint over a transparent text colour. */
+html.fx-e-grad-1 .cm-line.cm-h1 .cm-hd, html.fx-e-grad-2 .cm-line.cm-h2 .cm-hd, html.fx-e-grad-3 .cm-line.cm-h3 .cm-hd,
+html.fx-e-grad-4 .cm-line.cm-h4 .cm-hd, html.fx-e-grad-5 .cm-line.cm-h5 .cm-hd, html.fx-e-grad-6 .cm-line.cm-h6 .cm-hd {
+  background-image: var(--fx-grad-e); -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none; filter: drop-shadow(0 0 calc(2px + 5px * var(--fx-glow-e, 0.3)) var(--fx-grad-glow-e));
+}
+html.fx-r-grad-1 #preview h1, html.fx-r-grad-2 #preview h2, html.fx-r-grad-3 #preview h3,
+html.fx-r-grad-4 #preview h4, html.fx-r-grad-5 #preview h5, html.fx-r-grad-6 #preview h6 {
+  width: fit-content; max-width: 100%; background-image: var(--fx-grad-r); -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none; filter: drop-shadow(0 0 calc(2px + 6px * var(--fx-glow-r, 0.3)) var(--fx-grad-glow-r));
+}
+
+/* Cursor */
+html.fx-cursor-block .cm-editor .cm-cursorLayer .cm-cursor {
+  border-left: none; width: 0.6em; margin-left: 0; background: color-mix(in srgb, var(--caret, var(--fg)) 60%, transparent);
+}
+html.fx-cursor-underline .cm-editor .cm-cursorLayer .cm-cursor {
+  border-left: none; width: 0.6em; margin-left: 0; border-bottom: 2px solid var(--caret, var(--fg));
+}
+html.fx-cursor-glow .cm-editor .cm-cursorLayer .cm-cursor {
+  box-shadow: 0 0 calc(2px + 4px * var(--fx-cursor-glow)) var(--caret, var(--fg)), 0 0 calc(6px + 12px * var(--fx-cursor-glow)) var(--caret, var(--fg));
+}
+html.fx-cursor-smooth .cm-editor .cm-cursorLayer .cm-cursor { transition: left 90ms cubic-bezier(0.2, 0.8, 0.2, 1), top 90ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Particles: a canvas over the window, drawn by effects.js */
+#fx-particles { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
+
+/* Background: a synthwave sun and a floor grid behind the editor and the preview */
+#main { position: relative; }
+#fx-bg { display: none; position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+html.fx-bg #fx-bg { display: block; }
+html.fx-bg #editor, html.fx-bg #preview-pane { position: relative; z-index: 1; }
+html.fx-bg .cm-editor, html.fx-bg #preview-pane, html.fx-bg .cm-gutters { background: transparent; }
+#fx-bg .fx-sun, #fx-bg .fx-grid { display: none; position: absolute; }
+html.fx-sun #fx-bg .fx-sun {
+  display: block; left: 50%; bottom: 38%; width: min(42vh, 340px); aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%;
+  background: linear-gradient(to bottom, var(--fx-sun-a), var(--fx-sun-b) 75%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 52%, transparent 52% 56%, #000 56% 64%, transparent 64% 69%, #000 69% 76%, transparent 76% 82%, #000 82% 88%, transparent 88% 95%, #000 95%);
+  mask-image: linear-gradient(to bottom, #000 0 52%, transparent 52% 56%, #000 56% 64%, transparent 64% 69%, #000 69% 76%, transparent 76% 82%, #000 82% 88%, transparent 88% 95%, #000 95%);
+  opacity: var(--fx-sun-opacity); filter: drop-shadow(0 0 40px var(--fx-sun-b));
+}
+/* The floor: a tall plane hinged at the horizon (62 % down) and tipped away from the viewer. */
+html.fx-grid #fx-bg .fx-grid {
+  display: block; left: -60%; right: -60%; top: 62%; height: 200%;
+  transform-origin: 50% 0; transform: perspective(320px) rotateX(78deg);
+  background-image: linear-gradient(var(--fx-grid-color, var(--accent)) 2px, transparent 2px), linear-gradient(90deg, var(--fx-grid-color, var(--accent)) 2px, transparent 2px);
+  background-size: 56px 56px; background-position: 0 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%); mask-image: linear-gradient(to bottom, transparent, #000 10%);
+  opacity: var(--fx-grid-opacity);
+}
+html.fx-grid-move #fx-bg .fx-grid { animation: fx-grid-run var(--fx-grid-duration, 3s) linear infinite; }
+@keyframes fx-grid-run { to { background-position: 0 56px; } }
+
+/* Scanlines and vignette over the whole window */
+#fx-overlay { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+html.fx-scanlines #fx-overlay, html.fx-vignette #fx-overlay { display: block; }
+html.fx-scanlines #fx-overlay::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, var(--fx-scan)) 0 1px, transparent 1px 3px);
+}
+html.fx-vignette #fx-overlay::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, var(--fx-vig)) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html #fx-bg .fx-grid { animation: none; }
+  html .cm-editor .cm-cursorLayer .cm-cursor { transition: none; }
+}
+@media print {
+  #fx-bg, #fx-overlay, #fx-particles { display: none !important; }
+}

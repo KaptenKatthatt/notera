@@ -311,7 +311,18 @@ function cssVars(variant) {
     const fromUi = own || fromTokens ? null : uiKeys.map((k) => safeCss(colors[k])).find(Boolean);
     out[name] = own || fromTokens || fromUi || fallback;
   }
+  for (let n = 1; n <= 6; n++) {
+    const c = safeCss(nc[`heading${n}`]);
+    if (c) out[`--md-h${n}`] = c;
+  }
   const fonts = isPlainObject(variant.notera?.fonts) ? variant.notera.fonts : {};
+  const readFonts = isPlainObject(variant.read?.fonts) ? variant.read.fonts : {};
+  const headingFont = fontStack(fonts.headings);
+  const heading1Font = fontStack(fonts.heading1);
+  const readHeadingFont = fontStack(readFonts.headings);
+  if (headingFont) out['--heading-font'] = headingFont;
+  if (heading1Font) out['--heading1-font'] = heading1Font;
+  if (readHeadingFont) out['--read-heading-font'] = readHeadingFont;
   const ui = fontStack(fonts.ui);
   const editor = fontStack(fonts.editor);
   const read = fontStack(isPlainObject(variant.read?.fonts) ? variant.read.fonts.body : undefined);
@@ -328,6 +339,54 @@ function fontStack(v) {
   if (!ok.length) return null;
   const generic = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-monospace', 'ui-serif', 'ui-sans-serif']);
   return ok.map((f) => (generic.has(f) ? f : `"${f}"`)).join(', ');
+}
+
+const clamp01 = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : d);
+const colorList = (v) => (Array.isArray(v) ? v : [v]).map(safeCss).filter(Boolean).slice(0, 6);
+
+/**
+ * The built-in effects a theme switched on, with every parameter checked and defaulted. Missing
+ * or false means off. The same shape comes back for the editor and for Läs (the preview), where
+ * `read.effects` is merged over the theme's own effects.
+ * @param {any} fx
+ */
+function normalizeEffects(fx) {
+  const e = isPlainObject(fx) ? fx : {};
+  const on = (v) => v === true || isPlainObject(v);
+  const obj = (v) => (isPlainObject(v) ? v : {});
+  const glow = obj(e.glow);
+  const grad = obj(e.gradient);
+  const cursor = obj(e.cursor);
+  const parts = obj(e.particles);
+  const bg = obj(e.background);
+  const grid = obj(bg.grid);
+  const sun = obj(bg.sun);
+  const gradColors = colorList(grad.colors);
+  const levels = (Array.isArray(grad.levels) ? grad.levels : [1]).filter((n) => Number.isInteger(n) && n >= 1 && n <= 6);
+  return {
+    glow: on(e.glow) && ['headings', 'all'].includes(glow.target ?? 'headings')
+      ? { target: glow.target ?? 'headings', strength: clamp01(glow.strength, 0.5), color: safeCss(glow.color) }
+      : null,
+    gradient: on(e.gradient) && gradColors.length >= 2 ? { colors: gradColors, levels: levels.length ? levels : [1] } : null,
+    cursor: on(e.cursor)
+      ? {
+        style: ['line', 'block', 'underline'].includes(cursor.style) ? cursor.style : 'line',
+        glow: clamp01(cursor.glow, 0), smooth: cursor.smooth === true
+      }
+      : null,
+    particles: on(e.particles)
+      ? {
+        amount: Math.round(Math.min(40, Math.max(1, typeof parts.amount === 'number' ? parts.amount : 8))),
+        colors: colorList(parts.colors), size: Math.min(8, Math.max(1, typeof parts.size === 'number' ? parts.size : 2.5))
+      }
+      : null,
+    background: {
+      grid: on(bg.grid) ? { color: safeCss(grid.color), opacity: clamp01(grid.opacity, 0.5), speed: clamp01(grid.speed, 0.5) } : null,
+      sun: on(bg.sun) ? { colors: colorList(sun.colors), opacity: clamp01(sun.opacity, 0.5) } : null,
+      scanlines: clamp01(bg.scanlines, 0),
+      vignette: clamp01(bg.vignette, 0)
+    }
+  };
 }
 
 /** `:root { ... }` for a set of custom properties. */
@@ -352,5 +411,5 @@ function migrateThemeSettings(data) {
 
 module.exports = {
   MODES, DEFAULT_THEME, ThemeError, isValidId, parseJsonc, deepMerge, resolveTheme, themeName,
-  variantOf, cssVars, cssBlock, tokenColor, fontStack, migrateThemeSettings, COLOR_VARS, MD_VARS
+  variantOf, cssVars, cssBlock, tokenColor, fontStack, migrateThemeSettings, normalizeEffects, safeCss, COLOR_VARS, MD_VARS
 };

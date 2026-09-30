@@ -96,6 +96,7 @@ const COMMANDS = [
   { id: 'toggleSidebar', cat: 'view', label: 'menu.toggleSidebar', keys: ['Ctrl+Shift+B'], global: true },
   { id: 'searchNotes', cat: 'view', label: 'menu.searchNotes', keys: ['Ctrl+Shift+F'], global: true },
   { id: 'narrowColumn', cat: 'view', label: 'menu.narrowColumn', keys: [], global: true },
+  { id: 'effects', cat: 'view', label: 'menu.effects', keys: [], global: true },
   { id: 'writingMode', cat: 'view', label: 'menu.writingMode', keys: ['Ctrl+Shift+W'], global: true },
   { id: 'fullscreen', cat: 'view', label: 'menu.fullscreen', keys: ['F11'], global: true },
   { id: 'autosave', cat: 'view', label: 'menu.autosave', keys: [], global: true },

@@ -44,7 +44,7 @@ const menuGroups = () => app.evaluate(({ Menu }) => {
 const waitTheme = (id, scheme) => win.waitForFunction(([i, s]) => document.documentElement.dataset.themeId === i && document.documentElement.dataset.theme === s, [id, scheme]);
 
 // ---------- migration ----------
-let s = await settingsNow();
+const s = await settingsNow();
 assert.equal(s.theme, 'those-guys');
 assert.equal(s.mode, 'dark');
 await waitTheme('those-guys', 'dark');
@@ -85,14 +85,14 @@ await waitTheme('those-guys', 'light');
 await win.waitForFunction(() => getComputedStyle(document.querySelector('.preview')).fontFamily.startsWith('"Tiempos Text"'));
 await win.waitForFunction(() => getComputedStyle(document.querySelector('.tab.active')).boxShadow.includes('inset'));
 ok('Those guys läser med serif och har sin flikmarkering (style.css via notera-theme://)');
-assert.deepEqual((await menuGroups())[0].map(([l]) => l), ['Standard', 'Those guys', 'The Other guys']);
-ok('menyn listar Standard, Those guys, The Other guys och sedan lägena');
+assert.deepEqual((await menuGroups())[0].map(([l]) => l), ['Standard', 'Those guys', 'The Other guys', 'Neon Chill', 'Neon', 'Neon OMG']);
+ok('menyn listar Standard, Those guys, The Other guys, Neon-familjen och sedan lägena');
 
 // ---------- settings dialog ----------
 await win.evaluate(() => window.__notera.handleAction('settings'));
 await win.waitForSelector('#dlg-settings[open]');
 const selects = await win.locator('#dlg-settings select').evaluateAll((els) => els.map((e) => [...e.options].map((o) => o.textContent)));
-assert.deepEqual(selects[0], ['Standard', 'Those guys', 'The Other guys']);
+assert.deepEqual(selects[0], ['Standard', 'Those guys', 'The Other guys', 'Neon Chill', 'Neon', 'Neon OMG']);
 assert.deepEqual(selects[1], ['Följ systemet', 'Ljust', 'Mörkt']);
 await shot('42-theme-settings');
 await win.keyboard.press('Escape');

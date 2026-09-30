@@ -1,0 +1,89 @@
+{
+  "$schema": "https://raw.githubusercontent.com/KaptenKatthatt/notera/master/theme.schema.json",
+  // Neon, the calm one: the synthwave palette of SynthWave '84 (Robb Owen, MIT), a colour per
+  // heading level, Orbitron headings and a soft glow. Neon and Neon OMG build on this file.
+  "name": "Neon Chill",
+  "fonts": [
+    { "family": "Orbitron", "src": "fonts/Orbitron.ttf", "weight": "400 900" },
+    { "family": "Monoton", "src": "fonts/Monoton.ttf" },
+    { "family": "Victor Mono", "src": "fonts/VictorMono.ttf", "weight": "100 700" },
+    { "family": "Victor Mono", "src": "fonts/VictorMono-Italic.ttf", "weight": "100 700", "style": "italic" }
+  ],
+  "notera": {
+    "fonts": { "headings": ["Orbitron", "sans-serif"] },
+    "effects": {
+      "glow": { "target": "headings", "strength": 0.35 },
+      "cursor": { "style": "line", "glow": 0.4 }
+    }
+  },
+  "dark": {
+    "colors": {
+      "editor.background": "#262335",
+      "editor.foreground": "#f4eefa",
+      "editorGroupHeader.tabsBackground": "#1e1a2e",
+      "list.hoverBackground": "#34294f",
+      "tab.activeBackground": "#262335",
+      "tab.activeModifiedBorder": "#ff7edb",
+      "editorWidget.background": "#1e1a2e",
+      "editorWidget.border": "#4d3b73",
+      "descriptionForeground": "#9d95c2",
+      "panel.border": "#3b2f55",
+      "button.background": "#ff7edb",
+      "button.foreground": "#241b2f",
+      "editor.selectionBackground": "rgba(255, 126, 219, 0.22)",
+      "editor.lineHighlightBackground": "rgba(80, 60, 130, 0.28)",
+      "textCodeBlock.background": "#1e1a2e",
+      "widget.shadow": "rgba(10, 0, 30, 0.6)",
+      "input.background": "#1e1a2e",
+      "editor.findMatchHighlightBackground": "rgba(54, 249, 246, 0.25)",
+      "editor.findMatchBackground": "rgba(254, 222, 93, 0.45)",
+      "editorCursor.foreground": "#36f9f6",
+      "list.activeSelectionBackground": "rgba(255, 126, 219, 0.16)",
+      "errorForeground": "#fe4450",
+      "editor.rangeHighlightBackground": "#4a2f5e"
+    },
+    "notera": {
+      "colors": {
+        "heading": "#ff7edb", "heading1": "#ff7edb", "heading2": "#36f9f6", "heading3": "#fede5d",
+        "heading4": "#f97e72", "heading5": "#72f1b8", "heading6": "#b893ce",
+        "link": "#36f9f6", "quote": "#b893ce", "code": "#ff8b39", "markup": "#6f67a0"
+      }
+    }
+  },
+  "light": {
+    "colors": {
+      "editor.background": "#fbf7ff",
+      "editor.foreground": "#2a1f3d",
+      "editorGroupHeader.tabsBackground": "#f1e9fb",
+      "list.hoverBackground": "#e7dcf5",
+      "tab.activeBackground": "#fbf7ff",
+      "tab.activeModifiedBorder": "#d6249f",
+      "editorWidget.background": "#ffffff",
+      "editorWidget.border": "#cdbde3",
+      "descriptionForeground": "#7a6d92",
+      "panel.border": "#dccfee",
+      "button.background": "#d6249f",
+      "button.foreground": "#ffffff",
+      "editor.selectionBackground": "rgba(214, 36, 159, 0.16)",
+      "editor.lineHighlightBackground": "rgba(214, 36, 159, 0.05)",
+      "textCodeBlock.background": "#f1e9fb",
+      "widget.shadow": "rgba(60, 20, 90, 0.14)",
+      "input.background": "#ffffff",
+      "editor.findMatchHighlightBackground": "rgba(0, 134, 168, 0.18)",
+      "editor.findMatchBackground": "rgba(214, 36, 159, 0.35)",
+      "editorCursor.foreground": "#0086a8",
+      "list.activeSelectionBackground": "rgba(214, 36, 159, 0.1)",
+      "errorForeground": "#d11a4a",
+      "editor.rangeHighlightBackground": "#f6d6ec"
+    },
+    "notera": {
+      "colors": {
+        "heading": "#d6249f", "heading1": "#d6249f", "heading2": "#0086a8", "heading3": "#b7791f",
+        "heading4": "#e0513a", "heading5": "#0f9f6e", "heading6": "#7d4fb0",
+        "link": "#0086a8", "quote": "#7d4fb0", "code": "#c2410c", "markup": "#b4a6c9"
+      },
+      // On a light page a glow reads as a smudge, so Chill keeps only the colours in Light.
+      "effects": { "glow": false, "cursor": { "style": "line", "glow": 0.2 } }
+    }
+  }
+}

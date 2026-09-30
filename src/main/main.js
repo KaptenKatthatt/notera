@@ -674,6 +674,7 @@ function buildMenu() {
             { type: 'separator' },
             radio(t('menu.themeSystem'), 'mode', 'system'), radio(t('menu.themeLight'), 'mode', 'light'), radio(t('menu.themeDark'), 'mode', 'dark'),
             { type: 'separator' },
+            check('effects'),
             { label: t('menu.openThemesFolder'), click: () => openThemesFolder() }
           ]
         },
