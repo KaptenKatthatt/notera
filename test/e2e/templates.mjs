@@ -24,7 +24,7 @@ fs.mkdirSync(path.join(notes, 'Enlantis'), { recursive: true });
 fs.writeFileSync(path.join(notes, 'Enlantis', '2026-09-18 Sprint.md'), '# Sprint\nProjekt: Enlantis · Skapad: 2026-09-18 09:12\n\nPlanering\n');
 fs.writeFileSync(path.join(notes, '.notera.json'), JSON.stringify({ version: 1, inbox: 'Osorterat', archive: 'Arkiv', projects: ['Enlantis'] }));
 fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({
-  notesRoot: notes, sidebarOpen: true, language: 'sv', theme: 'light', checkUpdates: false, autosave: true, windowBounds: { width: 1200, height: 800 }
+  notesRoot: notes, sidebarOpen: true, language: 'sv', mode: 'light', checkUpdates: false, autosave: true, windowBounds: { width: 1200, height: 800 }
 }));
 
 const app = await electron.launch({ args: [root], env: { ...process.env, NOTERA_USER_DATA: userData } });

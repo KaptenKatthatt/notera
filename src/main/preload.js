@@ -50,6 +50,8 @@ contextBridge.exposeInMainWorld('notera', {
   onRequestClose: (cb) => on('window:requestClose', cb),
   onSettingsChanged: (cb) => on('settings:changed', cb),
   onThemeChanged: (cb) => on('theme:changed', cb),
+  listThemes: () => ipcRenderer.invoke('themes:list'),
+  openThemesFolder: () => ipcRenderer.invoke('themes:openFolder'),
   notes: {
     call: (method, ...args) => ipcRenderer.invoke('notes:call', method, ...args),
     chooseRoot: () => ipcRenderer.invoke('notes:chooseRoot'),

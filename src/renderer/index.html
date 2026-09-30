@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' notera-theme:; img-src 'self' data: https: notera-theme:; font-src 'self' data: notera-theme:;" />
   <title>Notera</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -200,6 +200,14 @@
     <div class="ut-actions">
       <button type="button" id="update-later">Later</button>
       <button type="button" id="update-go" class="primary">Download and install</button>
+    </div>
+  </div>
+
+  <div id="theme-toast" role="alert" hidden>
+    <span id="theme-toast-text"></span>
+    <div class="ut-actions">
+      <button type="button" id="theme-toast-folder" data-i18n="theme.openFolder">Open themes folder</button>
+      <button type="button" id="theme-toast-close" class="primary" data-i18n="theme.dismiss">OK</button>
     </div>
   </div>
 

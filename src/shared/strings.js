@@ -20,7 +20,7 @@ const en = {
     view: '&View', zoom: 'Zoom', zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomReset: 'Restore default zoom',
     statusBar: 'Status bar', narrowColumn: 'Narrow text column', wordWrap: 'Word wrap', lineNumbers: 'Line numbers', formattingBar: 'Formatting toolbar',
     editorOnly: 'Editor', split: 'Split view', previewOnly: 'Preview', theme: 'Theme', themeSystem: 'Use system setting',
-    themeLight: 'Light', themeDark: 'Dark', themeThoseGuys: 'Those guys', themeOtherGuys: 'The Other guys', language: 'Language', langAuto: 'Automatic', langEn: 'English', langSv: 'Svenska',
+    themeLight: 'Light', themeDark: 'Dark', themeBroken: '{name} (broken)', openThemesFolder: 'Open themes folder', language: 'Language', langAuto: 'Automatic', langEn: 'English', langSv: 'Svenska',
     help: '&Help', about: 'About Notera', toggleDevTools: 'Developer tools',
     writingMode: 'Writing mode', fullscreen: 'Full screen', autosave: 'Autosave', hideMarkers: 'Hide Markdown markers',
     shortcuts: 'Keyboard shortcuts',
@@ -54,7 +54,7 @@ const en = {
   },
   settings: {
     title: 'Settings', general: 'General', keyboard: 'Keyboard shortcuts', close: 'Close',
-    appearance: 'Appearance', theme: 'Theme', language: 'Language', font: 'Editor font', fontChange: 'Change…',
+    appearance: 'Appearance', theme: 'Theme', mode: 'Mode', language: 'Language', font: 'Editor font', fontChange: 'Change…',
     editing: 'Editing', autosave: 'Save files automatically while typing', hideMarkers: 'Hide Markdown markers off the cursor line',
     wordWrap: 'Word wrap', narrowColumn: 'Narrow text column', lineNumbers: 'Line numbers', spellcheck: 'Spell check (Swedish and English)', updates: 'Updates',
     tabsWindows: 'Tabs and windows', ctrlW: 'Ctrl+W closes', ctrlWTab: 'the tab', ctrlWWindow: 'the window', ctrlWOther: 'another command (see Keyboard shortcuts)', checkUpdates: 'Check for updates automatically',
@@ -73,6 +73,10 @@ const en = {
     unsupported: 'Updates work in the installed version of Notera. This copy is {reason}.',
     reasonDev: 'running from source', reasonPortable: 'the portable version', error: 'Could not check for updates.',
     downloadError: 'The update could not be downloaded.', checking: 'Checking for updates…'
+  },
+  theme: {
+    error: 'The theme "{theme}" could not be loaded: {message}', errorAt: 'The theme "{theme}" could not be loaded: theme.json line {line}: {message}',
+    openFolder: 'Open themes folder', dismiss: 'OK'
   },
   search: {
     'Find': 'Find', 'Replace': 'Replace', 'next': 'Next', 'previous': 'Previous', 'all': 'All', 'match case': 'Match case',
@@ -101,7 +105,7 @@ const sv = {
     view: '&Visa', zoom: 'Zoom', zoomIn: 'Zooma in', zoomOut: 'Zooma ut', zoomReset: 'Återställ standardzoom',
     statusBar: 'Statusfält', narrowColumn: 'Begränsad textbredd', wordWrap: 'Radbyte', lineNumbers: 'Radnummer', formattingBar: 'Formateringsfält',
     editorOnly: 'Redigerare', split: 'Delad vy', previewOnly: 'Förhandsvisning', theme: 'Tema', themeSystem: 'Följ systemet',
-    themeLight: 'Ljust', themeDark: 'Mörkt', themeThoseGuys: 'Those guys', themeOtherGuys: 'The Other guys', language: 'Språk', langAuto: 'Automatiskt', langEn: 'English', langSv: 'Svenska',
+    themeLight: 'Ljust', themeDark: 'Mörkt', themeBroken: '{name} (trasigt)', openThemesFolder: 'Öppna temamappen', language: 'Språk', langAuto: 'Automatiskt', langEn: 'English', langSv: 'Svenska',
     help: '&Hjälp', about: 'Om Notera', toggleDevTools: 'Utvecklarverktyg',
     writingMode: 'Skrivläge', fullscreen: 'Helskärm', autosave: 'Spara automatiskt', hideMarkers: 'Dölj Markdown-tecken',
     shortcuts: 'Kortkommandon',
@@ -135,7 +139,7 @@ const sv = {
   },
   settings: {
     title: 'Inställningar', general: 'Allmänt', keyboard: 'Kortkommandon', close: 'Stäng',
-    appearance: 'Utseende', theme: 'Tema', language: 'Språk', font: 'Teckensnitt i editorn', fontChange: 'Ändra…',
+    appearance: 'Utseende', theme: 'Tema', mode: 'Läge', language: 'Språk', font: 'Teckensnitt i editorn', fontChange: 'Ändra…',
     editing: 'Redigering', autosave: 'Spara filer automatiskt medan du skriver', hideMarkers: 'Dölj Markdown-tecken utanför markörens rad',
     wordWrap: 'Radbyte', narrowColumn: 'Begränsad textbredd', lineNumbers: 'Radnummer', spellcheck: 'Stavningskontroll (svenska och engelska)', updates: 'Uppdateringar',
     tabsWindows: 'Flikar och fönster', ctrlW: 'Ctrl+W stänger', ctrlWTab: 'fliken', ctrlWWindow: 'fönstret', ctrlWOther: 'ett annat kommando (se Kortkommandon)', checkUpdates: 'Sök efter uppdateringar automatiskt',
@@ -154,6 +158,10 @@ const sv = {
     unsupported: 'Uppdateringar fungerar i den installerade versionen av Notera. Den här kopian är {reason}.',
     reasonDev: 'startad från källkoden', reasonPortable: 'den portabla versionen', error: 'Det gick inte att söka efter uppdateringar.',
     downloadError: 'Uppdateringen gick inte att ladda ner.', checking: 'Söker efter uppdateringar…'
+  },
+  theme: {
+    error: 'Temat "{theme}" gick inte att läsa in: {message}', errorAt: 'Temat "{theme}" gick inte att läsa in: theme.json rad {line}: {message}',
+    openFolder: 'Öppna temamappen', dismiss: 'OK'
   },
   search: {
     'Find': 'Sök', 'Replace': 'Ersätt', 'next': 'Nästa', 'previous': 'Föregående', 'all': 'Alla', 'match case': 'Matcha skiftläge',

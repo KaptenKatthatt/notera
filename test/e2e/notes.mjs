@@ -38,7 +38,7 @@ const loose = path.join(tmp, 'lösa tankar.md');
 fs.writeFileSync(loose, 'Skrev det här innan Notera hade projekt.\n');
 const settingsFile = path.join(userData, 'settings.json');
 fs.writeFileSync(settingsFile, JSON.stringify({
-  notesRoot: notes, sidebarOpen: true, language: 'sv', theme: 'light', checkUpdates: false, windowBounds: { width: 1200, height: 760 }
+  notesRoot: notes, sidebarOpen: true, language: 'sv', mode: 'light', checkUpdates: false, windowBounds: { width: 1200, height: 760 }
 }));
 
 const launch = (args = []) => electron.launch({ args: [root, ...args], env: { ...process.env, NOTERA_USER_DATA: userData } });
@@ -293,7 +293,7 @@ assert.equal(await win.evaluate(() => document.querySelector('#dlg-project').ope
 assert.deepEqual(ls('Kund Y').length, 1);
 
 // 14. Dark theme
-await win.evaluate(() => window.notera.setSettings({ theme: 'dark' }));
+await win.evaluate(() => window.notera.setSettings({ mode: 'dark' }));
 await win.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
 await settle();
 await shot('38-notes-dark');
@@ -301,7 +301,7 @@ assert.deepEqual(errors, []);
 await app.close();
 
 // 15. First run: no notes folder yet
-fs.writeFileSync(settingsFile, JSON.stringify({ language: 'sv', theme: 'light', checkUpdates: false, windowBounds: { width: 1200, height: 760 } }));
+fs.writeFileSync(settingsFile, JSON.stringify({ language: 'sv', mode: 'light', checkUpdates: false, windowBounds: { width: 1200, height: 760 } }));
 const fresh = path.join(tmp, 'Nya anteckningar');
 app = await launch();
 win = await app.firstWindow();

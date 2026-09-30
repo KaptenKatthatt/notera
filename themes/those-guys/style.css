@@ -1,0 +1,6 @@
+/* Those guys: Claude Code's accents. Loaded after styles.css while this theme is active. */
+.tab.active { box-shadow: inset 0 2px 0 var(--accent); }
+.tab .dot { width: auto; height: auto; background: none; color: var(--accent); line-height: 1; }
+.tab .dot::before { content: "\273B"; }
+.cm-panel.cm-search, .cm-panel.cm-gotoLine { border-color: var(--widget-border); }
+.preview h1, .preview h2, .preview h3 { color: var(--md-h); }
