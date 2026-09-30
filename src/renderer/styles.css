@@ -659,3 +659,16 @@ html.fx-vignette #fx-overlay::after {
 @media print {
   #fx-bg, #fx-overlay, #fx-particles { display: none !important; }
 }
+
+/* ---------- Quick pick: command palette, theme and mode pickers (quickPick.js) ---------- */
+#quick-pick { position: fixed; inset: 0; z-index: 56; background: rgba(0, 0, 0, 0.18); }
+.qp .sb-search input { padding-left: 2px; }
+.qp-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; cursor: default; color: var(--fg); }
+.qp-item:hover { background: var(--bg-hover); }
+.qp-item.sel { background: var(--sel-row); }
+.qp-check { flex: none; width: 16px; text-align: center; color: var(--accent); }
+.qp-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qp-label mark { background: none; color: var(--accent); font-weight: 600; }
+.qp-detail { flex: none; color: var(--fg-muted); font-size: 12px; }
+.qp-keys { flex: none; font-family: var(--ui-font); font-size: 11px; color: var(--fg-muted); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+.qp-empty { padding: 10px 14px; color: var(--fg-muted); }

@@ -9,6 +9,7 @@ import { display } from '../shared/commands.js';
 import { fillPlaceholders, cursorAfterHeading, standupTemplate, BUILTIN } from '../shared/templates.js';
 import { createThemeApplier } from './themeApply.js';
 import { createEffects } from './effects.js';
+import { createPalette } from './palette.js';
 import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
 import { createPreview } from './preview.js';
@@ -32,6 +33,9 @@ let view;
 let isDark = false;
 let themes = null;
 let effects = null;
+let palette = null;
+let themeMsg = null;     // the theme main last sent; the theme picker's previews do not replace it
+let settingsFile = null; // settings.json, so saving it by hand applies it
 let themeList = [];   // every installed theme, for the settings dialog
 const platformEol = api.platform === 'win32' ? 'CRLF' : 'LF';
 const ENCODINGS = ['utf8', 'utf8bom', 'utf16le', 'utf16be', 'ansi'];
@@ -383,6 +387,7 @@ async function writeTabNow(tab) {
   tab.dirty = !docFor(tab).eq(doc);
   tab.lastSavedAt = Date.now();
   renderTabs(); updateTitle(); updateStatus();
+  afterWrite(r);
   return true;
 }
 
@@ -408,12 +413,21 @@ async function saveTabAsNow(tab, target) {
   tab.dirty = !docFor(tab).eq(doc);
   tab.lastSavedAt = Date.now();
   await deleteDraftNow(tab);
+  afterWrite(r);
   if (kindChanged) {
     if (tab === active) { view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) }); applyKindUi(); }
     else tab.state = tab.state.update({ effects: reconfigureEffects(editorOpts(tab)) }).state;
   }
   renderTabs(); updateTitle(); updateStatus();
   return true;
+}
+
+/** Main applies settings.json when it is saved by hand; a file that does not parse changes nothing and says why. */
+function afterWrite(r) {
+  const reload = r && r.settingsReload;
+  if (!reload) return;
+  if (reload.error) themes.notice(t('palette.settingsError', { line: reload.error.line || 1, message: reload.error.message }));
+  else themes.notice('');
 }
 
 // ---------- autosave + drafts (Omawrite: it saves as you type, and recovers unsaved text) ----------
@@ -935,6 +949,11 @@ async function handleAction(action, payload) {
       await api.setSettings({ [action]: settings[action] === false }); break;
     case 'cut': case 'copy': case 'paste': await api.nativeEdit(action); break;
     case 'checkForUpdates': await api.checkForUpdates(true); break;
+    case 'commandPalette': palette.openCommands(); break;
+    case 'pickTheme': await palette.pickTheme(); break;
+    case 'newThemeFromCurrent': palette.newTheme(); break;
+    case 'openThemesFolder': await api.openThemesFolder(); break;
+    case 'openSettingsJson': await openPaths([settingsFile || await api.settingsPath()]); break;
     case 'about': await api.about(); break;
     default:
       if (!runFormat(action)) console.warn('unknown action', action);
@@ -1045,6 +1064,12 @@ function applyEffects() {
 // The theme and its mode come from main as one message (see themeApply.js). CodeMirror only needs
 // reconfiguring when the variant on screen flips between light and dark.
 function applyTheme(msg) {
+  themeMsg = msg;
+  paintTheme(msg);
+}
+
+/** Paint a theme message: main's, or a preview from the theme picker. */
+function paintTheme(msg) {
   if (!themes) themes = createThemeApplier({ t: () => t, openFolder: () => void api.openThemesFolder() });
   const flipped = themes.apply(msg);
   isDark = themes.isDark();
@@ -1098,6 +1123,12 @@ async function boot() {
   settingsDialog = createSettingsDialog({
     t: (...a) => t(...a), api, getSettings: () => settings, getThemes: () => themeList, openFontDialog: dialogs.font, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
     onClose: () => view.focus()
+  });
+  settingsFile = await api.settingsPath();
+  palette = createPalette({
+    t: () => t, api, getSettings: () => settings, run: (id) => handleAction(id), focusEditor: () => view.focus(),
+    previewTheme: (msg) => paintTheme(msg), restoreTheme: () => { if (themeMsg) paintTheme(themeMsg); },
+    openPaths: (paths) => openPaths(paths)
   });
   sidebar = createSidebar({
     api, t: () => t, settings: () => settings, pathKey,

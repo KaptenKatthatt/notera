@@ -97,6 +97,11 @@ const COMMANDS = [
   { id: 'searchNotes', cat: 'view', label: 'menu.searchNotes', keys: ['Ctrl+Shift+F'], global: true },
   { id: 'narrowColumn', cat: 'view', label: 'menu.narrowColumn', keys: [], global: true },
   { id: 'effects', cat: 'view', label: 'menu.effects', keys: [], global: true },
+  { id: 'commandPalette', cat: 'view', label: 'menu.commandPalette', keys: ['Ctrl+Shift+P'], global: true },
+  { id: 'pickTheme', cat: 'view', label: 'menu.pickTheme', keys: [], global: true },
+  { id: 'newThemeFromCurrent', cat: 'view', label: 'menu.newThemeFromCurrent', keys: [], global: true },
+  { id: 'openThemesFolder', cat: 'view', label: 'menu.openThemesFolder', keys: [], global: true },
+  { id: 'openSettingsJson', cat: 'file', label: 'menu.openSettingsJson', keys: [], global: true },
   { id: 'writingMode', cat: 'view', label: 'menu.writingMode', keys: ['Ctrl+Shift+W'], global: true },
   { id: 'fullscreen', cat: 'view', label: 'menu.fullscreen', keys: ['F11'], global: true },
   { id: 'autosave', cat: 'view', label: 'menu.autosave', keys: [], global: true },
@@ -258,7 +263,25 @@ function isCustomized(overrides, id) {
   return !!overrides && Object.prototype.hasOwnProperty.call(overrides, id);
 }
 
+/** What Ctrl+W does with these bindings: 'tab', 'window', or 'other' (another command has it). */
+function ctrlWTarget(bindings) {
+  return bindings.closeWindow.includes('Ctrl+W') ? 'window' : bindings.closeTab.includes('Ctrl+W') ? 'tab' : 'other';
+}
+
+/** Overrides with Ctrl+W moved to closeTab ('tab') or closeWindow ('window'), taken from whoever had it. */
+function withCtrlW(overrides, target) {
+  const b = effectiveBindings(overrides);
+  const without = (id) => b[id].filter((k) => k !== 'Ctrl+W');
+  const owner = conflict(b, 'Ctrl+W', null);
+  let o = overrides;
+  if (owner && owner !== 'closeTab' && owner !== 'closeWindow') o = withBinding(o, owner, without(owner));
+  const to = target === 'window' ? 'closeWindow' : 'closeTab';
+  const from = to === 'closeWindow' ? 'closeTab' : 'closeWindow';
+  o = withBinding(o, from, without(from));
+  return withBinding(o, to, ['Ctrl+W', ...without(to)]);
+}
+
 module.exports = {
   COMMANDS, BY_ID, CATEGORIES, normalize, fromEvent, isAllowed, display, toAccelerator,
-  effectiveBindings, keyMap, conflict, withBinding, isCustomized
+  effectiveBindings, keyMap, conflict, withBinding, isCustomized, ctrlWTarget, withCtrlW
 };

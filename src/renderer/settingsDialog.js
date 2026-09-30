@@ -1,6 +1,7 @@
 // Settings: a General pane and a Keyboard shortcuts pane where every command can be rebound.
 import {
-  COMMANDS, BY_ID, CATEGORIES, display, fromEvent, isAllowed, normalize, conflict, withBinding, isCustomized, effectiveBindings
+  COMMANDS, BY_ID, CATEGORIES, display, fromEvent, isAllowed, normalize, conflict, withBinding, isCustomized, effectiveBindings,
+  withCtrlW, ctrlWTarget
 } from '../shared/commands.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -83,7 +84,7 @@ export function createSettingsDialog(ctx) {
     // Ctrl+W: the same thing as moving the key between Close tab and Close window under Keyboard shortcuts.
     section(t('settings.tabsWindows'));
     const bindings = effectiveBindings(overrides());
-    const ctrlW = bindings.closeWindow.includes('Ctrl+W') ? 'window' : bindings.closeTab.includes('Ctrl+W') ? 'tab' : 'other';
+    const ctrlW = ctrlWTarget(bindings);
     const opts = [['tab', t('settings.ctrlWTab')], ['window', t('settings.ctrlWWindow')]];
     if (ctrlW === 'other') opts.push(['other', t('settings.ctrlWOther')]);
     const wSel = document.createElement('select');
@@ -92,16 +93,7 @@ export function createSettingsDialog(ctx) {
     wSel.value = ctrlW;
     wSel.addEventListener('change', async () => {
       if (wSel.value === 'other') return;
-      const b = effectiveBindings(overrides());
-      const without = (id) => b[id].filter((k) => k !== 'Ctrl+W');
-      const owner = conflict(b, 'Ctrl+W', null);
-      let o = overrides();
-      if (owner && owner !== 'closeTab' && owner !== 'closeWindow') o = withBinding(o, owner, without(owner));
-      const to = wSel.value === 'window' ? 'closeWindow' : 'closeTab';
-      const from = to === 'closeWindow' ? 'closeTab' : 'closeWindow';
-      o = withBinding(o, from, without(from));
-      o = withBinding(o, to, ['Ctrl+W', ...without(to)]);
-      await ctx.api.setSettings({ keybindings: o });
+      await ctx.api.setSettings({ keybindings: withCtrlW(overrides(), wSel.value) });
     });
     row(t('settings.ctrlW'), wSel);
 

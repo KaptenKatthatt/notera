@@ -13,7 +13,8 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Remembers encoding (UTF-8, UTF-8 with BOM, UTF-16 LE/BE, ANSI) and line endings (CRLF or LF) per file and writes them back unchanged. The encoding can be changed from the status bar.
 - Tabs with unsaved-change dots, a save prompt on close, and reload prompts when a file changed on disk. The mouse wheel scrolls the tab strip when the tabs do not fit. A tab's right-click menu closes the others, the ones to the right, or all of them; unsaved tabs are asked about first, and closing all leaves one empty tab.
 - Markdown formatting: bold, italic, strikethrough, headings, bullet/numbered/task lists, quote, inline code, code block, link, horizontal rule, table. Each toggles on and off.
-- Editor, split and preview views for Markdown. Preview links open in the browser.
+- Three views for Markdown: Write (Skriv), Split (Delad) and Read (Läs, the rendered preview). Preview links open in the browser.
+- A command palette (Ctrl+Shift+P, as in VS Code) with every command and setting, a theme picker that previews each theme as you move through the list, and Open settings (JSON) for editing settings.json by hand.
 - Find, find next/previous, replace, regex, whole word, match case, go to line.
 - Narrow text column (View menu, on by default): the text is centred at 66 characters, the same width as writing mode. Off gives the full window width. The last line can be scrolled up to the top of the editor.
 - Spell check (Edit menu or Settings, off by default) in Swedish and English at once. Right-clicking a flagged word offers suggestions and Add to dictionary.
@@ -69,7 +70,8 @@ Notera can keep your notes in one folder, sorted into projects. Choose the folde
 | Bullet / numbered / task list | Ctrl+Shift+8 / Ctrl+Shift+7 / Ctrl+Shift+9 |
 | Quote | Ctrl+Shift+. |
 | Code / code block / link | Ctrl+E / Ctrl+Shift+E / Ctrl+K |
-| Editor / split / preview | Ctrl+Shift+1 / 2 / 3 |
+| Write / Split / Read | Ctrl+Shift+1 / 2 / 3 |
+| Command palette | Ctrl+Shift+P |
 | Writing mode / full screen | Ctrl+Shift+W / F11 |
 | Move line up / down | Alt+Up / Alt+Down |
 | Copy line up / down | Shift+Alt+Up / Shift+Alt+Down |
