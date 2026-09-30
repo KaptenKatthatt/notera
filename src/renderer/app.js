@@ -190,7 +190,43 @@ function renderTabs() {
   }
   const activeEl = host.querySelector('.tab.active');
   if (activeEl) activeEl.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  placeTabsThumb();
 }
+
+// The tab strip's scroll thumb: shown on hover when the tabs do not all fit, draggable.
+function placeTabsThumb() {
+  const host = $('#tabs'), thumb = $('#tabs-thumb');
+  const over = host.scrollWidth - host.clientWidth > 1;
+  thumb.classList.toggle('on', over);
+  if (!over) return;
+  const ratio = host.clientWidth / host.scrollWidth;
+  thumb.style.width = `${Math.max(24, host.clientWidth * ratio)}px`;
+  thumb.style.left = `${host.offsetLeft + host.scrollLeft * ratio}px`;
+}
+$('#tabs').addEventListener('scroll', placeTabsThumb, { passive: true });
+new ResizeObserver(placeTabsThumb).observe($('#tabs'));
+$('#tabs-thumb').addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  e.preventDefault(); e.stopPropagation();
+  const host = $('#tabs'), thumb = /** @type {HTMLElement} */ (e.currentTarget);
+  const startX = e.clientX, startLeft = host.scrollLeft, scale = host.scrollWidth / host.clientWidth;
+  thumb.setPointerCapture(e.pointerId);
+  thumb.classList.add('dragging');
+  const move = (ev) => { host.scrollLeft = startLeft + (ev.clientX - startX) * scale; };
+  const up = () => { thumb.classList.remove('dragging'); thumb.removeEventListener('pointermove', move); thumb.removeEventListener('pointerup', up); };
+  thumb.addEventListener('pointermove', move);
+  thumb.addEventListener('pointerup', up);
+});
+
+// The mouse wheel scrolls the tab strip sideways; Ctrl+wheel stays zoom.
+$('#tabs').addEventListener('wheel', (e) => {
+  if (e.ctrlKey) return;
+  const host = /** @type {HTMLElement} */ (e.currentTarget);
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (!delta || host.scrollWidth <= host.clientWidth) return;
+  host.scrollLeft += e.deltaMode === 1 ? delta * 40 : delta;
+  e.preventDefault();
+}, { passive: false });
 
 attachTabDrag($('#tabbar'), {
   onReorder: (order) => {
@@ -229,8 +265,9 @@ async function resolveUnsaved(tab) {
   return true;
 }
 
-async function closeTab(tab) {
-  if (tab.dirty && !(await resolveUnsaved(tab))) return false;
+/** asked: the unsaved-changes question was already answered, e.g. by closeTabs. */
+async function closeTab(tab, { asked = false } = {}) {
+  if (!asked && tab.dirty && !(await resolveUnsaved(tab))) return false;
   clearTimeout(tab.autosaveTimer);
   await dropDraft(tab);
   // A new note closed before anything was written leaves no empty file behind.
@@ -245,6 +282,27 @@ async function closeTab(tab) {
   else if (tab === active) activateTab(tabs[Math.min(idx, tabs.length - 1)]);
   else renderTabs();
   if (sidebar) sidebar.render();
+  return true;
+}
+
+/** The tabs Close others / Close all / Close to the right would close, from the tab right-clicked. */
+function tabsToClose(tab, which) {
+  if (which === 'all') return [...tabs];
+  if (which === 'others') return tabs.filter((x) => x !== tab);
+  return tabs.slice(tabs.indexOf(tab) + 1);
+}
+
+/**
+ * Close several tabs. Every unsaved one is asked about first, in tab order, like closing the
+ * window; Cancel on any of them closes none. Closing them all leaves one empty tab, never the window.
+ */
+async function closeTabs(tab, which) {
+  const list = tabsToClose(tab, which);
+  if (!list.length) return false;
+  for (const x of list) await flushPending(x);
+  for (const x of list) if (x.dirty && !(await resolveUnsaved(x))) return false;
+  for (const x of list) await closeTab(x, { asked: true });
+  if (tabs.includes(tab)) activateTab(tab);
   return true;
 }
 
@@ -1028,6 +1086,7 @@ async function boot() {
     activePath: () => (active ? active.path : null),
     flush: flushAll, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
     promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab), retitleTab,
+    tabsToClose, closeTabs,
     focusEditor: () => view.focus(),
     sidebarVisible: () => !!settings.sidebarOpen && !settings.writingMode,
     showSidebar: async () => { if (settings.writingMode) await api.setSettings({ writingMode: false }); if (!settings.sidebarOpen) await api.setSettings({ sidebarOpen: true }); },
