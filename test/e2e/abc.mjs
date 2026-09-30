@@ -32,14 +32,16 @@ console.log('C: efter (');
 await win.waitForFunction(() => window.__notera.view.state.doc.toString().includes('(ordet)'), undefined, { timeout: 5000 });
 assert.ok((await doc()).includes('Sista (ordet)'), 'parentes wrappar selektionen: ' + JSON.stringify((await doc()).slice(-20)));
 
-// A) Standup-mall: ny flik med rubrik + datum + tre underrubriker
+// A) Standup-mall utan anteckningsmapp: den inbyggda Standup, ny flik med rubrik + datum + tre underrubriker
 console.log('A: oppnar mall');
-await win.evaluate(() => window.__notera.handleAction('newFromTemplate', 'standup'));
+await win.evaluate(() => window.__notera.handleAction('newFromTemplate', 'Standup'));
 await win.waitForFunction(() => window.__notera.tabs.length === 2, undefined, { timeout: 5000 });
 const tplDoc = await doc();
 assert.match(tplDoc, /^# Standup \d{4}-\d{2}-\d{2}\n/, 'standuprubrik med datum');
 const headers = tplDoc.split('\n').filter((l) => l.startsWith('## '));
 assert.equal(headers.length, 3, 'tre underrubriker: ' + JSON.stringify(headers));
+const tplCaret = await win.evaluate(() => window.__notera.view.state.selection.main.anchor);
+assert.equal(tplDoc.slice(0, tplCaret), tplDoc.split('\n').slice(0, 3).join('\n') + '\n', 'markoren under forsta underrubriken');
 assert.ok(tplDoc.dirty === undefined, ''); // no-op guard (doc() ar text)
 await win.evaluate(() => { const t = window.__notera.active; t.dirty = false; t.savedDoc = t.state.doc; });
 
@@ -62,28 +64,20 @@ await boxes.nth(0).click();
 await win.waitForFunction(() => window.__notera.view.state.doc.toString().includes('- [x] Oklar'), undefined, { timeout: 5000 });
 assert.ok((await win.evaluate(() => window.__notera.view.state.doc.toString())).includes('- [x] Oklar'), 'klick togglade raden i dokumentet');
 
-// D) Applicera mall pa paborjat dokument: sidhuvud + idempotens
+// D) Applicera mall pa paborjat dokument: mallens text dar markoren star
 await win.evaluate(() => window.__notera.handleAction('new'));
 await win.waitForFunction(() => window.__notera.tabs.length === 4, undefined, { timeout: 5000 });
 await win.evaluate(() => {
   const v = window.__notera.view;
   v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: 'Min paborjade text' } });
 });
-await win.evaluate(() => window.__notera.handleAction('applyTemplate', 'standup'));
+await win.evaluate(() => { const v = window.__notera.view; v.dispatch({ selection: { anchor: v.state.doc.length } }); });
+await win.evaluate(() => window.__notera.handleAction('applyTemplate', 'Standup'));
 const headDoc = await win.evaluate(() => window.__notera.view.state.doc.toString());
-// The header word follows the UI language, which here follows the machine's locale.
-const titleWord = (await win.evaluate(() => document.documentElement.lang)) === 'sv' ? 'Titel' : 'Title';
-assert.ok(headDoc.startsWith(`# ${titleWord}:` + String.fromCharCode(10)), 'sidhuvud forst');
-const re = new RegExp(`# ${titleWord}:` + String.fromCharCode(92) + 'n' + String.fromCharCode(92) + 'd{4}' + String.fromCharCode(92) + '-');
-assert.ok(re.test(headDoc), 'datumtid genererad');
-assert.ok(headDoc.endsWith('Min paborjade text'), 'text bevarad under sidhuvudet');
+assert.ok(headDoc.startsWith('Min paborjade text# Standup '), 'mallen efter texten, dar markoren stod: ' + JSON.stringify(headDoc.slice(0, 40)));
+assert.ok(/# Standup \d{4}-\d{2}-\d{2}\n/.test(headDoc), 'datumet ifyllt');
 const caret = await win.evaluate(() => window.__notera.view.state.selection.main.anchor);
-assert.equal(caret, 8, 'caret efter Titel:');
-const before = await win.evaluate(() => window.__notera.view.state.doc.toString());
-await win.evaluate(() => window.__notera.handleAction('applyTemplate', 'standup'));
-await win.waitForTimeout(150);
-const after = await win.evaluate(() => window.__notera.view.state.doc.toString());
-assert.equal(before, after, 'andra appliceringen andrar inget');
+assert.equal(caret, headDoc.length, 'markoren efter den infogade mallen');
 console.log('D: applicera-mall OK');
 console.log('B: klar, stanger app');
 // nolla dirty pa ALLA flikar — annars blockeras nasta svits app.close() av

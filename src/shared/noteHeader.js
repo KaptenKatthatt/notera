@@ -91,9 +91,32 @@ function sanitizeFileName(title) {
   return s;
 }
 
-/** "2026-09-25 Title" (no extension). The date is the note's creation date, never today's. */
+/**
+ * "2026-09-25 Title" (no extension). The date is the note's creation date, never today's. A title
+ * that already holds that date does not repeat it: "Standup 2026-09-25" gives "2026-09-25 Standup".
+ */
 function baseName(datePrefix, title, untitledLabel) {
-  return `${datePrefix} ${sanitizeFileName(title) || untitledLabel}`;
+  const t = String(title || '');
+  if (datePrefix && t.includes(datePrefix)) {
+    const rest = sanitizeFileName(t.replace(datePrefix, ' ').replace(/^[\s\-–—:,.]+|[\s\-–—:,]+$/g, ''));
+    return rest ? `${datePrefix} ${rest}` : datePrefix;
+  }
+  return `${datePrefix} ${sanitizeFileName(t) || untitledLabel}`;
+}
+
+/**
+ * What a date-sorted project sorts a note by: the first YYYY-MM-DD in its heading, else the header's
+ * Created date, else the file name's date, else the file's modified time. created breaks ties.
+ * @returns {{ date: string, created: string }}
+ */
+function sortDateOf(text, fileName, mtimeMs) {
+  const title = titleOf(text);
+  const meta = parseMeta(text);
+  const created = meta && /^\d{4}-\d{2}-\d{2}/.test(meta.created) ? meta.created : '';
+  const inTitle = /\b(\d{4}-\d{2}-\d{2})\b/.exec(title);
+  const inName = DATE_PREFIX_RE.exec(fileName || '');
+  const date = (inTitle && inTitle[1]) || created.slice(0, 10) || (inName && inName[1]) || formatDate(new Date(mtimeMs || 0));
+  return { date, created };
 }
 
 /** Creation date for the file name: the existing file-name prefix, else the header, else today. */
@@ -119,5 +142,5 @@ function projectNameError(name, { taken = [], reserved = [] } = {}) {
 
 module.exports = {
   LABELS, META_RE, formatDate, formatDateTime, metaLine, newNoteText, parseMeta, titleOf, setProject, setTitle,
-  sanitizeFileName, baseName, datePrefixFor, projectNameError
+  sanitizeFileName, baseName, sortDateOf, datePrefixFor, projectNameError
 };

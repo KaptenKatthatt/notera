@@ -6,8 +6,7 @@ const en = {
   untitled: 'Untitled',
   menu: {
     file: '&File', new: 'New tab', newWindow: 'New window', open: 'Open…', openRecent: 'Open recent',
-    newFromTemplate: 'New from template…', standup: 'Standup notes',
-    applyTemplate: 'Apply template…',
+    newFromTemplate: 'New from template', applyTemplate: 'Apply template', noTemplates: 'No templates',
     clearRecent: 'Clear list', save: 'Save', saveAs: 'Save as…', saveAll: 'Save all', closeTab: 'Close tab',
     print: 'Print…', exit: 'Exit',
     edit: '&Edit', undo: 'Undo', redo: 'Redo', cut: 'Cut', copy: 'Copy', paste: 'Paste', delete: 'Delete',
@@ -88,8 +87,7 @@ const sv = {
   untitled: 'Namnlös',
   menu: {
     file: '&Arkiv', new: 'Ny flik', newWindow: 'Nytt fönster', open: 'Öppna…', openRecent: 'Öppna senaste',
-    newFromTemplate: 'Ny från mall…', standup: 'Standup-anteckningar',
-    applyTemplate: 'Applicera mall…',
+    newFromTemplate: 'Ny från mall', applyTemplate: 'Applicera mall', noTemplates: 'Inga mallar',
     clearRecent: 'Rensa listan', save: 'Spara', saveAs: 'Spara som…', saveAll: 'Spara alla', closeTab: 'Stäng flik',
     print: 'Skriv ut…', exit: 'Avsluta',
     edit: '&Redigera', undo: 'Ångra', redo: 'Gör om', cut: 'Klipp ut', copy: 'Kopiera', paste: 'Klistra in', delete: 'Ta bort',
@@ -173,8 +171,8 @@ for (let n = 1; n <= 9; n++) {
   sv.menu[`goToTab${n}`] = `Gå till flik ${n}`;
 }
 
-en.templates = { titleLabel: 'Title', standupTitle: 'Standup', doneLast: 'Done since last', blockers: 'Blockers', nextUp: 'To do for next meeting' };
-sv.templates = { titleLabel: 'Titel', standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 'Blockers', nextUp: 'Göra till nästa möte' };
+en.templates = { standupTitle: 'Standup', doneLast: 'Done since last', blockers: 'Blockers', nextUp: 'To do for next meeting' };
+sv.templates = { standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 'Blockers', nextUp: 'Göra till nästa möte' };
 
 Object.assign(en.menu, {
   newNote: 'New note', newNoteInProject: 'New note in project', newProject: 'New project…', toggleSidebar: 'Sidebar',
@@ -201,6 +199,9 @@ en.notes = {
   notNow: 'Not now', folderChosen: 'Notes folder chosen. Ctrl+T now writes to {inbox}.',
   archivedBanner: 'Archived from {project}. Read-only until you restore it.', showInSidebar: 'Show in sidebar', closeTab: 'Close tab',
   closeOthers: 'Close others', closeToRight: 'Close to the right', closeAll: 'Close all',
+  templates: 'Templates', newTemplate: 'New template', templateName: 'Template name', emptyTemplates: 'No templates. Click + to add one.',
+  saveAsTemplate: 'Save as template…', defaultTemplate: 'Default template', noTemplate: 'None',
+  sortBy: 'Sort', sortManual: 'Manual', sortDate: 'Date in note',
   chooseFolderFirst: 'Choose a notes folder first',
   toastArchived: 'Archived: {title}', toastMoved: 'Moved to {project}', toastRestored: 'Restored to {project}',
   toastRestoredNew: 'Restored to {project} (project re-created)', toastProjectArchived: 'Project {project} archived',
@@ -233,6 +234,9 @@ sv.notes = {
   notNow: 'Inte nu', folderChosen: 'Anteckningsmappen är vald. Ctrl+T skriver nu i {inbox}.',
   archivedBanner: 'Arkiverad från {project}. Skrivskyddad tills du återställer den.', showInSidebar: 'Visa i sidopanelen', closeTab: 'Stäng flik',
   closeOthers: 'Stäng andra', closeToRight: 'Stäng till höger', closeAll: 'Stäng alla',
+  templates: 'Mallar', newTemplate: 'Ny mall', templateName: 'Mallnamn', emptyTemplates: 'Inga mallar. Klicka på + för att lägga till en.',
+  saveAsTemplate: 'Spara som mall…', defaultTemplate: 'Standardmall', noTemplate: 'Ingen',
+  sortBy: 'Sortering', sortManual: 'Manuell', sortDate: 'Datum i anteckningen',
   chooseFolderFirst: 'Välj en anteckningsmapp först',
   toastArchived: 'Arkiverad: {title}', toastMoved: 'Flyttad till {project}', toastRestored: 'Återställd till {project}',
   toastRestoredNew: 'Återställd till {project} (projektet återskapades)', toastProjectArchived: 'Projektet {project} arkiverat',

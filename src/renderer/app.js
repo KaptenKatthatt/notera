@@ -6,7 +6,7 @@ import { createKeyDispatcher } from './keybindings.js';
 import { createSettingsDialog } from './settingsDialog.js';
 import { attachTabDrag } from './tabdrag.js';
 import { display } from '../shared/commands.js';
-import { TEMPLATES, hasTemplateHeader } from '../shared/templates.js';
+import { fillPlaceholders, cursorAfterHeading, standupTemplate, BUILTIN } from '../shared/templates.js';
 import { skinOf } from '../shared/themes.js';
 import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
@@ -645,10 +645,11 @@ async function currentFolder() {
   return inboxFolder();
 }
 
-async function createNoteIn(folder) {
+/** A new note in a project, from its default template unless opts.template names another. */
+async function createNoteIn(folder, opts = {}) {
   if (!settings.notesRoot) { newTab(); return; }
   await flushAll();
-  const r = await api.notes.call('createNote', folder || (await inboxFolder()));
+  const r = await api.notes.call('createNote', folder || (await inboxFolder()), opts);
   if (!r || r.error) { sidebar.toast(t('notes.opFailed', { error: (r && (r.message || r.error)) || '?' })); return; }
   sidebar.expand(folder);
   await sidebar.refresh();
@@ -657,7 +658,7 @@ async function createNoteIn(folder) {
   if (!tab) return;
   tab.pristine = r.text;
   tab.lastTitle = '';
-  if (tab === active) { view.dispatch({ selection: { anchor: 2 } }); view.focus(); }
+  if (tab === active) { view.dispatch({ selection: { anchor: typeof r.cursor === 'number' ? r.cursor : 2 }, scrollIntoView: true }); view.focus(); }
   renderTabs(); sidebar.render();
 }
 
@@ -846,20 +847,27 @@ async function handleAction(action, payload) {
     case 'toggleSidebar': await api.setSettings({ sidebarOpen: !settings.sidebarOpen }); break;
     case 'searchNotes': sidebar.openSearch(); break;
     case 'newFromTemplate': {
-      const tpl = TEMPLATES.find((x) => x.id === payload);
-      if (tpl) newTab({ text: tpl.text(t) });
+      // In the current project with that template; before a notes folder exists, a loose tab.
+      if (settings.notesRoot) { await createNoteIn(await currentFolder(), { template: payload }); break; }
+      if (payload !== BUILTIN) break;
+      const text = fillPlaceholders(standupTemplate(t, locale));
+      newTab({ text });
+      view.dispatch({ selection: { anchor: cursorAfterHeading(text, 1) } });
+      view.focus();
       break;
     }
     case 'applyTemplate': {
-      // Put the template header ("# Title:" and the date/time) above the text already written; the
-      // cursor lands right after "Title:". A document that already has a header is left alone.
-      const mtpl = TEMPLATES.find((x) => x.id === payload);
-      if (mtpl && mtpl.header && !active.readOnly && !hasTemplateHeader(view.state.doc.toString())) {
-        const head = mtpl.header(t);
-        view.dispatch({ changes: { from: 0, insert: head }, selection: { anchor: head.indexOf('\n') } });
-        view.focus();
-        preview.schedule(0);
-      }
+      // The template's text, placeholders filled, where the cursor is (replacing a selection).
+      if (!active || active.readOnly) break;
+      const tpl = settings.notesRoot ? await api.notes.call('readTemplate', payload)
+        : payload === BUILTIN ? standupTemplate(t, locale) : null;
+      if (typeof tpl !== 'string') break;
+      const info = noteInfo(active);
+      const text = fillPlaceholders(tpl.replace(/\r\n/g, '\n'), { project: info && !info.archived ? info.folder : '' });
+      const { from, to } = view.state.selection.main;
+      view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length }, scrollIntoView: true });
+      view.focus();
+      preview.schedule(0);
       break;
     }
     case 'open': await openDialog(); break;

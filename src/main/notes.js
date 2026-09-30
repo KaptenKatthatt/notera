@@ -10,6 +10,13 @@
 //     Osorterat/2026-09-25 Call the vet.md
 //     Enlantis/2026-09-18 PBI-1234 Login error.md
 //     Arkiv/Enlantis/2026-06-02 Old deploy list.md
+//     Mallar/Standup.md
+//
+// Mallar (Templates) holds the templates: one .md file per template, named after it. It is not a
+// project. Every notes folder is set up once (the index remembers it): the templates folder with
+// Standup.md in it and the project Standupanteckningar, which uses that template and sorts its notes
+// by the date written in them. Removing either later does not bring it back. Per-project options
+// (default template, sort order) live in the index too.
 //
 // Every mutating operation runs through a queue (no two file operations interleave) and, where
 // it can be undone, records a journal: file moves, rewritten files, created and removed folders
@@ -19,10 +26,16 @@ const path = require('path');
 const files = require('./files');
 const { writeFileAtomic } = require('./atomicWrite');
 const H = require('../shared/noteHeader');
+const T = require('../shared/templates');
+const { makeT } = require('../shared/strings');
 
 const INDEX_FILE = '.notera.json';
 const NOTE_EXT = /\.(md|markdown|txt)$/i;
-const FOLDER_NAMES = { sv: { inbox: 'Osorterat', archive: 'Arkiv' }, en: { inbox: 'Unsorted', archive: 'Archive' } };
+const FOLDER_NAMES = {
+  sv: { inbox: 'Osorterat', archive: 'Arkiv', templates: 'Mallar', standup: 'Standupanteckningar' },
+  en: { inbox: 'Unsorted', archive: 'Archive', templates: 'Templates', standup: 'Standup notes' }
+};
+const STANDUP_TEMPLATE = 'Standup';
 const MAX_UNDO = 30;
 
 const lower = (s) => String(s).toLowerCase();
@@ -57,7 +70,7 @@ async function moveFile(from, to) {
   }
 }
 
-function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () => 'Untitled note', eol = 'CRLF' }) {
+function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () => 'Untitled note', eol = 'CRLF', seed = false }) {
   const indexPath = path.join(root, INDEX_FILE);
   const journals = new Map();
   let journalSeq = 0;
@@ -75,6 +88,16 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     try { raw = JSON.parse(await fsp.readFile(indexPath, 'utf8')); } catch { /* missing or broken: start over */ }
     const names = FOLDER_NAMES[getLocale()] || FOLDER_NAMES.en;
     const order = raw.order && typeof raw.order === 'object' ? raw.order : {};
+    const rawOptions = raw.options && typeof raw.options === 'object' ? raw.options : {};
+    /** @type {Record<string, { template?: string, sort?: string }>} */
+    const options = {};
+    for (const [k, v] of Object.entries(rawOptions)) {
+      if (!v || typeof v !== 'object') continue;
+      const o = {};
+      if (typeof v.template === 'string' && v.template) o.template = v.template;
+      if (v.sort === 'date') o.sort = 'date';
+      if (Object.keys(o).length) options[k] = o;
+    }
     return {
       version: 1,
       inbox: isSegment(raw.inbox) ? raw.inbox : names.inbox,
@@ -83,7 +106,11 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       order: Object.fromEntries(Object.entries(order).map(([k, v]) => [k, arr(v)])),
       pinned: arr(raw.pinned),
       collapsed: arr(raw.collapsed),
-      archivedProjects: arr(raw.archivedProjects)
+      archivedProjects: arr(raw.archivedProjects),
+      // null until the folder is set up: a folder of that name is then still an ordinary project.
+      templates: isSegment(raw.templates) ? raw.templates : null,
+      options,
+      seeded: raw.seeded === true
     };
   }
 
@@ -97,7 +124,41 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     await fsp.mkdir(path.join(root, idx.inbox), { recursive: true });
     await fsp.mkdir(path.join(root, idx.archive), { recursive: true });
     if (!(await exists(indexPath))) await saveIndex(idx);
+    if (seed && !idx.seeded) await setUp(idx);
     return idx;
+  }
+
+  /** The templates folder's name, chosen the first time it is needed; a project of that name keeps it. */
+  async function claimTemplatesFolder(idx) {
+    if (idx.templates) return idx.templates;
+    const names = FOLDER_NAMES[getLocale()] || FOLDER_NAMES.en;
+    const taken = await projectDirs(idx);
+    idx.templates = has(taken, names.templates) ? `Notera ${names.templates}` : names.templates;
+    await fsp.mkdir(path.join(root, idx.templates), { recursive: true });
+    return idx.templates;
+  }
+
+  /**
+   * Once per notes folder: the templates folder with Standup.md, and the project Standupanteckningar
+   * using it, sorted by date. A project of that name that already exists is reused.
+   */
+  async function setUp(idx) {
+    const names = FOLDER_NAMES[getLocale()] || FOLDER_NAMES.en;
+    await claimTemplatesFolder(idx);
+    const std = templatePath(idx, STANDUP_TEMPLATE);
+    if (!(await exists(std))) {
+      const text = T.standupTemplate(makeT(getLocale()), getLocale());
+      await fsp.writeFile(std, files.writeBuffer(text, 'utf8', eol), { flag: 'wx' }).catch(() => {});
+    }
+    const existing = (await projectDirs(idx)).find((n) => lower(n) === lower(names.standup));
+    const project = existing || names.standup;
+    if (!existing) {
+      await fsp.mkdir(dirOf(project), { recursive: true });
+      idx.projects = [...without(idx.projects, project), project];
+    }
+    idx.options[project] = { ...(idx.options[project] || {}), template: STANDUP_TEMPLATE, sort: 'date' };
+    idx.seeded = true;
+    await saveIndex(idx);
   }
 
   // ---------- paths ----------
@@ -121,13 +182,18 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     if (!(await projectDirs(idx)).includes(name)) throw new Error(`No such project: ${name}`);
   }
   const pinKey = (folder, file) => `${folder}/${file}`;
+  const isTemplatesDir = (idx, name) => !!idx.templates && lower(name) === lower(idx.templates);
+  function templatePath(idx, name) {
+    if (!idx.templates) throw new Error('No templates folder');
+    return path.join(root, segment(idx.templates), `${segment(String(name))}.md`);
+  }
 
   /** Where a path sits: an active note, an archived note, or null for anything else. */
   function locate(idx, p) {
     const rel = path.relative(root, p);
     if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
     const parts = rel.split(path.sep);
-    if (parts.length === 2 && lower(parts[0]) !== lower(idx.archive) && !parts[0].startsWith('.')) {
+    if (parts.length === 2 && lower(parts[0]) !== lower(idx.archive) && !parts[0].startsWith('.') && !isTemplatesDir(idx, parts[0])) {
       return { folder: parts[0], file: parts[1], archived: false };
     }
     if (parts.length === 3 && lower(parts[0]) === lower(idx.archive)) return { folder: parts[1], file: parts[2], archived: true };
@@ -145,7 +211,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     let ents;
     try { ents = await fsp.readdir(root, { withFileTypes: true }); } catch { return []; }
     return ents
-      .filter((e) => e.isDirectory() && !e.name.startsWith('.') && lower(e.name) !== lower(idx.inbox) && lower(e.name) !== lower(idx.archive))
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.') && lower(e.name) !== lower(idx.inbox) && lower(e.name) !== lower(idx.archive) && !isTemplatesDir(idx, e.name))
       .map((e) => e.name);
   }
 
@@ -196,7 +262,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     const hit = noteCache.get(p);
     if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit;
     const { text } = await readText(p);
-    const info = { mtimeMs: st.mtimeMs, size: st.size, title: H.titleOf(text), body: searchBody(text) };
+    const info = { mtimeMs: st.mtimeMs, size: st.size, title: H.titleOf(text), body: searchBody(text), sort: H.sortDateOf(text, path.basename(p), st.mtimeMs) };
     info.bodyLower = lower(info.body);
     noteCache.set(p, info);
     return info;
@@ -206,11 +272,12 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     const p = path.join(dir, file);
     let title = '';
     let mtimeMs = 0;
+    let sort = { date: '', created: '' };
     try {
-      ({ title, mtimeMs } = await noteInfo(p));
+      ({ title, mtimeMs, sort } = await noteInfo(p));
     } catch { /* unreadable: fall back to the file name */ }
     return {
-      file, path: p, title: title || file.replace(NOTE_EXT, ''), hasTitle: !!title, mtimeMs,
+      file, path: p, title: title || file.replace(NOTE_EXT, ''), hasTitle: !!title, mtimeMs, sortDate: sort.date, sortCreated: sort.created,
       pinned: !archived && idx.pinned.includes(pinKey(folder, file))
     };
   }
@@ -321,11 +388,21 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const folder = async (name) => {
         const dir = dirOf(name);
         const entries = await Promise.all((await orderedFiles(idx, name)).map((f) => noteEntry(idx, name, dir, f, false)));
+        // Newest date first; the header's Created time, then the file's, break ties.
+        if (sortOf(idx, name) === 'date') entries.sort((a, b) => b.sortDate.localeCompare(a.sortDate) || b.sortCreated.localeCompare(a.sortCreated) || b.mtimeMs - a.mtimeMs);
         return [...entries.filter((n) => n.pinned), ...entries.filter((n) => !n.pinned)];
       };
       const inbox = { name: idx.inbox, inbox: true, collapsed: has(idx.collapsed, idx.inbox), notes: await folder(idx.inbox) };
+      const templates = await templateEntries(idx);
       const projects = [];
-      for (const name of await orderedProjects(idx)) projects.push({ name, collapsed: has(idx.collapsed, name), notes: await folder(name) });
+      for (const name of await orderedProjects(idx)) {
+        const template = (idx.options[name] || {}).template || null;
+        projects.push({
+          name, collapsed: has(idx.collapsed, name), notes: await folder(name), sort: sortOf(idx, name),
+          // A template that is gone no longer counts: new notes are plain again.
+          template: template && templates.some((x) => lower(x.name) === lower(template)) ? template : null
+        });
+      }
       const archive = [];
       let archiveDirs = [];
       try {
@@ -340,7 +417,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const seen = new Set([inbox, ...projects, ...archive].flatMap((g) => g.notes.map((n) => n.path)));
       for (const p of noteCache.keys()) if (!seen.has(p)) noteCache.delete(p);
       return {
-        root, inboxName: idx.inbox, archiveName: idx.archive, inbox, projects,
+        root, inboxName: idx.inbox, archiveName: idx.archive, inbox, projects, templates, templatesName: idx.templates,
         archive: archive.filter((g) => g.notes.length || g.wholeProject),
         archiveCount: archive.reduce((n, g) => n + g.notes.length, 0)
       };
@@ -380,8 +457,12 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   }
 
   // ---------- notes ----------
-  /** @param {string} folder @param {{ text?: string }} [opts] */
-  async function createNote(folder, { text } = {}) {
+  /**
+   * A new note in a project. It is made from the project's default template unless a template is
+   * named (null: none); a draft moved into a project keeps its text. cursor: where typing starts.
+   * @param {string} folder @param {{ text?: string, template?: string | null }} [opts]
+   */
+  async function createNote(folder, { text, template } = {}) {
     return run(async () => {
       const idx = await ensure();
       const dir = noteDirOf(idx, folder);
@@ -389,10 +470,18 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const now = new Date();
       let body = H.newNoteText(getLocale(), folder, now);
       let title = '';
+      let cursor = 2;
+      const tplName = template !== undefined ? template : (idx.options[folder] || {}).template;
       if (typeof text === 'string') {
         // A draft moved into a project: keep its text, add the header.
         title = H.titleOf(text);
         body = H.setProject(text, folder, { locale: getLocale(), created: H.formatDateTime(now), fallbackTitle: '' });
+      } else if (tplName && idx.templates) {
+        const tpl = await readText(templatePath(idx, tplName)).catch(() => null);
+        if (tpl) {
+          ({ text: body, cursor } = T.noteFromTemplate(tpl.text, { locale: getLocale(), project: folder, date: now }));
+          title = H.titleOf(body);
+        }
       }
       const name = await uniqueName(dir, H.baseName(H.formatDate(now), title, untitled()), '.md');
       const p = path.join(dir, name);
@@ -401,7 +490,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       await fsp.writeFile(p, files.writeBuffer(body, 'utf8', eol), { flag: 'wx' });
       placeFile(idx, folder, name);
       await saveIndex(idx);
-      return { path: p, text: body };
+      return { path: p, text: body, cursor };
     });
   }
 
@@ -652,6 +741,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       if (idx.order[oldName]) { idx.order[n] = idx.order[oldName]; delete idx.order[oldName]; }
       idx.pinned = idx.pinned.map((k) => (k.startsWith(`${oldName}/`) ? `${n}/${k.slice(oldName.length + 1)}` : k));
       idx.collapsed = idx.collapsed.map((x) => (x === oldName ? n : x));
+      if (idx.options[oldName]) { idx.options[n] = idx.options[oldName]; delete idx.options[oldName]; }
       await saveIndex(idx);
       return { name: n, moved: j.moved, undoId: commit(j) };
     });
@@ -740,8 +830,118 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       await trash(dir);
       if (archived) idx.archivedProjects = without(idx.archivedProjects, name);
       else forgetProject(idx, name);
+      delete idx.options[name];
       await saveIndex(idx);
       return { deleted: [dir] };
+    });
+  }
+
+  // ---------- project options ----------
+  function sortOf(idx, name) { return (idx.options[name] || {}).sort === 'date' ? 'date' : 'manual'; }
+
+  /** Set a project's default template (null: none) and/or sort order ('manual' | 'date'). */
+  async function setProjectOptions(name, patch) {
+    return run(async () => {
+      const idx = await loadIndex();
+      await requireProject(idx, name);
+      const o = { ...(idx.options[name] || {}) };
+      if ('template' in patch) { if (patch.template) o.template = String(patch.template); else delete o.template; }
+      if ('sort' in patch) { if (patch.sort === 'date') o.sort = 'date'; else delete o.sort; }
+      if (Object.keys(o).length) idx.options[name] = o; else delete idx.options[name];
+      await saveIndex(idx);
+    });
+  }
+
+  // ---------- templates ----------
+  async function templateEntries(idx) {
+    if (!idx.templates) return [];
+    const dir = path.join(root, idx.templates);
+    const names = (await listNotes(dir)).filter((f) => /\.md$/i.test(f));
+    return names.map((f) => ({ name: f.replace(/\.md$/i, ''), file: f, path: path.join(dir, f) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  async function templates() { return run(async () => templateEntries(await loadIndex())); }
+
+  /** A template's text, or null when there is none of that name. */
+  async function readTemplate(name) {
+    return run(async () => {
+      const idx = await loadIndex();
+      if (!idx.templates) return null;
+      const r = await readText(templatePath(idx, name)).catch(() => null);
+      return r ? r.text : null;
+    });
+  }
+
+  async function templateNameError(idx, name, except = null) {
+    const taken = (await templateEntries(idx)).map((x) => x.name).filter((n) => !except || lower(n) !== lower(except));
+    return H.projectNameError(name, { taken });
+  }
+  /** Where a path sits among the templates, or null. */
+  function templateOf(idx, p) {
+    if (!idx.templates) return null;
+    const rel = path.relative(root, p);
+    const parts = rel.split(path.sep);
+    if (parts.length !== 2 || !isTemplatesDir(idx, parts[0]) || !/\.md$/i.test(parts[1])) return null;
+    return { name: parts[1].replace(/\.md$/i, ''), file: parts[1] };
+  }
+
+  async function addTemplate(idx, name, text) {
+    const n = String(name || '').trim();
+    await claimTemplatesFolder(idx);
+    const err = await templateNameError(idx, n);
+    if (err) return { error: err };
+    const p = templatePath(idx, n);
+    await fsp.writeFile(p, files.writeBuffer(text, 'utf8', eol), { flag: 'wx' });
+    await saveIndex(idx);
+    return { name: n, path: p };
+  }
+
+  /** A new, empty template. */
+  async function createTemplate(name) {
+    return run(async () => addTemplate(await ensure(), name, ''));
+  }
+
+  /** A new template from a note: its text without the project header line. */
+  async function saveAsTemplate(notePath, name) {
+    return run(async () => {
+      const idx = await ensure();
+      const { text } = await readText(notePath);
+      const lines = text.split('\n');
+      const at = lines.slice(0, 4).findIndex((l) => H.META_RE.test(l.replace(/\r$/, '')));
+      if (at >= 0) lines.splice(at, 1);
+      return addTemplate(idx, name, lines.join('\n'));
+    });
+  }
+
+  /** Rename a template; projects using it follow. */
+  async function renameTemplate(oldName, newName) {
+    return run(async () => {
+      const idx = await loadIndex();
+      const n = String(newName || '').trim();
+      const from = templatePath(idx, oldName);
+      if (!(await exists(from))) throw new Error(`No such template: ${oldName}`);
+      if (n === oldName) return { name: n, moved: [] };
+      const err = await templateNameError(idx, n, oldName);
+      if (err) return { error: err };
+      const to = templatePath(idx, n);
+      await renameFile(from, to);
+      for (const o of Object.values(idx.options)) if (o.template && lower(o.template) === lower(oldName)) o.template = n;
+      await saveIndex(idx);
+      return { name: n, path: to, moved: [{ from, to }] };
+    });
+  }
+
+  /** Move a template to the Recycle Bin; projects using it make plain notes again. */
+  async function deleteTemplate(name) {
+    return run(async () => {
+      const idx = await loadIndex();
+      const p = templatePath(idx, name);
+      await trash(p);
+      for (const [k, o] of Object.entries(idx.options)) {
+        if (o.template && lower(o.template) === lower(name)) { delete o.template; if (!Object.keys(o).length) delete idx.options[k]; }
+      }
+      await saveIndex(idx);
+      return { deleted: [p] };
     });
   }
 
@@ -753,8 +953,10 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   return {
     root, ensure, tree, search, createNote, renameForTitle, renameNote, moveNote, reorderNote, setPinned, archiveNote, restoreNote,
     deleteNote, discardEmpty, createProject, renameProject, reorderProject, setCollapsed, archiveProject, restoreProject,
-    deleteProject, countNotes, undo, locate: async (p) => locate(await loadIndex(), p)
+    deleteProject, countNotes, undo, locate: async (p) => locate(await loadIndex(), p),
+    setProjectOptions, templates, readTemplate, createTemplate, saveAsTemplate, renameTemplate, deleteTemplate,
+    templateOf: async (p) => templateOf(await loadIndex(), p)
   };
 }
 
-module.exports = { createNotesStore, FOLDER_NAMES, INDEX_FILE };
+module.exports = { createNotesStore, FOLDER_NAMES, INDEX_FILE, STANDUP_TEMPLATE };

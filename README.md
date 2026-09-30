@@ -11,10 +11,12 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Opens and saves `.md` and `.txt` files. The file extension decides the mode; the status bar button switches it by hand.
 - Save as opens in the current file's folder. A new file opens in the folder you last used.
 - Remembers encoding (UTF-8, UTF-8 with BOM, UTF-16 LE/BE, ANSI) and line endings (CRLF or LF) per file and writes them back unchanged. The encoding can be changed from the status bar.
-- Tabs with unsaved-change dots, a save prompt on close, and reload prompts when a file changed on disk.
+- Tabs with unsaved-change dots, a save prompt on close, and reload prompts when a file changed on disk. The mouse wheel scrolls the tab strip when the tabs do not fit. A tab's right-click menu closes the others, the ones to the right, or all of them; unsaved tabs are asked about first, and closing all leaves one empty tab.
 - Markdown formatting: bold, italic, strikethrough, headings, bullet/numbered/task lists, quote, inline code, code block, link, horizontal rule, table. Each toggles on and off.
 - Editor, split and preview views for Markdown. Preview links open in the browser.
 - Find, find next/previous, replace, regex, whole word, match case, go to line.
+- Narrow text column (View menu, on by default): the text is centred at 66 characters, the same width as writing mode. Off gives the full window width. The last line can be scrolled up to the top of the editor.
+- Spell check (Edit menu or Settings, off by default) in Swedish and English at once. Right-clicking a flagged word offers suggestions and Add to dictionary.
 - Zoom (Ctrl+wheel too), font family and size, word wrap, line numbers, light/dark/system theme, plus two named dark themes: "Those guys" (looks like Claude Code) and "The Other guys" (looks like Codex).
 - Opening a file from Explorer reuses the running window as a new tab.
 - Print: rendered Markdown for `.md`, plain text for `.txt`.
@@ -40,6 +42,8 @@ Notera can keep your notes in one folder, sorted into projects. Choose the folde
 
   Enter on the heading jumps past the header line to the text. When the cursor leaves the heading, the file is renamed after it: `2026-09-25 Login error.md`. A new note closed before anything was written leaves no file behind.
 - **Moving** a note (drag, or ⋯ > Move to) moves the file and rewrites the project in its header line. The creation time never changes. Renaming a project renames its folder and rewrites every header in it. A file from outside the notes folder or an untitled draft moves in from the tab's right-click menu.
+- **Templates** are Markdown files in `Mallar` (Templates) at the bottom of the sidebar. The + there makes a new one, and a note's ⋯ menu has Save as template. A project's ⋯ > Default template picks the template its + uses. `{{datum}}`/`{{date}}`, `{{tid}}`/`{{time}}` and `{{projekt}}`/`{{project}}` are filled in when a note is made. The template's heading becomes the note's title, the header line goes under it, and the cursor lands on the first empty line under the first subheading. File > New from template and Apply template list the same files.
+- **Standup notes**: a new notes folder, or an existing one the first time this version opens it, gets the project `Standupanteckningar` (Standup notes) with the template `Standup`. Its notes are sorted by the date in their heading, newest first; ⋯ > Sort switches any project between that and the manual order. Deleting the project or the template does not bring it back.
 - **Archive** hides a note (or a whole project) from the list but keeps it in search. Archived notes open read-only. Restore puts a note back into its project and re-creates the project if it is gone.
 - **Search** (Ctrl+Shift+F) looks through titles and text of every note, the archive included. With the sidebar closed it opens a floating search box.
 - **Undo**: moving, archiving, restoring and renaming a project show an Undo bar for a few seconds. Deleting sends the note or project to the Recycle Bin; a project with notes asks first and offers to archive it instead.
@@ -60,7 +64,7 @@ Notera can keep your notes in one folder, sorted into projects. Choose the folde
 | Find next / previous | F3 / Shift+F3 |
 | Time/Date | F5 |
 | Bold / Italic / Strikethrough | Ctrl+B / Ctrl+I / Ctrl+Shift+X |
-| Heading 1, 2, 3 | Ctrl+1, Ctrl+2, Ctrl+3 |
+| Heading 1 to 6 | Ctrl+1 to Ctrl+6 |
 | Bullet / numbered / task list | Ctrl+Shift+8 / Ctrl+Shift+7 / Ctrl+Shift+9 |
 | Quote | Ctrl+Shift+. |
 | Code / code block / link | Ctrl+E / Ctrl+Shift+E / Ctrl+K |
