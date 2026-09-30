@@ -44,7 +44,8 @@ function editorOpts(tab) {
     phrases: LOCALES[locale].search,
     hideMarkers: settings.hideMarkers !== false,
     placeholder: tab.kind === 'md' ? t('ui.startWriting') : '',
-    readOnly: !!tab.readOnly
+    readOnly: !!tab.readOnly,
+    spellcheck: !!settings.spellcheck
   };
 }
 
@@ -784,7 +785,7 @@ function applySettings(next, prev = {}) {
   t = makeT(locale);
   applyI18n();
   if (view) {
-    const reconfigure = prev.wordWrap !== settings.wordWrap || prev.lineNumbers !== settings.lineNumbers || prev.language !== settings.language || prev.hideMarkers !== settings.hideMarkers;
+    const reconfigure = prev.wordWrap !== settings.wordWrap || prev.lineNumbers !== settings.lineNumbers || prev.language !== settings.language || prev.hideMarkers !== settings.hideMarkers || prev.spellcheck !== settings.spellcheck;
     if (reconfigure) reconfigureAll();
     applyKindUi();
     updateStatus();
@@ -915,7 +916,7 @@ async function handleAction(action, payload) {
     case 'viewEditor': await api.setSettings({ viewMode: 'editor' }); break;
     case 'viewSplit': await api.setSettings({ viewMode: 'split' }); break;
     case 'viewPreview': await api.setSettings({ viewMode: 'preview' }); break;
-    case 'wordWrap': case 'lineNumbers': case 'formattingBar': case 'statusBar':
+    case 'wordWrap': case 'lineNumbers': case 'formattingBar': case 'statusBar': case 'spellcheck':
       await api.setSettings({ [action]: !settings[action] }); break;
     case 'hideMarkers': case 'autosave': case 'narrowColumn':
       await api.setSettings({ [action]: settings[action] === false }); break;

@@ -44,6 +44,7 @@ const COMMANDS = [
   { id: 'findPrevious', cat: 'edit', label: 'menu.findPrevious', keys: ['Shift+F3'], global: true },
   { id: 'replace', cat: 'edit', label: 'menu.replace', keys: ['Ctrl+H'], global: true },
   { id: 'goTo', cat: 'edit', label: 'menu.goTo', keys: ['Ctrl+G'], global: true },
+  { id: 'spellcheck', cat: 'edit', label: 'menu.spellcheck', keys: [], global: true },
   { id: 'timeDate', cat: 'edit', label: 'menu.timeDate', keys: ['F5'] },
   { id: 'font', cat: 'edit', label: 'menu.font', keys: [], global: true },
   // Line (VS Code)

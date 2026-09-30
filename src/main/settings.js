@@ -19,6 +19,7 @@ const DEFAULTS = {
   windowBounds: null,
   defaultEncoding: 'utf8',
   writingMode: false,
+  spellcheck: false,            // Swedish and English at once when on
   narrowColumn: true,           // text centred in a 66ch column, like writing mode
   autosave: true,
   hideMarkers: true,

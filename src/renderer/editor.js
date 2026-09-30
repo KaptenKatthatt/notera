@@ -23,7 +23,8 @@ export const compartments = {
   extraKeys: new Compartment(),
   markers: new Compartment(),
   placeholder: new Compartment(),
-  readOnly: new Compartment()
+  readOnly: new Compartment(),
+  spellcheck: new Compartment()
 };
 
 // ---------- project notes: the "Projekt: X · Skapad: …" header line ----------
@@ -117,6 +118,7 @@ export function baseExtensions(opts) {
     compartments.markers.of(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
     compartments.placeholder.of(placeholder(opts.placeholder || '')),
     compartments.readOnly.of(readOnlyExt(opts.readOnly)),
+    compartments.spellcheck.of(spellcheckExt(opts.spellcheck)),
     noteMeta,
     noteKeys,
     searchCount,
@@ -135,9 +137,11 @@ export function baseExtensions(opts) {
     indentUnit.of('  '),
     EditorState.allowMultipleSelections.of(true),
     keymap.of(editorKeymap()),
-    EditorView.contentAttributes.of({ spellcheck: 'true', autocapitalize: 'off', autocorrect: 'off' })
+    EditorView.contentAttributes.of({ autocapitalize: 'off', autocorrect: 'off' })
   ];
 }
+
+function spellcheckExt(on) { return EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false' }); }
 
 function readOnlyExt(on) { return on ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []; }
 
@@ -160,7 +164,8 @@ export function reconfigureEffects(opts) {
     compartments.extraKeys.reconfigure(keymap.of(opts.extraKeys || [])),
     compartments.markers.reconfigure(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
     compartments.placeholder.reconfigure(placeholder(opts.placeholder || '')),
-    compartments.readOnly.reconfigure(readOnlyExt(opts.readOnly))
+    compartments.readOnly.reconfigure(readOnlyExt(opts.readOnly)),
+    compartments.spellcheck.reconfigure(spellcheckExt(opts.spellcheck))
   ];
 }
 

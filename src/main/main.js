@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell, nativeTheme, clipboard } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell, nativeTheme, clipboard, session } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const { Settings } = require('./settings');
@@ -44,6 +44,44 @@ function focusedWindow() {
   return BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0] || null;
 }
 
+// Spell checking: Swedish and English at once, so a word counts as right when either dictionary has it.
+// Off by default; the editor's spellcheck attribute follows the same setting.
+// Dictionaries are named 'sv-SE' on some platforms and plain 'sv' on others: take whichever exists.
+const SPELL_LANGUAGES = [['sv-SE', 'sv'], ['en-US', 'en']];
+function setupSpellcheck() {
+  const ses = session.defaultSession;
+  const available = ses.availableSpellCheckerLanguages || [];
+  const langs = SPELL_LANGUAGES.map((names) => (available.length ? names.find((n) => available.includes(n)) : names[0])).filter(Boolean);
+  try { if (langs.length) ses.setSpellCheckerLanguages(langs); } catch { /* macOS picks its own */ }
+  ses.setSpellCheckerEnabled(!!settings.get('spellcheck'));
+}
+
+/** Right-click in a text field: spelling suggestions when spell check flags the word, then the edit commands. */
+function showEditContextMenu(win, p) {
+  if (!p.isEditable) return;
+  const s = settings.get();
+  const label = (id) => t(commands.BY_ID[id].label);
+  /** @type {Electron.MenuItemConstructorOptions[]} */
+  const items = [];
+  if (s.spellcheck && p.misspelledWord) {
+    const words = (p.dictionarySuggestions || []).slice(0, 6);
+    for (const w of words) items.push({ label: w, click: () => win.webContents.replaceMisspelling(w) });
+    if (!words.length) items.push({ label: t('menu.noSuggestions'), enabled: false });
+    items.push({ label: t('menu.addToDictionary'), click: () => win.webContents.session.addWordToSpellCheckerDictionary(p.misspelledWord) });
+    items.push({ type: 'separator' });
+  }
+  items.push(
+    { label: label('cut'), role: 'cut', enabled: p.editFlags.canCut },
+    { label: label('copy'), role: 'copy', enabled: p.editFlags.canCopy },
+    { label: label('paste'), role: 'paste', enabled: p.editFlags.canPaste },
+    { type: 'separator' },
+    { label: label('selectAll'), click: () => win.webContents.send('menu:action', 'selectAll') },
+    { type: 'separator' },
+    { label: label('spellcheck'), type: 'checkbox', checked: !!s.spellcheck, click: (mi) => updateSettings({ spellcheck: mi.checked }) }
+  );
+  Menu.buildFromTemplate(items).popup({ window: win });
+}
+
 function send(action, payload) {
   const win = focusedWindow();
   if (win) win.webContents.send('menu:action', action, payload);
@@ -59,6 +97,7 @@ function updateSettings(patch) {
   if ('language' in patch) refreshLocale();
   if ('writingMode' in patch) for (const w of BrowserWindow.getAllWindows()) applyMenuBar(w, next.writingMode);
   if ('checkUpdates' in patch && next.checkUpdates && updater) void updater.check();
+  if ('spellcheck' in patch) session.defaultSession.setSpellCheckerEnabled(!!next.spellcheck);
   broadcast('settings:changed', next);
   buildMenu();
   return next;
@@ -101,6 +140,7 @@ function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null)
   pendingFiles.set(win.webContents.id, filesToOpen);
   if (pendingDraftId) pendingTabs.set(win.webContents.id, pendingDraftId);
 
+  win.webContents.on('context-menu', (_e, p) => showEditContextMenu(win, p));
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
@@ -528,6 +568,7 @@ function buildMenu() {
         },
         cmd('timeDate'),
         { type: 'separator' },
+        check('spellcheck'),
         cmd('font')
       ]
     },
@@ -630,6 +671,7 @@ if (!gotLock) {
     nativeTheme.themeSource = themeSource(settings.get('theme'));
     nativeTheme.on('updated', () => broadcast('theme:changed', nativeTheme.shouldUseDarkColors));
     updater = createUpdater({ broadcast, getSettings: () => settings.get() });
+    setupSpellcheck();
     buildMenu();
     setJumplist();
     if (process.argv.some((a) => a === '--new-window')) createWindow();
