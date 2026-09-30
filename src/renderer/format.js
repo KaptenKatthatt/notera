@@ -70,6 +70,8 @@ export function toggleLinePrefix(view, kind) {
   const state = view.state;
   const changes = [];
   const seen = new Set();
+  // Per changed line: where its prefix ended before and how long the new one is.
+  const prefixes = new Map();
   for (const range of state.selection.ranges) {
     const lines = linesInRange(state, range).filter((l) => !seen.has(l.number));
     lines.forEach((l) => seen.add(l.number));
@@ -84,10 +86,22 @@ export function toggleLinePrefix(view, kind) {
       const newPrefix = allHave ? '' : prefixFor(kind, n++);
       // Replace only the prefix span, so a selection in the rest of the line just shifts.
       const from = line.from + indent.length;
-      if (newPrefix !== existing) changes.push({ from, to: from + existing.length, insert: newPrefix });
+      if (newPrefix !== existing) {
+        changes.push({ from, to: from + existing.length, insert: newPrefix });
+        prefixes.set(line.number, { from, end: from + existing.length, length: newPrefix.length });
+      }
     }
   }
-  if (changes.length) view.dispatch({ changes, scrollIntoView: true });
+  if (!changes.length) { view.focus(); return true; }
+  const set = state.changes(changes);
+  // A cursor at the start of the line or inside the old prefix lands right after the new one,
+  // so "## " is ready to type after. A cursor in the text keeps its place in the text.
+  const selection = EditorSelection.create(state.selection.ranges.map((r) => {
+    const p = r.empty ? prefixes.get(state.doc.lineAt(r.head).number) : null;
+    if (p && r.head <= p.end) return EditorSelection.cursor(set.mapPos(p.from, -1) + p.length);
+    return r.map(set);
+  }), state.selection.mainIndex);
+  view.dispatch({ changes: set, selection, scrollIntoView: true });
   view.focus();
   return true;
 }

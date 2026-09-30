@@ -536,7 +536,7 @@ function buildMenu() {
       submenu: [
         cmd('bold'), cmd('italic'), cmd('strikethrough'),
         { type: 'separator' },
-        cmd('heading1'), cmd('heading2'), cmd('heading3'),
+        cmd('heading1'), cmd('heading2'), cmd('heading3'), cmd('heading4'), cmd('heading5'), cmd('heading6'),
         { type: 'separator' },
         cmd('bulletList'), cmd('numberedList'), cmd('checkList'), cmd('quote'),
         { type: 'separator' },
@@ -552,7 +552,7 @@ function buildMenu() {
         { type: 'separator' },
         check('toggleSidebar', 'sidebarOpen'), cmd('searchNotes', { enabled: !!s.notesRoot }),
         { type: 'separator' },
-        check('wordWrap'), check('lineNumbers'), check('hideMarkers'), check('formattingBar'), check('statusBar'),
+        check('wordWrap'), check('lineNumbers'), check('hideMarkers'), check('formattingBar'), check('statusBar'), check('narrowColumn'),
         { type: 'separator' },
         check('writingMode'),
         cmd('fullscreen', { click: () => toggleFullscreen(focusedWindow()) }),

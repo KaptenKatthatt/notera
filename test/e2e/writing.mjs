@@ -38,6 +38,30 @@ assert.ok(line5open.includes('**delusions**') && line5open.includes('](https://e
 await win.keyboard.press('Control+Home');
 await shot('10-normal-hidden-markers');
 
+// Narrow text column: on by default, the same 66ch column as writing mode; off gives the full width.
+const column = () => win.evaluate(() => {
+  const c = document.querySelector('.cm-content').getBoundingClientRect();
+  return { left: c.left, right: window.innerWidth - c.right, width: c.width, narrow: document.body.classList.contains('narrow') };
+});
+const narrow = await column();
+assert.ok(narrow.narrow, 'narrow column on by default');
+assert.ok(narrow.width < 700 && narrow.width > 400, 'narrow column ~66ch: ' + narrow.width);
+assert.ok(Math.abs(narrow.left - narrow.right) < 20, 'narrow column centred: ' + JSON.stringify(narrow));
+await win.evaluate(() => window.notera.setSettings({ narrowColumn: false }));
+await win.waitForFunction(() => !document.body.classList.contains('narrow'));
+const wide = await column();
+assert.ok(wide.width > narrow.width + 100, 'off gives the full width: ' + wide.width);
+await win.evaluate(() => window.notera.setSettings({ narrowColumn: true }));
+// Scroll past the end: the last line can be scrolled up to the top of the editor.
+const pastEnd = await win.evaluate(() => {
+  const s = document.querySelector('.cm-scroller');
+  s.scrollTop = s.scrollHeight;
+  const lines = document.querySelectorAll('.cm-line');
+  return { lastTop: lines[lines.length - 1].getBoundingClientRect().top - s.getBoundingClientRect().top, height: s.clientHeight };
+});
+assert.ok(pastEnd.lastTop < pastEnd.height / 4, 'last line scrolls near the top: ' + JSON.stringify(pastEnd));
+await win.evaluate(() => { document.querySelector('.cm-scroller').scrollTop = 0; });
+
 // Writing mode
 await win.evaluate(() => window.notera.setSettings({ writingMode: true }));
 await win.waitForFunction(() => document.body.classList.contains('writing'));

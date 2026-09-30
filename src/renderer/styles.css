@@ -17,6 +17,7 @@
   --editor-font: "iA Writer Mono S", Consolas, "Cascadia Mono", "Courier New", monospace;
   --editor-size: 15px;
   --zoom-base: 1;
+  --text-column: 66ch;  /* narrow text column and writing mode share it */
   --zoom: var(--zoom-base);
   --md-h: #222324;
   --md-link: #2077b2;
@@ -297,7 +298,8 @@ body.writing #main[data-view] { grid-template-columns: 1fr; }
 body.writing #preview-pane { display: none; }
 body.writing #editor { display: block; }
 body.writing .cm-scroller { line-height: 1.75; }
-body.writing .cm-content { max-width: 66ch; margin: 0 auto; padding: max(42px, 5vh) 0 220px; }
+body.narrow .cm-content, body.writing .cm-content { max-width: var(--text-column); margin: 0 auto; }
+body.writing .cm-content { padding-top: max(42px, 5vh); }
 body.writing .cm-line { padding: 0 8px; }
 body.writing .cm-activeLine { background: transparent; }
 body.writing .cm-gutters { display: none; }
