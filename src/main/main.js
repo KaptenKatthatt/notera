@@ -399,16 +399,29 @@ function getNotesStore() {
       getLocale: () => locale,
       trash: (p) => shell.trashItem(p),
       untitled: () => t('notes.untitledNote'),
-      eol: process.platform === 'win32' ? 'CRLF' : 'LF'
+      eol: process.platform === 'win32' ? 'CRLF' : 'LF',
+      seed: true
     });
   }
   return notesStore;
 }
 
-const NOTES_READS = new Set(['tree', 'search', 'countNotes', 'locate']);
+// The File menu's template submenus list the templates folder. buildMenu is synchronous, so the
+// names are kept here and refreshed after every notes change. null: no notes folder yet.
+let templateNames = null;
+async function refreshTemplates() {
+  const store = getNotesStore();
+  const next = store ? (await store.templates().catch(() => [])).map((x) => x.name) : null;
+  if (JSON.stringify(next) === JSON.stringify(templateNames)) return;
+  templateNames = next;
+  buildMenu();
+}
+
+const NOTES_READS = new Set(['tree', 'search', 'countNotes', 'locate', 'templates', 'readTemplate', 'templateOf']);
 const NOTES_WRITES = new Set([
   'createNote', 'renameForTitle', 'renameNote', 'moveNote', 'reorderNote', 'setPinned', 'archiveNote', 'restoreNote', 'deleteNote', 'discardEmpty',
-  'createProject', 'renameProject', 'reorderProject', 'setCollapsed', 'archiveProject', 'restoreProject', 'deleteProject', 'undo'
+  'createProject', 'renameProject', 'reorderProject', 'setCollapsed', 'archiveProject', 'restoreProject', 'deleteProject', 'undo',
+  'setProjectOptions', 'createTemplate', 'saveAsTemplate', 'renameTemplate', 'deleteTemplate'
 ]);
 ipcMain.handle('notes:call', async (_e, method, ...args) => {
   if (!NOTES_READS.has(method) && !NOTES_WRITES.has(method)) return { error: 'unknown' };
@@ -417,6 +430,8 @@ ipcMain.handle('notes:call', async (_e, method, ...args) => {
   try {
     const r = await store[method](...args);
     if (NOTES_WRITES.has(method)) broadcast('notes:changed', { moved: (r && r.moved) || [], deleted: (r && r.deleted) || [] });
+    // A tree read also notices templates added or removed in Explorer.
+    if (NOTES_WRITES.has(method) || method === 'tree') void refreshTemplates();
     return r === undefined ? null : r;
   } catch (err) {
     return { error: 'failed', message: err.message };
@@ -433,9 +448,13 @@ async function chooseNotesRoot(win) {
   return setNotesRoot(r.filePaths[0]);
 }
 async function setNotesRoot(root) {
-  const store = createNotesStore({ root, getLocale: () => locale, trash: (p) => shell.trashItem(p), untitled: () => t('notes.untitledNote') });
+  const store = createNotesStore({
+    root, getLocale: () => locale, trash: (p) => shell.trashItem(p), untitled: () => t('notes.untitledNote'),
+    eol: process.platform === 'win32' ? 'CRLF' : 'LF', seed: true
+  });
   const idx = await store.ensure();
   updateSettings({ notesRoot: root, sidebarOpen: true });
+  void refreshTemplates();
   broadcast('notes:changed', { moved: [], deleted: [] });
   return { root, inbox: idx.inbox };
 }
@@ -497,6 +516,12 @@ function buildMenu() {
   const radio = (text, key, value) => ({ label: text, type: 'radio', checked: s[key] === value, click: () => updateSettings({ [key]: value }) });
   const recent = (s.recentFiles || []).map((f) => ({ label: f, click: () => send('openPaths', [f]) }));
   const exitAccel = accel('exit') || (process.platform === 'win32' ? 'Alt+F4' : undefined);
+  // Without a notes folder there is no templates folder: the built-in Standup stands in.
+  /** @returns {Electron.MenuItemConstructorOptions[]} */
+  const templateItems = (action) => {
+    const names = templateNames || (s.notesRoot ? [] : [templates.BUILTIN]);
+    return names.length ? names.map((n) => ({ label: n, click: () => send(action, n) })) : [{ label: t('menu.noTemplates'), enabled: false }];
+  };
 
   /** @type {Electron.MenuItemConstructorOptions[]} */
   const template = [
@@ -508,16 +533,8 @@ function buildMenu() {
         cmd('newProject', { enabled: !!s.notesRoot }),
         cmd('newWindow', { click: () => createWindow() }),
         cmd('open'),
-        {
-          label: t('menu.newFromTemplate'),
-          submenu: templates.TEMPLATES.map((tpl) => ({ label: t(tpl.menu), click: () => send('newFromTemplate', tpl.id) })),
-          enabled: templates.TEMPLATES.length > 0
-        },
-        {
-          label: t('menu.applyTemplate'),
-          submenu: templates.TEMPLATES.map((tpl) => ({ label: t(tpl.menu), click: () => send('applyTemplate', tpl.id) })),
-          enabled: templates.TEMPLATES.length > 0
-        },
+        { label: t('menu.newFromTemplate'), submenu: templateItems('newFromTemplate') },
+        { label: t('menu.applyTemplate'), submenu: templateItems('applyTemplate') },
         {
           label: t('menu.openRecent'),
           submenu: recent.length
@@ -673,6 +690,7 @@ if (!gotLock) {
     updater = createUpdater({ broadcast, getSettings: () => settings.get() });
     setupSpellcheck();
     buildMenu();
+    void refreshTemplates();
     setJumplist();
     if (process.argv.some((a) => a === '--new-window')) createWindow();
     else createWindow(parseFileArgs(process.argv, process.cwd()));

@@ -26,6 +26,7 @@ const ICONS = {
   move: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h10M9 5l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   edit: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l.6-2.6L10.8 3.2l2 2L5.6 12.4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
   note: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h6l3 3v10h-9z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.5 8h5M5.5 10.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+  check: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   close: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>'
 };
 export { ICONS };
@@ -69,6 +70,9 @@ export function createSidebar(ctx) {
   function inboxName() { return tree ? tree.inboxName : null; }
   const folderLabel = (name) => (tree && name === tree.inboxName ? t('notes.inbox') : name);
   const findGroup = (name) => (tree ? [tree.inbox, ...tree.projects].find((g) => g.name === name) : null);
+  const isDateSorted = (name) => { const g = findGroup(name); return !!g && g.sort === 'date'; };
+  /** The template a path is, or null. Templates are files, not notes: no header, no rename by heading. */
+  const templateAt = (p) => (tree && p ? tree.templates.find((x) => key(x.path) === key(p)) || null : null);
 
   // An open note shows the heading as it is being typed; a closed one the heading on disk, or
   // its file name when it has no heading.
@@ -166,6 +170,37 @@ export function createSidebar(ctx) {
     if (r && r.undoId) undoToast(r, t('notes.toastNoteRenamed', { title }));
     return '';
   }
+  async function setProjectOptions(name, patch) { await call('setProjectOptions', name, patch); }
+  /** The template-name field in the templates section: a new template, or one saved from a note. */
+  function startNewTemplate(fromNote = null) {
+    const info = fromNote ? noteInfo(fromNote) : null;
+    const value = info && !isUntitled(info.note) ? titleFor(info.note) : '';
+    editing = { kind: 'newTemplate', from: fromNote, name: '', value, error: '' };
+    render();
+    const ed = $('#sb-edit');
+    if (ed) { ed.select(); ed.scrollIntoView({ block: 'nearest' }); }
+  }
+  async function createTemplate(name, fromNote) {
+    await ctx.flush();
+    const r = fromNote ? await api.notes.call('saveAsTemplate', fromNote, name) : await api.notes.call('createTemplate', name);
+    if (r && r.error) return r.error === 'failed' ? t('notes.opFailed', { error: r.message }) : t(r.error, { name });
+    await refresh();
+    if (r && r.path) await ctx.openNote(r.path);
+    return '';
+  }
+  async function renameTemplate(oldName, name) {
+    await ctx.flush();
+    const r = await api.notes.call('renameTemplate', oldName, name);
+    if (r && r.error) return r.error === 'failed' ? t('notes.opFailed', { error: r.message }) : t(r.error, { name });
+    await ctx.applyResult(r);
+    await refresh();
+    return '';
+  }
+  async function deleteTemplate(tp) {
+    if (ctx.settings().confirmDelete !== false && !(await api.notes.confirmDeleteNote(tp.name))) return;
+    const r = await call('deleteTemplate', tp.name);
+    if (r) toast(t('notes.toastDeleted', { title: tp.name }));
+  }
   function startNoteRename(p) {
     const info = noteInfo(p);
     if (!info) return;
@@ -213,6 +248,27 @@ export function createSidebar(ctx) {
     return h;
   }
 
+  function templateRow(tp) {
+    const active = ctx.activePath() && key(ctx.activePath()) === key(tp.path);
+    if (editing && editing.kind === 'renameTemplate' && editing.name === tp.name) {
+      return `<div class="sb-row sb-note sb-tpl editing"><input class="sb-edit" id="sb-edit" value="${esc(editing.value)}" autocomplete="off" spellcheck="false" aria-label="${esc(t('notes.templateName'))}" /></div>`
+        + (editing.error ? `<div class="sb-err">${esc(editing.error)}</div>` : '');
+    }
+    return `<div class="sb-row sb-note sb-tpl${active ? ' active' : ''}" data-template="${esc(tp.name)}" data-tpath="${esc(tp.path)}" title="${esc(tp.file)}">
+      ${ICONS.note}<span class="name">${esc(tp.name)}</span>
+      <span class="acts"><button type="button" data-act="tpl-menu" title="${esc(t('notes.more'))}" aria-label="${esc(t('notes.more'))}">${ICONS.dots}</button></span></div>`;
+  }
+
+  function renderTemplates() {
+    let h = `<div class="sb-sec sb-tpl-sec"><span>${esc(t('notes.templates'))}</span><span class="spacer"></span><button type="button" class="sb-ibtn" data-act="new-template" title="${esc(t('notes.newTemplate'))}" aria-label="${esc(t('notes.newTemplate'))}">${ICONS.plus}</button></div>`;
+    h += tree.templates.map(templateRow).join('');
+    if (editing && editing.kind === 'newTemplate') {
+      h += `<div class="sb-row sb-note sb-tpl editing"><input class="sb-edit" id="sb-edit" placeholder="${esc(t('notes.templateName'))}" value="${esc(editing.value)}" autocomplete="off" spellcheck="false" aria-label="${esc(t('notes.templateName'))}" /></div>`;
+      if (editing.error) h += `<div class="sb-err">${esc(editing.error)}</div>`;
+    } else if (!tree.templates.length) h += `<div class="sb-hint">${esc(t('notes.emptyTemplates'))}</div>`;
+    return h;
+  }
+
   function renderTree() {
     let h = groupBlock(tree.inbox);
     h += `<div class="sb-sec"><span>${esc(t('notes.projects'))}</span><span class="spacer"></span><button type="button" class="sb-ibtn" data-act="new-project" title="${esc(t('notes.newProject'))}" aria-label="${esc(t('notes.newProject'))}">${ICONS.plus}</button></div>`;
@@ -221,7 +277,7 @@ export function createSidebar(ctx) {
       h += `<div class="sb-row sb-newproj">${ICONS.folder}<input class="sb-edit" id="sb-edit" placeholder="${esc(t('notes.projectName'))}" value="${esc(editing.value)}" autocomplete="off" spellcheck="false" aria-label="${esc(t('notes.projectName'))}" /></div>`;
       if (editing.error) h += `<div class="sb-err">${esc(editing.error)}</div>`;
     } else h += `<div class="sb-row sb-newproj" data-act="new-project">${ICONS.plus}<span class="name">${esc(t('notes.newProject'))}</span></div>`;
-    return h;
+    return h + renderTemplates();
   }
 
   function renderArchive() {
@@ -497,19 +553,48 @@ export function createSidebar(ctx) {
       { label: t('notes.rename'), icon: ICONS.edit, key: 'R', act: () => startNoteRename(p) },
       { label: n.pinned ? t('notes.unpin') : t('notes.pin'), icon: ICONS.pin.replace('class="pin"', ''), act: () => togglePin(p, !n.pinned) },
       { label: t('notes.moveTo'), icon: ICONS.move, sub: () => moveTargets(info.folder, (f) => moveTo(p, f)) },
+      { label: t('notes.saveAsTemplate'), icon: ICONS.note, act: () => startNewTemplate(p) },
       { sep: true },
       { label: t('notes.archive'), icon: ICONS.archive, key: 'A', act: () => archiveNote(p) },
       { label: t('notes.delete'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteNote(p) }
     ], titleFor(n), point);
   }
+  /** Submenu entries with a tick on the chosen one. */
+  const choice = (label, on, act) => ({ label, icon: on ? ICONS.check : '', act });
   function projMenu(name, anchor, point) {
+    const g = findGroup(name);
+    const current = g ? g.template : null;
     showMenu(anchor, [
       { label: t('notes.newNote'), icon: ICONS.plus, act: () => ctx.createNote(name) },
       { label: t('notes.rename'), icon: ICONS.edit, key: 'R', act: () => { editing = { kind: 'rename', name, value: name, error: '' }; render(); } },
       { sep: true },
+      {
+        label: t('notes.defaultTemplate'), icon: ICONS.note,
+        sub: () => [
+          choice(t('notes.noTemplate'), !current, () => setProjectOptions(name, { template: null })),
+          ...(tree.templates.length ? [{ sep: true }] : []),
+          ...tree.templates.map((tp) => choice(tp.name, !!current && current.toLowerCase() === tp.name.toLowerCase(), () => setProjectOptions(name, { template: tp.name })))
+        ]
+      },
+      {
+        label: t('notes.sortBy'), icon: ICONS.move,
+        sub: () => [
+          choice(t('notes.sortManual'), !isDateSorted(name), () => setProjectOptions(name, { sort: 'manual' })),
+          choice(t('notes.sortDate'), isDateSorted(name), () => setProjectOptions(name, { sort: 'date' }))
+        ]
+      },
+      { sep: true },
       { label: t('notes.archiveProject'), icon: ICONS.archive, key: 'A', act: () => archiveProject(name) },
       { label: t('notes.deleteProject'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteProject(name) }
     ], name, point);
+  }
+  function templateMenu(tp, anchor, point) {
+    showMenu(anchor, [
+      { label: t('notes.open'), icon: ICONS.note, act: () => ctx.openNote(tp.path) },
+      { label: t('notes.rename'), icon: ICONS.edit, key: 'R', act: () => { editing = { kind: 'renameTemplate', name: tp.name, value: tp.name, error: '' }; render(); } },
+      { sep: true },
+      { label: t('notes.delete'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteTemplate(tp) }
+    ], tp.name, point);
   }
   function archivedNoteMenu(p, anchor, point) {
     const info = noteInfo(p);
@@ -536,7 +621,7 @@ export function createSidebar(ctx) {
     const items = [];
     if (!settings.notesRoot) {
       items.push({ label: t('notes.chooseFolder'), icon: ICONS.folder, act: () => ctx.chooseRoot() });
-    } else if (!info || !info.archived) {
+    } else if ((!info || !info.archived) && !templateAt(tab.path)) {
       items.push({
         label: t('notes.moveToProject'), icon: ICONS.move,
         sub: () => moveTargets(info ? info.folder : null, (f) => (info ? moveTo(tab.path, f) : ctx.moveTabToProject(tab, f)))
@@ -579,9 +664,12 @@ export function createSidebar(ctx) {
       case 'arch-menu': return archivedNoteMenu(p, actEl);
       case 'arch-proj-restore': return void restoreProject(folder);
       case 'arch-proj-menu': return archivedProjectMenu(folder, actEl);
+      case 'new-template': return startNewTemplate();
+      case 'tpl-menu': { const tp = templateAt(row?.dataset.tpath); return tp ? templateMenu(tp, actEl) : undefined; }
       default: break;
     }
     if (!row) return;
+    if (row.dataset.tpath) { ctx.openNote(row.dataset.tpath); return; }
     if (p) { ctx.openNote(p); return; }
     if (row.classList.contains('sb-proj') && !row.classList.contains('sb-arch-group') && folder) {
       const g = findGroup(folder);
@@ -595,7 +683,9 @@ export function createSidebar(ctx) {
     const point = { x: e.clientX, y: e.clientY };
     const p = row.dataset.path;
     const folder = row.dataset.folder;
-    if (row.classList.contains('sb-arch-group')) archivedProjectMenu(folder, row, point);
+    const tp = templateAt(row.dataset.tpath);
+    if (tp) templateMenu(tp, row, point);
+    else if (row.classList.contains('sb-arch-group')) archivedProjectMenu(folder, row, point);
     else if (p && row.dataset.archived) archivedNoteMenu(p, row, point);
     else if (p) noteMenu(p, row, point);
     else if (folder && folder !== inboxName()) projMenu(folder, row, point);
@@ -629,7 +719,9 @@ export function createSidebar(ctx) {
     const value = ed.value.trim();
     const err = ed.kind === 'new' ? await createProject(value)
       : ed.kind === 'renameNote' ? (value === ed.name ? '' : await renameNote(ed.path, value))
-        : await renameProject(ed.name, value);
+        : ed.kind === 'newTemplate' ? await createTemplate(value, ed.from)
+          : ed.kind === 'renameTemplate' ? (value === ed.name ? '' : await renameTemplate(ed.name, value))
+            : await renameProject(ed.name, value);
     if (editing !== ed) return;
     if (err) {
       if (fromBlur) { editing = null; render(); toast(err); return; }
@@ -674,7 +766,12 @@ export function createSidebar(ctx) {
     const r = row.getBoundingClientRect();
     const after = y > r.top + r.height / 2;
     if (drag.kind === 'note') {
-      if (row.dataset.drop === 'note') {
+      if (row.dataset.drop === 'note' && isDateSorted(row.dataset.folder)) {
+        // A date-sorted project has no manual order: a note can only be dropped into it.
+        if (row.dataset.folder === drag.folder) return;
+        drag.target = { type: 'folder', folder: row.dataset.folder };
+        list.querySelector(`.sb-proj[data-folder="${CSS.escape(row.dataset.folder)}"]`)?.classList.add('drop-into');
+      } else if (row.dataset.drop === 'note') {
         if (row.dataset.path === drag.path) return;
         drag.target = { type: 'note', path: row.dataset.path, folder: row.dataset.folder, after };
         row.classList.add(after ? 'drop-after' : 'drop-before');

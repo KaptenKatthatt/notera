@@ -6,14 +6,14 @@ const path = require('node:path');
 const { createNotesStore } = require('../../src/main/notes');
 const H = require('../../src/shared/noteHeader');
 
-function setup(locale = 'sv') {
+function setup(locale = 'sv', { seed = false } = {}) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'notera-notes-'));
   const root = path.join(tmp, 'Notera');
   const bin = path.join(tmp, 'bin');
   fs.mkdirSync(bin);
   const trashed = [];
   const store = createNotesStore({
-    root, getLocale: () => locale, eol: 'LF', untitled: () => (locale === 'sv' ? 'Namnlös anteckning' : 'Untitled note'),
+    root, getLocale: () => locale, eol: 'LF', seed, untitled: () => (locale === 'sv' ? 'Namnlös anteckning' : 'Untitled note'),
     trash: async (p) => { trashed.push(p); fs.renameSync(p, path.join(bin, path.basename(p) + '-' + trashed.length)); }
   });
   const read = (...p) => fs.readFileSync(path.join(root, ...p), 'utf8');
@@ -379,4 +379,113 @@ test('titles and search follow edits made outside Notera', async () => {
   assert.equal((await store.tree()).projects[0].notes[0].title, 'Second title');
   assert.equal((await store.search('alpha')).length, 0);
   assert.equal((await store.search('gamma')).length, 1);
+});
+
+// ---------- templates, setup, project options ----------
+
+test('uppsättning: Mallar/Standup.md och Standupanteckningar med standupmall och datumsortering, en gång', async () => {
+  const { store, ls, read, root } = setup('sv', { seed: true });
+  const tree = await store.tree();
+  assert.deepEqual(ls(), ['.notera.json', 'Arkiv', 'Mallar', 'Osorterat', 'Standupanteckningar']);
+  assert.deepEqual(ls('Mallar'), ['Standup.md']);
+  assert.match(read('Mallar', 'Standup.md'), /^# Standup \{\{datum\}\}\n\n## Gjort sen sist\n/);
+  assert.deepEqual(tree.projects.map((p) => [p.name, p.template, p.sort]), [['Standupanteckningar', 'Standup', 'date']]);
+  assert.deepEqual(tree.templates.map((x) => x.name), ['Standup']);
+  assert.equal(tree.templatesName, 'Mallar');
+  // Removed afterwards: it does not come back.
+  fs.rmSync(path.join(root, 'Standupanteckningar'), { recursive: true });
+  fs.rmSync(path.join(root, 'Mallar', 'Standup.md'));
+  const again = await store.tree();
+  assert.deepEqual(again.projects, []);
+  assert.deepEqual(again.templates, []);
+});
+
+test('uppsättning av en befintlig mapp: befintligt Standupanteckningar återanvänds, projektet Mallar lämnas i fred', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'notera-notes-'));
+  const root = path.join(tmp, 'Notera');
+  fs.mkdirSync(path.join(root, 'Standupanteckningar'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'Mallar'));
+  fs.writeFileSync(path.join(root, 'Mallar', '2026-01-01 Min anteckning.md'), '# Min anteckning\n');
+  fs.writeFileSync(path.join(root, '.notera.json'), JSON.stringify({ inbox: 'Osorterat', archive: 'Arkiv', projects: ['Mallar'] }));
+  const store = createNotesStore({ root, getLocale: () => 'sv', eol: 'LF', seed: true, trash: async () => {} });
+  const tree = await store.tree();
+  assert.equal(tree.templatesName, 'Notera Mallar', 'a project called Mallar stays a project');
+  assert.deepEqual(tree.projects.map((p) => p.name).sort(), ['Mallar', 'Standupanteckningar']);
+  assert.equal(tree.projects.find((p) => p.name === 'Standupanteckningar').template, 'Standup');
+  assert.deepEqual(tree.projects.find((p) => p.name === 'Mallar').notes.map((n) => n.title), ['Min anteckning']);
+});
+
+test('ny anteckning i projekt med standardmall: mallens rubrik, metarad, filnamn utan dubbelt datum, markör', async () => {
+  const { store, read } = setup('sv', { seed: true });
+  await store.tree();
+  const r = await store.createNote('Standupanteckningar');
+  const file = path.basename(r.path);
+  assert.equal(file, `${today} Standup.md`);
+  const text = read('Standupanteckningar', file);
+  assert.match(text, new RegExp(`^# Standup ${today}\\nProjekt: Standupanteckningar · Skapad: ${today} \\d\\d:\\d\\d\\n\\n## Gjort sen sist\\n`));
+  assert.equal(r.text, text);
+  assert.ok(r.text.slice(0, r.cursor).endsWith('## Gjort sen sist\n'), 'cursor under the first subheading');
+  // A named template wins over the default, null means none.
+  const plain = await store.createNote('Standupanteckningar', { template: null });
+  assert.equal(plain.cursor, 2);
+  assert.match(read('Standupanteckningar', path.basename(plain.path)), /^# \nProjekt: Standupanteckningar/);
+});
+
+test('mallar: skapa, spara som mall, byt namn (projekten följer), ta bort (projekten blir utan mall)', async () => {
+  const { store, ls, read, trashed } = setup('sv', { seed: true });
+  await store.tree();
+  await store.createProject('Möten');
+  const c = await store.createTemplate('Möte');
+  assert.equal(c.name, 'Möte');
+  assert.equal(read('Mallar', 'Möte.md'), '');
+  assert.equal((await store.createTemplate('möte')).error, 'notes.nameTaken');
+  assert.equal((await store.createTemplate('a/b')).error, 'notes.nameInvalid');
+  const n = await store.createNote('Möten', { text: '# Veckomöte\n\nAgenda\n' });
+  const saved = await store.saveAsTemplate(n.path, 'Vecka');
+  assert.equal(read('Mallar', 'Vecka.md'), '# Veckomöte\n\nAgenda\n', 'without the header line');
+  assert.equal(saved.path, path.join(path.dirname(c.path), 'Vecka.md'));
+  await store.setProjectOptions('Möten', { template: 'Vecka' });
+  assert.equal((await store.tree()).projects.find((p) => p.name === 'Möten').template, 'Vecka');
+  await store.renameTemplate('Vecka', 'Veckomöte');
+  assert.deepEqual(ls('Mallar'), ['Möte.md', 'Standup.md', 'Veckomöte.md']);
+  assert.equal((await store.tree()).projects.find((p) => p.name === 'Möten').template, 'Veckomöte');
+  await store.deleteTemplate('Veckomöte');
+  assert.equal(trashed.length, 1);
+  assert.equal((await store.tree()).projects.find((p) => p.name === 'Möten').template, null);
+  // Templates are not notes: no project, no rename after the heading.
+  assert.equal(await store.locate(c.path), null);
+  assert.deepEqual(await store.templateOf(c.path), { name: 'Möte', file: 'Möte.md' });
+  assert.equal(await store.readTemplate('Standup'), read('Mallar', 'Standup.md'));
+});
+
+test('projektval följer med vid namnbyte av projektet och försvinner när det tas bort', async () => {
+  const { store } = setup('sv', { seed: true });
+  await store.tree();
+  await store.renameProject('Standupanteckningar', 'Daily');
+  const p = (await store.tree()).projects.find((x) => x.name === 'Daily');
+  assert.deepEqual([p.template, p.sort], ['Standup', 'date']);
+  await store.deleteProject('Daily');
+  await store.createProject('Daily');
+  const q = (await store.tree()).projects.find((x) => x.name === 'Daily');
+  assert.deepEqual([q.template, q.sort], [null, 'manual']);
+});
+
+test('datumsortering: datumet i rubriken, nyast först, fästa överst', async () => {
+  const { store, root } = setup('sv', { seed: true });
+  await store.tree();
+  const dir = path.join(root, 'Standupanteckningar');
+  const write = (file, text) => fs.writeFileSync(path.join(dir, file), text);
+  write('2026-09-28 Standup.md', '# Standup 2026-09-28\nProjekt: Standupanteckningar · Skapad: 2026-09-28 09:00\n');
+  write('2026-09-30 Standup.md', '# Standup 2026-09-30\nProjekt: Standupanteckningar · Skapad: 2026-09-29 16:00\n');
+  write('2026-09-29 Standup.md', '# Standup 2026-10-02\nProjekt: Standupanteckningar · Skapad: 2026-09-29 09:00\n');
+  write('Lös anteckning.md', '# Anteckning\n');
+  const later = new Date(2026, 8, 29, 12);
+  fs.utimesSync(path.join(dir, 'Lös anteckning.md'), later, later);
+  const titles = async () => (await store.tree()).projects[0].notes.map((n) => n.title);
+  assert.deepEqual(await titles(), ['Standup 2026-10-02', 'Standup 2026-09-30', 'Anteckning', 'Standup 2026-09-28']);
+  await store.setPinned(path.join(dir, '2026-09-28 Standup.md'), true);
+  assert.deepEqual((await titles())[0], 'Standup 2026-09-28');
+  await store.setPinned(path.join(dir, '2026-09-28 Standup.md'), false);
+  await store.setProjectOptions('Standupanteckningar', { sort: 'manual' });
+  assert.equal((await store.tree()).projects[0].sort, 'manual');
 });

@@ -117,6 +117,7 @@ await shot('32-notes-dragging');
 await win.mouse.up();
 await win.waitForFunction(() => /Notera[\\/]2026-09-21 Sprintplanering v39\.md$/.test(window.__notera.active.path));
 assert.match(read('Notera', '2026-09-21 Sprintplanering v39.md'), /^# Sprintplanering v39\nProjekt: Notera · Skapad: 2026-09-21 08:30\n/);
+await win.waitForFunction(() => /^Projekt: Notera/.test(window.__notera.view.state.doc.line(2).text), undefined, { timeout: 5000 });
 assert.match((await activeText()).split('\n')[1], /^Projekt: Notera/, 'the open tab shows the new header');
 await win.waitForFunction(() => document.querySelector('#notes-toast .msg')?.textContent === 'Flyttad till Notera');
 await win.click('#notes-toast button');
@@ -141,7 +142,7 @@ await noteRow('PBI-1234').hover();
 await noteRow('PBI-1234').locator('[data-act="note-menu"]').click();
 await shot('33-notes-menu');
 // The letters Claude Desktop uses sit on the right: R rename, A archive, D delete.
-assert.deepEqual(await win.$$eval('#sb-menu > button', (bs) => bs.map((b) => b.querySelector('.key')?.textContent ?? '')), ['', 'R', '', '', 'A', 'D']);
+assert.deepEqual(await win.$$eval('#sb-menu > button', (bs) => bs.map((b) => b.querySelector('.key')?.textContent ?? '')), ['', 'R', '', '', '', 'A', 'D']);
 await win.click('#sb-menu button:has-text("Fäst överst")');
 await settle();
 assert.equal((await titlesIn('Enlantis'))[0], 'PBI-1234 Inloggningsfel');
@@ -315,7 +316,9 @@ await shot('39-notes-first-run');
 await app.evaluate(({ dialog }, dir) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [dir] }); }, fresh);
 await win.click('#sb-list [data-act="choose-root"]');
 await win.waitForSelector('#sb-list .sb-proj[data-folder="Osorterat"]');
-assert.deepEqual(fs.readdirSync(fresh).sort(), ['.notera.json', 'Arkiv', 'Osorterat']);
+// A new notes folder is set up with the templates folder and the Standup notes project.
+assert.deepEqual(fs.readdirSync(fresh).sort(), ['.notera.json', 'Arkiv', 'Mallar', 'Osorterat', 'Standupanteckningar']);
+assert.deepEqual(fs.readdirSync(path.join(fresh, 'Mallar')), ['Standup.md']);
 assert.equal(await win.textContent('#notes-banner'), '');
 await win.keyboard.press('Control+T');
 await win.waitForFunction(() => /Osorterat/.test(window.__notera.active.path || ''));
