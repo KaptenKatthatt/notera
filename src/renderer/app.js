@@ -8,6 +8,7 @@ import { attachTabDrag } from './tabdrag.js';
 import { display } from '../shared/commands.js';
 import { fillPlaceholders, cursorAfterHeading, standupTemplate, BUILTIN } from '../shared/templates.js';
 import { createThemeApplier } from './themeApply.js';
+import { createEffects } from './effects.js';
 import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
 import { createPreview } from './preview.js';
@@ -30,6 +31,7 @@ let nextId = 1;
 let view;
 let isDark = false;
 let themes = null;
+let effects = null;
 let themeList = [];   // every installed theme, for the settings dialog
 const platformEol = api.platform === 'win32' ? 'CRLF' : 'LF';
 const ENCODINGS = ['utf8', 'utf8bom', 'utf16le', 'utf16be', 'ansi'];
@@ -774,6 +776,7 @@ function applySettings(next, prev = {}) {
   root.setProperty('--zoom-base', String((settings.zoom || 100) / 100));
   document.body.classList.toggle('writing', !!settings.writingMode);
   document.body.classList.toggle('narrow', settings.narrowColumn !== false);
+  if (prev.effects !== settings.effects || prev.viewMode !== settings.viewMode) applyEffects();
   root.setProperty('--editor-font', `"${settings.fontFamily || 'Consolas'}", Consolas, "Cascadia Mono", monospace`);
   root.setProperty('--editor-size', `${settings.fontSize || 15}px`);
   document.body.classList.toggle('no-statusbar', settings.statusBar === false);
@@ -928,7 +931,7 @@ async function handleAction(action, payload) {
     case 'viewPreview': await api.setSettings({ viewMode: 'preview' }); break;
     case 'wordWrap': case 'lineNumbers': case 'formattingBar': case 'statusBar': case 'spellcheck':
       await api.setSettings({ [action]: !settings[action] }); break;
-    case 'hideMarkers': case 'autosave': case 'narrowColumn':
+    case 'hideMarkers': case 'autosave': case 'narrowColumn': case 'effects':
       await api.setSettings({ [action]: settings[action] === false }); break;
     case 'cut': case 'copy': case 'paste': await api.nativeEdit(action); break;
     case 'checkForUpdates': await api.checkForUpdates(true); break;
@@ -1032,6 +1035,13 @@ async function prepareQuit(id) {
   }
 }
 
+/** The theme's effects, unless the Theme effects switch is off. */
+function applyEffects() {
+  if (!themes) return;
+  if (!effects) effects = createEffects();
+  effects.update({ notera: themes.notera, read: themes.read, type: themes.type, enabled: settings.effects !== false, view: settings.viewMode || 'editor' });
+}
+
 // The theme and its mode come from main as one message (see themeApply.js). CodeMirror only needs
 // reconfiguring when the variant on screen flips between light and dark.
 function applyTheme(msg) {
@@ -1039,6 +1049,7 @@ function applyTheme(msg) {
   const flipped = themes.apply(msg);
   isDark = themes.isDark();
   if (view && flipped) reconfigureAll();
+  applyEffects();
   void api.listThemes().then((list) => { themeList = list; if (settingsDialog) settingsDialog.refresh(); });
 }
 

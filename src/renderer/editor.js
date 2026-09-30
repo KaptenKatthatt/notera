@@ -4,6 +4,8 @@ import {
   rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder, ViewPlugin, Decoration, scrollPastEnd
 } from '@codemirror/view';
 import { hideMarkers } from './markers.js';
+import { headings } from './headings.js';
+import { typingParticles } from './effects.js';
 import { searchCount } from './searchCount.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
@@ -71,7 +73,7 @@ function enterPastHeader(view) {
 const noteKeys = Prec.high(keymap.of([{ key: 'Enter', run: enterPastHeader }]));
 
 const mdHighlight = HighlightStyle.define([
-  { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--md-h)' },
+  { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--h-color, var(--md-h))' },
   { tag: t.strong, fontWeight: '700' },
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, textDecoration: 'line-through' },
@@ -134,6 +136,8 @@ export function baseExtensions(opts) {
     crosshairCursor(),
     search({ top: true }),
     syntaxHighlighting(mdHighlight),
+    headings,
+    typingParticles,
     indentUnit.of('  '),
     EditorState.allowMultipleSelections.of(true),
     keymap.of(editorKeymap()),

@@ -18,7 +18,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Narrow text column (View menu, on by default): the text is centred at 66 characters, the same width as writing mode. Off gives the full window width. The last line can be scrolled up to the top of the editor.
 - Spell check (Edit menu or Settings, off by default) in Swedish and English at once. Right-clicking a flagged word offers suggestions and Add to dictionary.
 - Zoom (Ctrl+wheel too), font family and size, word wrap, line numbers.
-- Themes, each in a light and a dark version: Default, "Those guys" (looks like Claude Code) and "The Other guys" (looks like Codex). View > Theme picks the theme and, below the line, the mode (follow system, light, dark). Your own themes go in the themes folder (View > Theme > Open themes folder) and repaint the window when saved; [THEMES.md](THEMES.md) explains the format, which uses VS Code's colour names.
+- Themes, each in a light and a dark version: Default, "Those guys" (looks like Claude Code), "The Other guys" (looks like Codex), and the synthwave family Neon Chill, Neon and Neon OMG (glowing headings, a gliding cursor, sparks while typing, a sun setting over a moving grid). View > Theme > Theme effects turns the effects off without changing theme. View > Theme picks the theme and, below the line, the mode (follow system, light, dark). Your own themes go in the themes folder (View > Theme > Open themes folder) and repaint the window when saved; [THEMES.md](THEMES.md) explains the format, which uses VS Code's colour names.
 - Opening a file from Explorer reuses the running window as a new tab.
 - Print: rendered Markdown for `.md`, plain text for `.txt`.
 - Autosave (View > Autosave, on by default): a file with a name is written 0.8 s after you stop typing. Untitled tabs are kept as drafts under `%APPDATA%\Notera\drafts` and come back on the next start.
@@ -127,10 +127,12 @@ src/renderer/   UI: tabs, CodeMirror 6 editor, formatting, preview, status bar
   keybindings.js  dispatches every shortcut from the command registry
   settingsDialog.js  Settings: General and Keyboard shortcuts
   themeApply.js paints the active theme's variables, fonts and style sheets
+  effects.js    theme effects: glow, gradients, cursor, particles, synthwave background
+  headings.js   marks heading lines per level for colours, fonts and effects
 src/shared/themeFormat.js  theme.json parsing, extends, VS Code colour keys -> CSS variables (unit tested)
 src/shared/commands.js  every command with its default keys; key names are matched on the Windows virtual key
 src/main/updater.js     update checks and install via electron-updater
-themes/         built-in themes (Default, Those guys, The Other guys); format in THEMES.md
+themes/         built-in themes (Default, Those guys, The Other guys, Neon Chill/Neon/Neon OMG with OFL fonts); format in THEMES.md
 fonts/          iA Writer Mono S (SIL Open Font License, see fonts/OFL.txt)
 src/shared/     English + Swedish strings used by both processes
 scripts/        esbuild bundle + icon generator

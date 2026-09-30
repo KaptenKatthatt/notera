@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/KaptenKatthatt/notera/master/theme.schema.json",
+  // Neon: Neon Chill plus a pink-to-gold H1, a stronger glow, a gliding cursor, Victor Mono in the
+  // editor (its italics are cursive) and faint scanlines.
+  "name": "Neon",
+  "extends": "neon-chill",
+  "notera": {
+    "fonts": { "editor": ["Victor Mono", "Cascadia Mono", "Consolas", "monospace"] },
+    "effects": {
+      "glow": { "target": "headings", "strength": 0.7 },
+      "gradient": { "colors": ["#ff7edb", "#fede5d"], "levels": [1] },
+      "cursor": { "style": "line", "glow": 0.8, "smooth": true },
+      "background": { "scanlines": 0.1, "vignette": 0.3 }
+    }
+  },
+  "read": {
+    "effects": { "glow": { "target": "headings", "strength": 0.5 } }
+  },
+  "light": {
+    "read": { "effects": { "glow": { "target": "headings", "strength": 0.15 } } },
+    "notera": {
+      "effects": {
+        "glow": { "target": "headings", "strength": 0.15 },
+        "gradient": { "colors": ["#d6249f", "#e0513a"], "levels": [1] },
+        "cursor": { "style": "line", "glow": 0.4, "smooth": true },
+        "background": { "scanlines": 0, "vignette": 0.08 }
+      }
+    }
+  }
+}

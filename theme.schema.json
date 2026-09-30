@@ -5,86 +5,240 @@
   "description": "A Notera theme (theme.json). See THEMES.md.",
   "type": "object",
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
     "name": {
       "description": "The name shown in the Theme menu. A string, or a map of language code to string.",
-      "oneOf": [{ "type": "string" }, { "type": "object", "additionalProperties": { "type": "string" } }]
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "extends": { "description": "Id (folder name) of the theme this one builds on. Its values are the starting point; this file's values win.", "type": "string" },
-    "style": { "description": "A CSS file in the theme folder, loaded after Notera's own styles while the theme is active.", "type": "string" },
+    "extends": {
+      "description": "Id (folder name) of the theme this one builds on. Its values are the starting point; this file's values win.",
+      "type": "string"
+    },
+    "style": {
+      "description": "A CSS file in the theme folder, loaded after Notera's own styles while the theme is active.",
+      "type": "string"
+    },
     "fonts": {
       "description": "Font files in the theme folder, usable by family name in notera.fonts and style.css.",
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["family", "src"],
+        "required": [
+          "family",
+          "src"
+        ],
         "properties": {
-          "family": { "type": "string" },
-          "src": { "description": "Path inside the theme folder, e.g. fonts/Orbitron.ttf", "type": "string" },
-          "weight": { "description": "A weight or a range, e.g. \"400\" or \"400 900\"", "type": ["string", "number"] },
-          "style": { "enum": ["normal", "italic"] }
+          "family": {
+            "type": "string"
+          },
+          "src": {
+            "description": "Path inside the theme folder, e.g. fonts/Orbitron.ttf",
+            "type": "string"
+          },
+          "weight": {
+            "description": "A weight or a range, e.g. \"400\" or \"400 900\"",
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "style": {
+            "enum": [
+              "normal",
+              "italic"
+            ]
+          }
         }
       }
     },
-    "colors": { "$ref": "#/definitions/colors" },
-    "tokenColors": { "$ref": "#/definitions/tokenColors" },
-    "notera": { "$ref": "#/definitions/notera" },
-    "read": { "$ref": "#/definitions/read" },
-    "light": { "$ref": "#/definitions/variant", "description": "Values for the Light mode, merged over the shared ones." },
-    "dark": { "$ref": "#/definitions/variant", "description": "Values for the Dark mode, merged over the shared ones." }
+    "colors": {
+      "$ref": "#/definitions/colors"
+    },
+    "tokenColors": {
+      "$ref": "#/definitions/tokenColors"
+    },
+    "notera": {
+      "$ref": "#/definitions/notera"
+    },
+    "read": {
+      "$ref": "#/definitions/read"
+    },
+    "light": {
+      "$ref": "#/definitions/variant",
+      "description": "Values for the Light mode, merged over the shared ones."
+    },
+    "dark": {
+      "$ref": "#/definitions/variant",
+      "description": "Values for the Dark mode, merged over the shared ones."
+    }
   },
   "definitions": {
-    "color": { "type": "string", "description": "Any CSS colour: #rrggbb, #rrggbbaa, rgb(), rgba(), a named colour." },
+    "color": {
+      "type": "string",
+      "description": "Any CSS colour: #rrggbb, #rrggbbaa, rgb(), rgba(), a named colour."
+    },
     "fontList": {
       "description": "A font family, or a list tried in order.",
-      "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
     },
     "colors": {
       "description": "VS Code workbench colour keys. Notera reads the ones listed here; any other key is ignored, so a VS Code theme's colors block can be pasted in whole.",
       "type": "object",
       "properties": {
-        "editor.background": { "$ref": "#/definitions/color" },
-        "editor.foreground": { "$ref": "#/definitions/color" },
-        "foreground": { "$ref": "#/definitions/color" },
-        "editorGroupHeader.tabsBackground": { "$ref": "#/definitions/color", "description": "Tab bar, toolbar and status bar." },
-        "sideBar.background": { "$ref": "#/definitions/color" },
-        "titleBar.activeBackground": { "$ref": "#/definitions/color" },
-        "list.hoverBackground": { "$ref": "#/definitions/color" },
-        "toolbar.hoverBackground": { "$ref": "#/definitions/color" },
-        "tab.activeBackground": { "$ref": "#/definitions/color" },
-        "tab.activeModifiedBorder": { "$ref": "#/definitions/color", "description": "The unsaved-changes dot on a tab." },
-        "editorWidget.background": { "$ref": "#/definitions/color", "description": "Menus, dialogs and popups." },
-        "editorWidget.border": { "$ref": "#/definitions/color" },
-        "menu.background": { "$ref": "#/definitions/color" },
-        "quickInput.background": { "$ref": "#/definitions/color" },
-        "descriptionForeground": { "$ref": "#/definitions/color", "description": "Muted text." },
-        "tab.inactiveForeground": { "$ref": "#/definitions/color" },
-        "panel.border": { "$ref": "#/definitions/color" },
-        "editorGroup.border": { "$ref": "#/definitions/color" },
-        "sideBar.border": { "$ref": "#/definitions/color" },
-        "contrastBorder": { "$ref": "#/definitions/color" },
-        "button.background": { "$ref": "#/definitions/color", "description": "The accent: primary buttons, the active view button, focus." },
-        "button.foreground": { "$ref": "#/definitions/color" },
-        "focusBorder": { "$ref": "#/definitions/color" },
-        "textLink.foreground": { "$ref": "#/definitions/color" },
-        "editor.selectionBackground": { "$ref": "#/definitions/color" },
-        "editor.lineHighlightBackground": { "$ref": "#/definitions/color" },
-        "textCodeBlock.background": { "$ref": "#/definitions/color" },
-        "textPreformat.background": { "$ref": "#/definitions/color" },
-        "textPreformat.foreground": { "$ref": "#/definitions/color" },
-        "textBlockQuote.foreground": { "$ref": "#/definitions/color" },
-        "editorCursor.foreground": { "$ref": "#/definitions/color" },
-        "list.activeSelectionBackground": { "$ref": "#/definitions/color", "description": "The open note in the sidebar." },
-        "list.inactiveSelectionBackground": { "$ref": "#/definitions/color" },
-        "errorForeground": { "$ref": "#/definitions/color" },
-        "editorError.foreground": { "$ref": "#/definitions/color" },
-        "input.background": { "$ref": "#/definitions/color", "description": "The search panel." },
-        "editor.findMatchHighlightBackground": { "$ref": "#/definitions/color" },
-        "editor.findMatchBackground": { "$ref": "#/definitions/color" },
-        "editor.rangeHighlightBackground": { "$ref": "#/definitions/color", "description": "The flash on a moved note in the sidebar." },
-        "widget.shadow": { "$ref": "#/definitions/color" }
+        "editor.background": {
+          "$ref": "#/definitions/color"
+        },
+        "editor.foreground": {
+          "$ref": "#/definitions/color"
+        },
+        "foreground": {
+          "$ref": "#/definitions/color"
+        },
+        "editorGroupHeader.tabsBackground": {
+          "$ref": "#/definitions/color",
+          "description": "Tab bar, toolbar and status bar."
+        },
+        "sideBar.background": {
+          "$ref": "#/definitions/color"
+        },
+        "titleBar.activeBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "list.hoverBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "toolbar.hoverBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "tab.activeBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "tab.activeModifiedBorder": {
+          "$ref": "#/definitions/color",
+          "description": "The unsaved-changes dot on a tab."
+        },
+        "editorWidget.background": {
+          "$ref": "#/definitions/color",
+          "description": "Menus, dialogs and popups."
+        },
+        "editorWidget.border": {
+          "$ref": "#/definitions/color"
+        },
+        "menu.background": {
+          "$ref": "#/definitions/color"
+        },
+        "quickInput.background": {
+          "$ref": "#/definitions/color"
+        },
+        "descriptionForeground": {
+          "$ref": "#/definitions/color",
+          "description": "Muted text."
+        },
+        "tab.inactiveForeground": {
+          "$ref": "#/definitions/color"
+        },
+        "panel.border": {
+          "$ref": "#/definitions/color"
+        },
+        "editorGroup.border": {
+          "$ref": "#/definitions/color"
+        },
+        "sideBar.border": {
+          "$ref": "#/definitions/color"
+        },
+        "contrastBorder": {
+          "$ref": "#/definitions/color"
+        },
+        "button.background": {
+          "$ref": "#/definitions/color",
+          "description": "The accent: primary buttons, the active view button, focus."
+        },
+        "button.foreground": {
+          "$ref": "#/definitions/color"
+        },
+        "focusBorder": {
+          "$ref": "#/definitions/color"
+        },
+        "textLink.foreground": {
+          "$ref": "#/definitions/color"
+        },
+        "editor.selectionBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "editor.lineHighlightBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "textCodeBlock.background": {
+          "$ref": "#/definitions/color"
+        },
+        "textPreformat.background": {
+          "$ref": "#/definitions/color"
+        },
+        "textPreformat.foreground": {
+          "$ref": "#/definitions/color"
+        },
+        "textBlockQuote.foreground": {
+          "$ref": "#/definitions/color"
+        },
+        "editorCursor.foreground": {
+          "$ref": "#/definitions/color"
+        },
+        "list.activeSelectionBackground": {
+          "$ref": "#/definitions/color",
+          "description": "The open note in the sidebar."
+        },
+        "list.inactiveSelectionBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "errorForeground": {
+          "$ref": "#/definitions/color"
+        },
+        "editorError.foreground": {
+          "$ref": "#/definitions/color"
+        },
+        "input.background": {
+          "$ref": "#/definitions/color",
+          "description": "The search panel."
+        },
+        "editor.findMatchHighlightBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "editor.findMatchBackground": {
+          "$ref": "#/definitions/color"
+        },
+        "editor.rangeHighlightBackground": {
+          "$ref": "#/definitions/color",
+          "description": "The flash on a moved note in the sidebar."
+        },
+        "widget.shadow": {
+          "$ref": "#/definitions/color"
+        }
       },
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "tokenColors": {
       "description": "VS Code tokenColors. Notera reads the Markdown scopes (markup.heading, markup.quote, markup.inline.raw, markup.underline.link, punctuation.definition) for headings, quotes, code, links and Markdown markers.",
@@ -92,33 +246,108 @@
       "items": {
         "type": "object",
         "properties": {
-          "scope": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }] },
-          "settings": { "type": "object", "properties": { "foreground": { "$ref": "#/definitions/color" } } }
+          "scope": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "foreground": {
+                "$ref": "#/definitions/color"
+              }
+            }
+          }
         }
       }
     },
     "notera": {
-      "description": "What VS Code themes do not have: Markdown colours, fonts and (from Notera 0.10) effects.",
+      "description": "What VS Code themes do not have: Markdown and heading colours, fonts and effects.",
       "type": "object",
       "properties": {
         "colors": {
           "type": "object",
           "properties": {
-            "heading": { "$ref": "#/definitions/color" },
-            "link": { "$ref": "#/definitions/color" },
-            "quote": { "$ref": "#/definitions/color" },
-            "code": { "$ref": "#/definitions/color" },
-            "markup": { "$ref": "#/definitions/color", "description": "Markdown markers: #, **, >, ```." }
+            "heading": {
+              "$ref": "#/definitions/color"
+            },
+            "link": {
+              "$ref": "#/definitions/color"
+            },
+            "quote": {
+              "$ref": "#/definitions/color"
+            },
+            "code": {
+              "$ref": "#/definitions/color"
+            },
+            "markup": {
+              "$ref": "#/definitions/color",
+              "description": "Markdown markers: #, **, >, ```."
+            },
+            "heading1": {
+              "$ref": "#/definitions/color",
+              "description": "H1 colour"
+            },
+            "heading2": {
+              "$ref": "#/definitions/color",
+              "description": "H2 colour"
+            },
+            "heading3": {
+              "$ref": "#/definitions/color",
+              "description": "H3 colour"
+            },
+            "heading4": {
+              "$ref": "#/definitions/color",
+              "description": "H4 colour"
+            },
+            "heading5": {
+              "$ref": "#/definitions/color",
+              "description": "H5 colour"
+            },
+            "heading6": {
+              "$ref": "#/definitions/color",
+              "description": "H6 colour"
+            }
           },
-          "additionalProperties": { "$ref": "#/definitions/color" }
+          "additionalProperties": {
+            "$ref": "#/definitions/color"
+          }
         },
         "fonts": {
           "type": "object",
           "properties": {
-            "ui": { "$ref": "#/definitions/fontList", "description": "Menus, tabs, toolbar, status bar and the preview." },
-            "editor": { "$ref": "#/definitions/fontList", "description": "The editor. Overrides the font chosen in Settings while the theme is active." }
+            "ui": {
+              "$ref": "#/definitions/fontList",
+              "description": "Menus, tabs, toolbar, status bar and the preview."
+            },
+            "editor": {
+              "$ref": "#/definitions/fontList",
+              "description": "The editor. Overrides the font chosen in Settings while the theme is active."
+            },
+            "headings": {
+              "$ref": "#/definitions/fontList",
+              "description": "Headings, in the editor and the preview."
+            },
+            "heading1": {
+              "$ref": "#/definitions/fontList",
+              "description": "The H1, if it should differ from the other headings."
+            }
           },
-          "additionalProperties": { "$ref": "#/definitions/fontList" }
+          "additionalProperties": {
+            "$ref": "#/definitions/fontList"
+          }
+        },
+        "effects": {
+          "$ref": "#/definitions/effects"
         }
       },
       "additionalProperties": true
@@ -127,17 +356,219 @@
       "description": "Overrides for the preview (Läs).",
       "type": "object",
       "properties": {
-        "fonts": { "type": "object", "properties": { "body": { "$ref": "#/definitions/fontList" } }, "additionalProperties": { "$ref": "#/definitions/fontList" } }
+        "fonts": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "$ref": "#/definitions/fontList"
+            },
+            "headings": {
+              "$ref": "#/definitions/fontList"
+            }
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/fontList"
+          }
+        },
+        "effects": {
+          "$ref": "#/definitions/effects",
+          "description": "Effects in Läs, merged over notera.effects."
+        }
       },
       "additionalProperties": true
     },
     "variant": {
       "type": "object",
       "properties": {
-        "colors": { "$ref": "#/definitions/colors" },
-        "tokenColors": { "$ref": "#/definitions/tokenColors" },
-        "notera": { "$ref": "#/definitions/notera" },
-        "read": { "$ref": "#/definitions/read" }
+        "colors": {
+          "$ref": "#/definitions/colors"
+        },
+        "tokenColors": {
+          "$ref": "#/definitions/tokenColors"
+        },
+        "notera": {
+          "$ref": "#/definitions/notera"
+        },
+        "read": {
+          "$ref": "#/definitions/read"
+        }
+      }
+    },
+    "effects": {
+      "description": "Built-in effects. Each is off unless set; false turns off an inherited one. See THEMES.md.",
+      "type": "object",
+      "properties": {
+        "glow": {
+          "oneOf": [
+            {
+              "const": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "enum": [
+                    "headings",
+                    "all"
+                  ]
+                },
+                "strength": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "color": {
+                  "$ref": "#/definitions/color"
+                }
+              }
+            }
+          ]
+        },
+        "gradient": {
+          "oneOf": [
+            {
+              "const": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "colors": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/color"
+                  },
+                  "minItems": 2
+                },
+                "levels": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 6
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "cursor": {
+          "oneOf": [
+            {
+              "const": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "style": {
+                  "enum": [
+                    "line",
+                    "block",
+                    "underline"
+                  ]
+                },
+                "glow": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "smooth": {
+                  "type": "boolean"
+                }
+              }
+            }
+          ]
+        },
+        "particles": {
+          "oneOf": [
+            {
+              "const": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "amount": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 40
+                },
+                "colors": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/color"
+                  }
+                },
+                "size": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 8
+                }
+              }
+            }
+          ]
+        },
+        "background": {
+          "type": "object",
+          "properties": {
+            "grid": {
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "color": {
+                      "$ref": "#/definitions/color"
+                    },
+                    "opacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "speed": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "sun": {
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "colors": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/color"
+                      }
+                    },
+                    "opacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "scanlines": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "vignette": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
       }
     }
   }

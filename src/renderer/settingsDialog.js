@@ -50,6 +50,7 @@ export function createSettingsDialog(ctx) {
     section(t('settings.appearance'));
     row(t('settings.theme'), select('theme', ctx.getThemes().filter((th) => !th.error).map((th) => [th.id, th.name])));
     row(t('settings.mode'), select('mode', [['system', cleanLabel('menu.themeSystem')], ['light', cleanLabel('menu.themeLight')], ['dark', cleanLabel('menu.themeDark')]]));
+    toggle('effects', t('settings.effects'), true);
     row(t('settings.language'), select('language', [['auto', cleanLabel('menu.langAuto')], ['en', 'English'], ['sv', 'Svenska']]));
     const fontBox = document.createElement('span'); fontBox.className = 'set-inline';
     const fontName = document.createElement('span'); fontName.textContent = `${s.fontFamily}, ${s.fontSize} px`;

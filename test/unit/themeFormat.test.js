@@ -147,3 +147,55 @@ test('theme strings exist in both languages', () => {
     }
   }
 });
+
+test('effects are off unless a theme turns them on, and every parameter is checked', () => {
+  const { normalizeEffects } = require('../../src/shared/themeFormat');
+  const none = normalizeEffects(undefined);
+  assert.equal(none.glow, null);
+  assert.equal(none.cursor, null);
+  assert.equal(none.particles, null);
+  assert.deepEqual(none.background, { grid: null, sun: null, scanlines: 0, vignette: 0 });
+  const fx = normalizeEffects({
+    glow: { target: 'all', strength: 3 },
+    gradient: { colors: ['#f0f', 'red; x', '#0ff'], levels: [1, 9, 2] },
+    cursor: { style: 'banana', glow: -1, smooth: true },
+    particles: { amount: 500 },
+    background: { grid: true, sun: { colors: ['#fff'] }, scanlines: 0.3, vignette: 'lots' }
+  });
+  assert.deepEqual(fx.glow, { target: 'all', strength: 1, color: null });
+  assert.deepEqual(fx.gradient, { colors: ['#f0f', '#0ff'], levels: [1, 2] });
+  assert.deepEqual(fx.cursor, { style: 'line', glow: 0, smooth: true });
+  assert.equal(fx.particles.amount, 40);
+  assert.deepEqual(fx.background.grid, { color: null, opacity: 0.5, speed: 0.5 });
+  assert.equal(fx.background.scanlines, 0.3);
+  assert.equal(fx.background.vignette, 0);
+  assert.equal(normalizeEffects({ glow: false }).glow, null, 'false switches an inherited effect off');
+  assert.equal(normalizeEffects({ gradient: { colors: ['#fff'] } }).gradient, null, 'a gradient needs two colours');
+});
+
+test('heading colours and fonts per level become variables', () => {
+  const vars = cssVars({ colors: {}, tokenColors: [], notera: { colors: { heading2: '#36f9f6' }, fonts: { headings: 'Orbitron', heading1: ['Monoton', 'sans-serif'] } }, read: { fonts: { headings: 'Georgia' } } });
+  assert.equal(vars['--md-h2'], '#36f9f6');
+  assert.equal(vars['--md-h1'], undefined);
+  assert.equal(vars['--heading-font'], '"Orbitron"');
+  assert.equal(vars['--heading1-font'], '"Monoton", sans-serif');
+  assert.equal(vars['--read-heading-font'], '"Georgia"');
+});
+
+test('the Neon family goes from calm to everything, and light variants keep glow low', () => {
+  const { normalizeEffects, deepMerge } = require('../../src/shared/themeFormat');
+  const fx = (id, dark) => {
+    const v = variantOf(resolveTheme(id, builtin).theme, dark);
+    return { e: normalizeEffects(v.notera.effects), r: normalizeEffects(deepMerge(v.notera.effects || {}, v.read.effects || {})) };
+  };
+  assert.equal(fx('neon-chill', true).e.background.grid, null);
+  assert.equal(fx('neon', true).e.particles, null);
+  const omg = fx('neon-omg', true);
+  assert.equal(omg.e.glow.target, 'all');
+  assert.equal(omg.r.glow.target, 'headings', 'Läs does not make a page of glowing body text');
+  assert.ok(omg.e.particles && omg.e.background.grid && omg.e.background.sun);
+  for (const id of ['neon-chill', 'neon', 'neon-omg']) {
+    const light = fx(id, false);
+    for (const side of [light.e, light.r]) assert.ok(!side.glow || side.glow.strength <= 0.3, `${id} light glow`);
+  }
+});

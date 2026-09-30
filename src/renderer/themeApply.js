@@ -85,6 +85,9 @@ export function createThemeApplier(ctx) {
     refresh() { if ($('#theme-toast').hidden) return; shownError = ''; renderError(current && current.error); },
     get current() { return current; },
     /** The notera section of the variant on screen: effects and fonts read it. */
-    get notera() { const v = variant(); return v ? v.notera : {}; }
+    get notera() { const v = variant(); return v ? v.notera : {}; },
+    /** The read section (Läs overrides) of the variant on screen. */
+    get read() { const v = variant(); return v ? v.read : {}; },
+    get type() { const v = variant(); return v ? v.type : 'light'; }
   };
 }

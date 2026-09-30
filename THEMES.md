@@ -80,7 +80,7 @@ Like VS Code, Notera takes Markdown colours from `tokenColors`, so an imported V
 | `markup.inline.raw` | Inline code |
 | `punctuation.definition` | Markdown markers: `#`, `**`, `>`, fences |
 
-`notera.colors` overrides them with plain names: `heading`, `link`, `quote`, `code` and `markup`.
+`notera.colors` overrides them with plain names: `heading`, `link`, `quote`, `code` and `markup`. `heading1` to `heading6` give each heading level its own colour, in the editor and the preview.
 
 ## Fonts
 
@@ -99,9 +99,41 @@ A theme brings its own font files. List them in `fonts` and use the family names
 
 - `notera.fonts.editor` is the editor font. It overrides the font chosen in Settings while the theme is on.
 - `notera.fonts.ui` is the font for menus, tabs, the toolbar and the preview.
-- `read.fonts.body` is the preview's text only (Läs), for a theme that writes in monospace but reads in a serif.
+- `notera.fonts.headings` is the font for headings, in the editor and the preview; `notera.fonts.heading1` sets the H1 apart.
+- `read.fonts.body` and `read.fonts.headings` apply to the preview only (Läs), for a theme that writes in monospace but reads in a serif.
 
 Check that a font's licence lets you share it before you put it in a theme you give away. Fonts under the SIL Open Font License are fine; include their `OFL.txt`.
+
+## Effects
+
+`notera.effects` switches on Notera's built-in effects. A theme only picks effects and sets their parameters; it never runs code. Every effect is off unless the theme turns it on, and `false` turns off one the theme inherited. View > Theme > Theme effects switches them all off without changing theme, and turning off Windows' "Animation effects" (Accessibility > Visual effects) stops everything that moves: particles, the gliding cursor and the moving grid. Glow stays, since it does not move.
+
+```jsonc
+"notera": {
+  "effects": {
+    "glow":      { "target": "headings", "strength": 0.6 },          // or "all"; optional "color"
+    "gradient":  { "colors": ["#ff7edb", "#fede5d"], "levels": [1] }, // headings drawn with a gradient
+    "cursor":    { "style": "block", "glow": 0.8, "smooth": true },   // "line", "block", "underline"
+    "particles": { "amount": 10, "colors": ["#ff7edb", "#36f9f6"], "size": 2.5 },
+    "background": {
+      "grid": { "color": "#ff7edb", "opacity": 0.6, "speed": 0.5 },   // a synthwave floor, moving
+      "sun":  { "colors": ["#fede5d", "#ff7edb"], "opacity": 0.3 },   // a striped sun on the horizon
+      "scanlines": 0.2,                                              // 0 to 1
+      "vignette": 0.4                                                // 0 to 1
+    }
+  }
+}
+```
+
+| Effect | Parameters |
+| --- | --- |
+| `glow` | `target`: `headings` or `all`. `strength` 0 to 1. `color`, default the text's own colour. |
+| `gradient` | `colors`: two or more. `levels`: which heading levels, default `[1]`. |
+| `cursor` | `style`: `line`, `block` or `underline`. `glow` 0 to 1. `smooth`: the cursor glides to where it goes. |
+| `particles` | `amount` per keystroke, 1 to 40. `colors`, default the theme's accent and heading colours. `size` in pixels. |
+| `background` | `grid`, `sun`: `true` or an object as above. `scanlines`, `vignette`: 0 to 1. The editor and preview turn transparent so the background shows. |
+
+Effects can differ per mode (put them in `light` or `dark`; a glow reads as a smudge on a light page, so keep it low there) and in the preview: `read.effects` is merged over the editor's effects in Läs, so a theme can glow every letter while you write and only the headings while you read. The `neon-chill`, `neon` and `neon-omg` built-in themes show all of it, from calm to everything.
 
 ## Extra CSS
 
