@@ -78,6 +78,7 @@ export function createSettingsDialog(ctx) {
     toggle('autosave', t('settings.autosave'), true);
     toggle('hideMarkers', t('settings.hideMarkers'), true);
     toggle('wordWrap', t('settings.wordWrap'), true);
+    toggle('narrowColumn', t('settings.narrowColumn'), true);
     toggle('lineNumbers', t('settings.lineNumbers'));
 
     // Ctrl+W: the same thing as moving the key between Close tab and Close window under Keyboard shortcuts.

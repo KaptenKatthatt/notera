@@ -1,7 +1,7 @@
 import { EditorState, Compartment, Prec, RangeSetBuilder } from '@codemirror/state';
 import {
   EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, dropCursor,
-  rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder, ViewPlugin, Decoration
+  rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder, ViewPlugin, Decoration, scrollPastEnd
 } from '@codemirror/view';
 import { hideMarkers } from './markers.js';
 import { searchCount } from './searchCount.js';
@@ -126,6 +126,7 @@ export function baseExtensions(opts) {
     dropCursor(),
     highlightSpecialChars(),
     highlightActiveLine(),
+    scrollPastEnd(),
     highlightSelectionMatches(),
     rectangularSelection(),
     crosshairCursor(),

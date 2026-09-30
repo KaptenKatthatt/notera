@@ -59,6 +59,9 @@ function runFormat(action, v = view) {
     case 'heading1': return fmt.toggleLinePrefix(v, 'h1');
     case 'heading2': return fmt.toggleLinePrefix(v, 'h2');
     case 'heading3': return fmt.toggleLinePrefix(v, 'h3');
+    case 'heading4': return fmt.toggleLinePrefix(v, 'h4');
+    case 'heading5': return fmt.toggleLinePrefix(v, 'h5');
+    case 'heading6': return fmt.toggleLinePrefix(v, 'h6');
     case 'bulletList': return fmt.toggleLinePrefix(v, 'bullet');
     case 'numberedList': return fmt.toggleLinePrefix(v, 'number');
     case 'checkList': return fmt.toggleLinePrefix(v, 'check');
@@ -708,6 +711,7 @@ function applySettings(next, prev = {}) {
   const root = document.documentElement.style;
   root.setProperty('--zoom-base', String((settings.zoom || 100) / 100));
   document.body.classList.toggle('writing', !!settings.writingMode);
+  document.body.classList.toggle('narrow', settings.narrowColumn !== false);
   applySkin(settings.theme);
   root.setProperty('--editor-font', `"${settings.fontFamily || 'Consolas'}", Consolas, "Cascadia Mono", monospace`);
   root.setProperty('--editor-size', `${settings.fontSize || 15}px`);
@@ -855,7 +859,7 @@ async function handleAction(action, payload) {
     case 'viewPreview': await api.setSettings({ viewMode: 'preview' }); break;
     case 'wordWrap': case 'lineNumbers': case 'formattingBar': case 'statusBar':
       await api.setSettings({ [action]: !settings[action] }); break;
-    case 'hideMarkers': case 'autosave':
+    case 'hideMarkers': case 'autosave': case 'narrowColumn':
       await api.setSettings({ [action]: settings[action] === false }); break;
     case 'cut': case 'copy': case 'paste': await api.nativeEdit(action); break;
     case 'checkForUpdates': await api.checkForUpdates(true); break;
