@@ -12,6 +12,7 @@ const templates = require('../shared/templates');
 const { DEFAULT_THEME, MODES, parseJsonc, migrateThemeSettings } = require('../shared/themeFormat');
 const fsSync = require('fs');
 const { createThemeStore, describeError, SCHEME } = require('./themes');
+const vscode = require('./vscodeImport');
 const { createNotesStore } = require('./notes');
 
 const isDev = !app.isPackaged;
@@ -113,6 +114,66 @@ async function createThemeFromCurrent(name) {
   themeStore.scan();
   updateSettings({ theme: id });
   buildMenu();
+  return { id, file };
+}
+
+// ---------- VS Code themes ----------
+/** VS Code themes the palette has listed, by key, so preview and import can find them again. */
+const vscodeThemes = new Map();
+
+function listVsCodeThemes(themes) {
+  return themes.map((th) => {
+    vscodeThemes.set(th.key, { theme: th, all: themes });
+    const other = vscode.counterpart(th, themes);
+    return { key: th.key, label: th.label, dark: th.dark, extension: th.extension.name, pair: other ? other.label : null };
+  });
+}
+
+function readVsix(file) {
+  try {
+    const themes = vscode.themesIn(vscode.vsixSource(file));
+    if (!themes.length) return { error: t('palette.vsixNoThemes', { name: path.basename(file) }) };
+    return { themes: listVsCodeThemes(themes) };
+  } catch (err) {
+    return { error: t('palette.vsixError', { name: path.basename(file), message: /** @type {any} */ (err).message }) };
+  }
+}
+
+function vscodeTheme(key) {
+  const hit = vscodeThemes.get(key);
+  if (!hit) throw new Error('theme not listed');
+  return vscode.toNoteraTheme(hit.theme, vscode.counterpart(hit.theme, hit.all));
+}
+
+/**
+ * Write a VS Code theme into the user's themes folder as a Notera theme and switch to it. A
+ * re-import of the same theme replaces the earlier copy; another theme with the same name gets
+ * its own folder.
+ */
+async function importVsCodeTheme(key) {
+  const nt = vscodeTheme(key);
+  const slug = vscode.slugify(nt.name);
+  let id = slug;
+  for (let n = 2; ; n++) {
+    const file = path.join(themeStore.userDir, id, 'theme.json');
+    const builtin = themeStore.has(id) && !themeStore.dirOf(id)?.startsWith(themeStore.userDir);
+    let same = false;
+    try {
+      const old = parseJsonc(fsSync.readFileSync(file, 'utf8'));
+      same = old?.importedFrom?.extension === nt.importedFrom.extension && old?.name === nt.name;
+    } catch { /* no theme there */ }
+    if (!builtin && (same || !fsSync.existsSync(path.join(themeStore.userDir, id)))) break;
+    id = `${slug}-${n}`;
+  }
+  const intro = [t('palette.importedComment1', { name: nt.importedFrom.themes.join(' + '), version: nt.importedFrom.version }), t('palette.importedComment2')];
+  const json = JSON.stringify(nt, null, 2);
+  const text = json.replace(/^\{\n/, `{\n${intro.map((l) => `  // ${l}`).join('\n')}\n`) + '\n';
+  const dir = path.join(themeStore.userDir, id);
+  await fs.mkdir(dir, { recursive: true });
+  const file = path.join(dir, 'theme.json');
+  await writeFileAtomic(file, text);
+  themeStore.scan();
+  updateSettings({ theme: id });
   return { id, file };
 }
 
@@ -360,6 +421,21 @@ ipcMain.handle('themes:preview', (_e, id) => {
 });
 ipcMain.handle('themes:create', (_e, name) => createThemeFromCurrent(String(name || '')));
 ipcMain.handle('settings:path', () => settings.file);
+ipcMain.handle('vscode:list', () => listVsCodeThemes(vscode.listInstalled()));
+ipcMain.handle('vscode:openVsix', async (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'VS Code extension', extensions: ['vsix'] }] });
+  if (r.canceled || !r.filePaths[0]) return { canceled: true };
+  return readVsix(r.filePaths[0]);
+});
+ipcMain.handle('vscode:readVsix', (_e, file) => readVsix(String(file)));
+ipcMain.handle('vscode:preview', (_e, key) => {
+  try {
+    const nt = vscodeTheme(String(key));
+    return { dark: nativeTheme.shouldUseDarkColors, theme: themeStore.payloadFromRaw(nt, '__vscode-preview', locale), error: null };
+  } catch (err) { return { dark: nativeTheme.shouldUseDarkColors, theme: null, error: describeError(String(key), err) }; }
+});
+ipcMain.handle('vscode:import', (_e, key) => importVsCodeTheme(String(key)));
 ipcMain.handle('settings:set', (_e, patch) => updateSettings(patch));
 
 ipcMain.handle('file:openDialog', async (e) => {
@@ -752,7 +828,7 @@ function buildMenu() {
             radio(t('menu.themeSystem'), 'mode', 'system'), radio(t('menu.themeLight'), 'mode', 'light'), radio(t('menu.themeDark'), 'mode', 'dark'),
             { type: 'separator' },
             check('effects'),
-            cmd('pickTheme'), cmd('newThemeFromCurrent'),
+            cmd('pickTheme'), cmd('newThemeFromCurrent'), cmd('importVsCodeTheme'),
             cmd('openThemesFolder', { click: () => openThemesFolder() })
           ]
         },

@@ -101,6 +101,7 @@ const COMMANDS = [
   { id: 'pickTheme', cat: 'view', label: 'menu.pickTheme', keys: [], global: true },
   { id: 'newThemeFromCurrent', cat: 'view', label: 'menu.newThemeFromCurrent', keys: [], global: true },
   { id: 'openThemesFolder', cat: 'view', label: 'menu.openThemesFolder', keys: [], global: true },
+  { id: 'importVsCodeTheme', cat: 'view', label: 'menu.importVsCodeTheme', keys: [], global: true },
   { id: 'openSettingsJson', cat: 'file', label: 'menu.openSettingsJson', keys: [], global: true },
   { id: 'writingMode', cat: 'view', label: 'menu.writingMode', keys: ['Ctrl+Shift+W'], global: true },
   { id: 'fullscreen', cat: 'view', label: 'menu.fullscreen', keys: ['F11'], global: true },

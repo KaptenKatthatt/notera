@@ -566,14 +566,14 @@ body.writing #notes-banner { display: none; }
 .cm-line.cm-h5 { --h-color: var(--md-h5, var(--md-h)); }
 .cm-line.cm-h6 { --h-color: var(--md-h6, var(--md-h)); }
 .cm-line.cm-h:not(.cm-h1) { font-family: var(--heading-font); }
-/* An unset variable makes these invalid, so the heading keeps the colour and font it had.
-   :where() keeps them below any theme style.css rule such as `.preview h1 { color: ... }`. */
-:where(#preview) h1 { color: var(--md-h1); font-family: var(--read-heading-font, var(--heading1-font, var(--heading-font))); }
-:where(#preview) h2 { color: var(--md-h2); }
-:where(#preview) h3 { color: var(--md-h3); }
-:where(#preview) h4 { color: var(--md-h4); }
-:where(#preview) h5 { color: var(--md-h5); }
-:where(#preview) h6 { color: var(--md-h6); }
+/* Preview headings take the theme's heading colour, per level when the theme has one.
+   :where() keeps these below any theme style.css rule such as `.preview h1 { color: ... }`. */
+:where(#preview) h1 { color: var(--md-h1, var(--md-h)); font-family: var(--read-heading-font, var(--heading1-font, var(--heading-font))); }
+:where(#preview) h2 { color: var(--md-h2, var(--md-h)); }
+:where(#preview) h3 { color: var(--md-h3, var(--md-h)); }
+:where(#preview) h4 { color: var(--md-h4, var(--md-h)); }
+:where(#preview) h5 { color: var(--md-h5, var(--md-h)); }
+:where(#preview) h6 { color: var(--md-h6, var(--md-h)); }
 :where(#preview) :is(h2, h3, h4, h5, h6) { font-family: var(--read-heading-font, var(--heading-font)); }
 
 /* ---------- Theme effects (effects.js sets the fx-* classes on <html>) ----------

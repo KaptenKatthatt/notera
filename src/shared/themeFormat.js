@@ -254,12 +254,15 @@ const COLOR_VARS = [
 // Markdown colours: the notera.colors key, then the TextMate scopes VS Code themes colour
 // Markdown with, then a VS Code UI colour, then a fallback over properties already set.
 const MD_VARS = [
-  ['--md-h', 'heading', ['markup.heading', 'entity.name.section.markdown', 'markup.heading.markdown'], [], 'var(--fg)'],
+  ['--md-h', 'heading', ['markup.heading', 'entity.name.section.markdown', 'markup.heading.markdown', 'heading.1.markdown'], [], 'var(--fg)'],
   ['--md-link', 'link', ['markup.underline.link', 'string.other.link.title.markdown', 'string.other.link'], ['textLink.foreground'], 'var(--accent)'],
   ['--md-quote', 'quote', ['markup.quote', 'markup.quote.markdown'], ['textBlockQuote.foreground'], 'var(--fg-muted)'],
   ['--md-code', 'code', ['markup.inline.raw', 'markup.inline.raw.string.markdown', 'markup.raw', 'markup.fenced_code.block.markdown'], ['textPreformat.foreground'], 'var(--fg)'],
   ['--md-meta', 'markup', ['punctuation.definition.heading.markdown', 'punctuation.definition.markdown', 'punctuation.definition', 'comment'], [], 'var(--fg-muted)']
 ];
+
+/** Every VS Code colour key Notera reads; an imported theme keeps these and drops the rest. */
+const KNOWN_COLOR_KEYS = new Set([...COLOR_VARS.flatMap(([, keys]) => keys), ...MD_VARS.flatMap(([, , , ui]) => ui), 'widget.shadow']);
 
 /** Only strings that cannot break out of a declaration become CSS values. */
 function safeCss(v) {
@@ -311,8 +314,10 @@ function cssVars(variant) {
     const fromUi = own || fromTokens ? null : uiKeys.map((k) => safeCss(colors[k])).find(Boolean);
     out[name] = own || fromTokens || fromUi || fallback;
   }
+  // Per-level heading colours: notera.colors, or the per-level Markdown scopes some VS Code themes
+  // colour (Catppuccin's heading.1.markdown and so on).
   for (let n = 1; n <= 6; n++) {
-    const c = safeCss(nc[`heading${n}`]);
+    const c = safeCss(nc[`heading${n}`]) || safeCss(tokenColor(variant.tokenColors || [], `heading.${n}.markdown`));
     if (c) out[`--md-h${n}`] = c;
   }
   const fonts = isPlainObject(variant.notera?.fonts) ? variant.notera.fonts : {};
@@ -411,5 +416,5 @@ function migrateThemeSettings(data) {
 
 module.exports = {
   MODES, DEFAULT_THEME, ThemeError, isValidId, parseJsonc, deepMerge, resolveTheme, themeName,
-  variantOf, cssVars, cssBlock, tokenColor, fontStack, migrateThemeSettings, normalizeEffects, safeCss, COLOR_VARS, MD_VARS
+  variantOf, cssVars, cssBlock, tokenColor, fontStack, migrateThemeSettings, normalizeEffects, safeCss, COLOR_VARS, MD_VARS, KNOWN_COLOR_KEYS
 };
