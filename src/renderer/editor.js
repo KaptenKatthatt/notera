@@ -130,6 +130,7 @@ export function baseExtensions(opts) {
     dropCursor(),
     highlightSpecialChars(),
     highlightActiveLine(),
+    selectingClass,
     scrollPastEnd(),
     highlightSelectionMatches(),
     rectangularSelection(),
@@ -144,6 +145,13 @@ export function baseExtensions(opts) {
     EditorView.contentAttributes.of({ autocapitalize: 'off', autocorrect: 'off' })
   ];
 }
+
+// While text is selected the editor gets cm-selecting, so CSS can drop the active-line background.
+// That background is drawn over CodeMirror's selection layer and hid a selection on the cursor's
+// line, i.e. every selection within one line. VS Code also hides the line highlight then.
+const selectingClass = EditorView.editorAttributes.compute(['selection'], (state) => (
+  state.selection.ranges.some((r) => !r.empty) ? { class: 'cm-selecting' } : {}
+));
 
 function spellcheckExt(on) { return EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false' }); }
 

@@ -558,6 +558,8 @@ body.writing #notes-banner { display: none; }
 
 /* CodeMirror's dark base theme paints the active line teal and outranks .cm-activeLine above. */
 .cm-editor .cm-content .cm-line.cm-activeLine { background: var(--active-line); }
+/* It is drawn over the selection layer, so it goes while text is selected (cm-selecting, editor.js). */
+.cm-editor.cm-selecting .cm-content .cm-line.cm-activeLine { background: transparent; }
 
 /* ---------- Headings per level (themes set --md-h1..6 and heading fonts) ---------- */
 .cm-line.cm-h1 { --h-color: var(--md-h1, var(--md-h)); font-family: var(--heading1-font, var(--heading-font)); }

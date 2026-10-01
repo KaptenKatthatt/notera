@@ -31,6 +31,13 @@ await win.waitForSelector('#preview h1');
 const shot = (name) => win.screenshot({ path: path.join(shots, name + '.png') });
 const css = (sel, prop) => win.evaluate(([s, p]) => getComputedStyle(document.querySelector(s))[p], [sel, prop]);
 const cssVar = (name) => win.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
+// True when the first painted background over the middle of the selection is the selection itself.
+const selectionOnTop = () => win.evaluate(() => {
+  const r = document.querySelector('.cm-selectionBackground').getBoundingClientRect();
+  const painted = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    .find((e) => !/^rgba\(.*, 0\)$|^transparent$/.test(getComputedStyle(e).backgroundColor));
+  return !!painted && painted.classList.contains('cm-selectionBackground');
+});
 const settingsNow = () => win.evaluate(() => window.notera.getSettings());
 /** The Theme submenu's radio items, split at the separators: [themes, modes]. */
 const menuGroups = () => app.evaluate(({ Menu }) => {
@@ -76,6 +83,10 @@ for (const c of cases) {
   await win.waitForTimeout(120);
   assert.equal(await css('.cm-cursorLayer .cm-cursor', 'borderLeftColor'), c.caret, `${c.id}/${c.mode} caret`);
   await shot(`40-theme-${c.id}-${c.mode}`);
+  // A selection on the cursor's own line shows: nothing opaque is painted over the selection layer.
+  await win.keyboard.press('Shift+Control+ArrowLeft');
+  assert.equal(await selectionOnTop(), true, `${c.id}/${c.mode} selection on the cursor line is visible`);
+  await win.keyboard.press('End');
   await win.keyboard.press('Backspace');
   ok(`${c.id} ${c.mode}: egen palett, en bock per grupp i menyn`);
 }
