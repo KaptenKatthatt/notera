@@ -1095,6 +1095,9 @@ function themeCursorEffect() {
 function applyTheme(msg) {
   themeMsg = msg;
   paintTheme(msg);
+  // Only for main's messages: a preview (the Theme tab's, many a second while a slider is dragged)
+  // must not re-render the settings dialog under the control being dragged.
+  void api.listThemes().then((list) => { themeList = list; if (settingsDialog) settingsDialog.refresh(); });
 }
 
 /** Paint a theme message: main's, or a preview from the theme picker. */
@@ -1104,7 +1107,6 @@ function paintTheme(msg) {
   isDark = themes.isDark();
   if (view && flipped) reconfigureAll();
   applyEffects();
-  void api.listThemes().then((list) => { themeList = list; if (settingsDialog) settingsDialog.refresh(); });
 }
 
 function markDirty() {
@@ -1150,7 +1152,8 @@ async function boot() {
   });
   view.scrollDOM.addEventListener('scroll', preview.syncScroll, { passive: true });
   settingsDialog = createSettingsDialog({
-    t: (...a) => t(...a), api, getSettings: () => settings, getThemes: () => themeList, cursorEffectChoices: () => palette.cursorEffectChoices(), openFontDialog: dialogs.font, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
+    t: (...a) => t(...a), api, getSettings: () => settings, getThemes: () => themeList, cursorEffectChoices: () => palette.cursorEffectChoices(), openFontDialog: dialogs.font,
+    previewTheme: (msg) => paintTheme(msg), restoreTheme: () => { if (themeMsg) paintTheme(themeMsg); }, isDark: () => document.documentElement.dataset.theme === 'dark', version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
     onClose: () => view.focus()
   });
   settingsFile = await api.settingsPath();

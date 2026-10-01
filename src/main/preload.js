@@ -54,6 +54,9 @@ contextBridge.exposeInMainWorld('notera', {
   openThemesFolder: () => ipcRenderer.invoke('themes:openFolder'),
   previewTheme: (id) => ipcRenderer.invoke('themes:preview', id),
   createTheme: (name) => ipcRenderer.invoke('themes:create', name),
+  themeEditInfo: () => ipcRenderer.invoke('themes:editInfo'),
+  previewThemeEdit: (edit) => ipcRenderer.invoke('themes:previewEdit', edit),
+  editTheme: (edit) => ipcRenderer.invoke('themes:edit', edit),
   settingsPath: () => ipcRenderer.invoke('settings:path'),
   vscode: {
     list: () => ipcRenderer.invoke('vscode:list'),

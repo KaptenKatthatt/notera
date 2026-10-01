@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -p jsconfig.json",
     "check": "npm run lint && npm run typecheck && npm test",
-    "e2e": "node scripts/build.mjs && node test/e2e/smoke.mjs && node test/e2e/tabs.mjs && node test/e2e/tabclose.mjs && node test/e2e/writing.mjs && node test/e2e/abc.mjs && node test/e2e/lines.mjs && node test/e2e/settings.mjs && node test/e2e/spellcheck.mjs && node test/e2e/update.mjs && node test/e2e/notes.mjs && node test/e2e/templates.mjs && node test/e2e/themes.mjs && node test/e2e/contrast.mjs && node test/e2e/effects.mjs && node test/e2e/palette.mjs && node test/e2e/vscode.mjs",
+    "e2e": "node scripts/build.mjs && node test/e2e/smoke.mjs && node test/e2e/tabs.mjs && node test/e2e/tabclose.mjs && node test/e2e/writing.mjs && node test/e2e/abc.mjs && node test/e2e/lines.mjs && node test/e2e/settings.mjs && node test/e2e/spellcheck.mjs && node test/e2e/update.mjs && node test/e2e/notes.mjs && node test/e2e/templates.mjs && node test/e2e/themes.mjs && node test/e2e/contrast.mjs && node test/e2e/effects.mjs && node test/e2e/themetab.mjs && node test/e2e/palette.mjs && node test/e2e/vscode.mjs",
     "icon": "electron scripts/make-icon.js",
     "dist:win": "node scripts/build.mjs --prod && electron-builder --win --x64 --publish never",
     "dist:dir": "node scripts/build.mjs --prod && electron-builder --dir --publish never"

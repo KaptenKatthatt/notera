@@ -183,6 +183,10 @@ Themes from before 0.11 had no `typing`: `phosphor` switched the phosphor letter
 
 Effects can differ per mode (put them in `light` or `dark`; a glow reads as a smudge on a light page, so the built-in themes turn it off there) and in the preview: `read.effects` is merged over the editor's effects in Läs, so a theme can glow every letter while you write and only the headings while you read. The `neon-chill`, `neon` and `neon-omg` built-in themes show all of it, from calm to everything.
 
+## The Theme tab
+
+Settings > Theme changes the active theme without writing JSON: every property above (effects and their parameters, the cursor effect a theme suggests, heading and Markdown colours, the main VS Code colours, fonts, line height and the Read view), in the light version, the dark one or both. The dialog docks to the right edge, so each change shows in the window at once. A built-in theme stays as it is: the first change makes "<name> (own)" in your themes folder, a theme.json that `extends` the original and holds only your changes. A theme of your own is changed in place, and its comments and layout stay as you wrote them. ↺ beside a value takes it out of your theme.json, back to what the theme inherits. The tab is generated from `theme.schema.json`, so it follows the format as it grows.
+
 ## Extra CSS
 
 `"style": "style.css"` loads a CSS file after Notera's own styles while the theme is on. Use it for what colours cannot do: a border on the active tab, rounder buttons, a different cursor. Paths in `url()` are relative to the theme folder. The class names are Notera's internals and can change between versions, so keep `style.css` short; the built-in `those-guys` and `other-guys` themes show the idea.

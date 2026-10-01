@@ -9,7 +9,8 @@ const { resolveLocale, makeT } = require('../shared/strings');
 const commands = require('../shared/commands');
 const { createUpdater } = require('./updater');
 const templates = require('../shared/templates');
-const { DEFAULT_THEME, MODES, parseJsonc, migrateThemeSettings, CURSOR_EFFECT_IDS } = require('../shared/themeFormat');
+const { DEFAULT_THEME, MODES, parseJsonc, migrateThemeSettings, CURSOR_EFFECT_IDS, resolveTheme, variantOf, themeName } = require('../shared/themeFormat');
+const { setJsonc } = require('../shared/jsoncEdit');
 const fsSync = require('fs');
 const { createThemeStore, describeError, SCHEME } = require('./themes');
 const vscode = require('./vscodeImport');
@@ -88,9 +89,7 @@ function themeBackground() {
 async function createThemeFromCurrent(name) {
   const clean = name.trim().slice(0, 60) || t('palette.defaultThemeName');
   const base = themeStore.has(settings.get('theme')) ? settings.get('theme') : DEFAULT_THEME;
-  const slug = clean.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'my-theme';
-  let id = slug;
-  for (let n = 2; themeStore.has(id) || fsSync.existsSync(path.join(themeStore.userDir, id)); n++) id = `${slug}-${n}`;
+  const id = freeThemeId(clean, 'my-theme');
   const payload = themeStore.payload(base, locale);
   const pick = (v, key) => v?.vars?.[key];
   const variant = (v) => ({
@@ -115,6 +114,106 @@ async function createThemeFromCurrent(name) {
   updateSettings({ theme: id });
   buildMenu();
   return { id, file };
+}
+
+// ---------- Theme tab: editing the active theme ----------
+/** A theme id made from a display name: lowercase ASCII, dashes, and -2, -3 … when it is taken. */
+function freeThemeId(name, fallback) {
+  const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 56) || fallback;
+  let id = slug;
+  for (let n = 2; themeStore.has(id) || fsSync.existsSync(path.join(themeStore.userDir, id)); n++) id = `${slug}-${n}`;
+  return id;
+}
+
+const activeThemeId = () => (themeStore.has(settings.get('theme')) ? settings.get('theme') : DEFAULT_THEME);
+const isBuiltinTheme = (id) => !(themeStore.dirOf(id) || '').startsWith(themeStore.userDir);
+
+/** The theme.json text a user copy of a built-in theme starts as: it extends the original. */
+function ownCopyText(base) {
+  const name = t('theme.ownCopy', { name: themeName(resolveTheme(base, themeStore.raw).theme.name, locale, base) });
+  const head = `{\n  "$schema": "https://raw.githubusercontent.com/KaptenKatthatt/notera/master/theme.schema.json",\n  // ${t('theme.ownCopyComment', { base })}\n`;
+  return { name, text: `${head}  "name": ${JSON.stringify(name)},\n  "extends": ${JSON.stringify(base)}\n}\n` };
+}
+
+/**
+ * What the Theme tab shows: the active theme, whether it is built in (the first change then makes
+ * a copy), what its own theme.json sets, and both variants as they resolve with everything it
+ * extends.
+ */
+function themeEditInfo() {
+  const id = activeThemeId();
+  try {
+    const theme = resolveTheme(id, themeStore.raw).theme;
+    return {
+      id, name: themeName(theme.name, locale, id), builtin: isBuiltinTheme(id), own: themeStore.raw(id),
+      copyName: isBuiltinTheme(id) ? ownCopyText(id).name : null,
+      variants: { light: variantOf(theme, false), dark: variantOf(theme, true) }, error: null
+    };
+  } catch (e) { return { id, error: describeError(id, e) }; }
+}
+
+/** One change: `path` inside a variant ('colors', …, or 'notera', …), in light, dark or both. */
+function applyThemeEdit(text, { variant, path: p, value }, existing = []) {
+  const parts = Array.isArray(p) ? p.map(String) : [];
+  if (!parts.length) return text;
+  // Both, in a theme with only one variant (it is used for both modes): only that one, since a new
+  // section for the other would replace it in that mode instead of adding to it.
+  const variants = variant === 'light' || variant === 'dark' ? [variant] : existing.length === 1 ? existing : ['light', 'dark'];
+  // Both: written into each variant, since a value at the top would lose to a variant's own value
+  // inherited from the original. Resetting both also clears the top level.
+  if (variants.length === 2 && value === undefined) text = setJsonc(text, parts, undefined);
+  for (const v of variants) text = setJsonc(text, [v, ...parts], value);
+  return text;
+}
+
+/** The text an edit would give, and the theme it goes to, without writing anything. */
+async function themeEditText(edit) {
+  const base = activeThemeId();
+  const resolved = resolveTheme(base, themeStore.raw).theme;
+  const existing = ['light', 'dark'].filter((k) => resolved[k] && typeof resolved[k] === 'object' && !Array.isArray(resolved[k]));
+  if (isBuiltinTheme(base)) return { id: null, base, text: applyThemeEdit(ownCopyText(base).text, edit, existing) };
+  const file = path.join(themeStore.dirOf(base), 'theme.json');
+  return { id: base, base, file, text: applyThemeEdit(await fs.readFile(file, 'utf8'), edit, existing) };
+}
+
+/** The window painted with an edit, before it is written: the Theme tab's live preview. */
+async function previewThemeEdit(edit) {
+  try {
+    const { id, text } = await themeEditText(edit);
+    // A theme of your own keeps its id, so its own style.css and fonts still load in the preview.
+    return { dark: nativeTheme.shouldUseDarkColors, theme: themeStore.payloadFromRaw(parseJsonc(text), id || '__theme-edit', locale), error: null };
+  } catch (e) { return { dark: nativeTheme.shouldUseDarkColors, theme: null, error: describeError(activeThemeId(), e) }; }
+}
+
+/**
+ * Writes one change to the active theme's theme.json. A built-in theme is copied first, as
+ * "<name> (own)" extending it, and the window switches to the copy.
+ */
+async function editTheme(edit) {
+  const { text, base, ...target } = await themeEditText(edit);
+  let { id, file } = target;
+  if (!id) {
+    const { name } = ownCopyText(base);
+    id = freeThemeId(name, `${base}-own`);
+    const dir = path.join(themeStore.userDir, id);
+    await fs.mkdir(dir, { recursive: true });
+    file = path.join(dir, 'theme.json');
+  }
+  parseJsonc(text); // never write what would not load
+  await writeFileAtomic(file, text);
+  themeStore.scan();
+  if (settings.get('theme') !== id) { updateSettings({ theme: id }); buildMenu(); }
+  else { loadActiveTheme(); broadcastTheme(); }
+  return themeEditInfo();
+}
+
+/** Edits one at a time: two at once would read the same file, and the second would undo the first. */
+/** @type {Promise<any>} */
+let themeEditQueue = Promise.resolve();
+function queueThemeEdit(edit) {
+  const run = themeEditQueue.then(() => editTheme(edit)).catch((e) => ({ error: describeError(activeThemeId(), e) }));
+  themeEditQueue = run;
+  return run;
 }
 
 // ---------- VS Code themes ----------
@@ -445,6 +544,9 @@ ipcMain.handle('themes:preview', (_e, id) => {
   catch (e) { return { dark: nativeTheme.shouldUseDarkColors, theme: null, error: describeError(String(id), e) }; }
 });
 ipcMain.handle('themes:create', (_e, name) => createThemeFromCurrent(String(name || '')));
+ipcMain.handle('themes:editInfo', () => themeEditInfo());
+ipcMain.handle('themes:previewEdit', (_e, edit) => previewThemeEdit(edit || {}));
+ipcMain.handle('themes:edit', (_e, edit) => queueThemeEdit(edit || {}));
 ipcMain.handle('settings:path', () => settings.file);
 ipcMain.handle('vscode:list', () => listVsCodeThemes(vscode.listInstalled()));
 ipcMain.handle('vscode:openVsix', async (e) => {

@@ -1,19 +1,25 @@
-// Settings: a General pane and a Keyboard shortcuts pane where every command can be rebound.
+// Settings: a General pane, a Theme pane (themeTab.js; the dialog docks to the right there, so the
+// window shows every change) and a Keyboard shortcuts pane where every command can be rebound.
 import {
   COMMANDS, BY_ID, CATEGORIES, display, fromEvent, isAllowed, normalize, conflict, withBinding, isCustomized, effectiveBindings,
   withCtrlW, ctrlWTarget
 } from '../shared/commands.js';
+import { createThemeTab } from './themeTab.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
 export function createSettingsDialog(ctx) {
-  // ctx: { t, api, getSettings, getThemes, cursorEffectChoices, openFontDialog, version, updateReason }
+  // ctx: { t, api, getSettings, getThemes, cursorEffectChoices, openFontDialog, previewTheme, restoreTheme, isDark, version, updateReason }
   const dlg = $('#dlg-settings');
   let pane = 'general';
   let recording = null; // { id, pending?: { combo, owner } , error? }
   let query = '';
 
   const t = (...a) => ctx.t(...a);
+  const themeTab = createThemeTab({
+    t, api: ctx.api, getSettings: ctx.getSettings, getThemes: ctx.getThemes, cursorEffectChoices: ctx.cursorEffectChoices,
+    openFontDialog: ctx.openFontDialog, previewTheme: ctx.previewTheme, restoreTheme: ctx.restoreTheme, isDark: ctx.isDark
+  });
   const cleanLabel = (key) => t(key).replace('&', '').replace(/…$/, '');
   const overrides = () => ctx.getSettings().keybindings || {};
 
@@ -48,18 +54,9 @@ export function createSettingsDialog(ctx) {
       r.append(cb, span); el.appendChild(r); return cb;
     };
 
-    section(t('settings.appearance'));
-    row(t('settings.theme'), select('theme', ctx.getThemes().filter((th) => !th.error).map((th) => [th.id, th.name])));
-    row(t('settings.mode'), select('mode', [['system', cleanLabel('menu.themeSystem')], ['light', cleanLabel('menu.themeLight')], ['dark', cleanLabel('menu.themeDark')]]));
-    toggle('effects', t('settings.effects'), true);
-    row(t('settings.cursorEffect'), select('cursorEffect', ctx.cursorEffectChoices()));
+    // Theme, mode, effects and the editor font are on the Theme tab.
+    section(t('settings.language'));
     row(t('settings.language'), select('language', [['auto', cleanLabel('menu.langAuto')], ['en', 'English'], ['sv', 'Svenska']]));
-    const fontBox = document.createElement('span'); fontBox.className = 'set-inline';
-    const fontName = document.createElement('span'); fontName.textContent = `${s.fontFamily}, ${s.fontSize} px`;
-    const fontBtn = document.createElement('button'); fontBtn.type = 'button'; fontBtn.textContent = t('settings.fontChange');
-    fontBtn.addEventListener('click', () => void ctx.openFontDialog());
-    fontBox.append(fontName, fontBtn);
-    row(t('settings.font'), fontBox);
 
     section(t('notes.settingsSection'));
     const folderBox = document.createElement('span'); folderBox.className = 'set-inline';
@@ -213,7 +210,8 @@ export function createSettingsDialog(ctx) {
     pane = name;
     for (const b of dlg.querySelectorAll('.set-nav [data-pane]')) b.classList.toggle('active', b.dataset.pane === name);
     for (const p of dlg.querySelectorAll('.set-pane')) p.hidden = p.dataset.pane !== name;
-    if (name === 'keyboard') { renderKeyboard(); $('#kb-search').focus(); } else { renderGeneral(); dlg.focus(); }
+    dlg.classList.toggle('docked', name === 'theme');
+    if (name === 'keyboard') { renderKeyboard(); $('#kb-search').focus(); } else if (name === 'theme') { void themeTab.render($('#set-theme')); dlg.focus(); } else { renderGeneral(); dlg.focus(); }
   }
 
   function render() {
@@ -223,13 +221,13 @@ export function createSettingsDialog(ctx) {
     $('#kb-reset-all').textContent = t('settings.resetAll');
     $('#set-close').title = t('settings.close');
     $('#set-close').setAttribute('aria-label', t('settings.close'));
-    if (pane === 'keyboard') renderKeyboard(); else renderGeneral();
+    if (pane === 'keyboard') renderKeyboard(); else if (pane === 'theme') void themeTab.render($('#set-theme')); else renderGeneral();
   }
 
   // wiring
   dlg.addEventListener('keydown', onRecordKey, true);
   dlg.addEventListener('cancel', (e) => { if (recording) { e.preventDefault(); recording = null; renderKeyboard(); } });
-  dlg.addEventListener('close', () => { recording = null; ctx.onClose && ctx.onClose(); });
+  dlg.addEventListener('close', () => { recording = null; themeTab.reset(); ctx.onClose && ctx.onClose(); });
   for (const b of dlg.querySelectorAll('.set-nav [data-pane]')) b.addEventListener('click', () => showPane(b.dataset.pane));
   $('#kb-search').addEventListener('input', (e) => { query = e.target.value; renderKeyboard(); });
   $('#kb-reset-all').addEventListener('click', async () => {

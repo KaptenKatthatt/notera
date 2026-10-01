@@ -10,6 +10,7 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "maxNodeModuleJsDepth": 0
   },
   "include": ["src/**/*.js", "src/**/*.d.ts", "scripts/**/*.js", "scripts/**/*.mjs"]

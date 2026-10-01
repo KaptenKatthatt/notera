@@ -110,12 +110,14 @@ ok('menyn listar Standard, Those guys, The Other guys, Neon-familjen och sedan l
 // ---------- settings dialog ----------
 await win.evaluate(() => window.__notera.handleAction('settings'));
 await win.waitForSelector('#dlg-settings[open]');
-const selects = await win.locator('#dlg-settings select').evaluateAll((els) => els.map((e) => [...e.options].map((o) => o.textContent)));
+await win.click('.set-nav [data-pane="theme"]');
+await win.waitForSelector('#set-theme .tt-sec');
+const selects = await win.locator('#set-theme select').evaluateAll((els) => els.map((e) => [...e.options].map((o) => o.textContent)));
 assert.deepEqual(selects[0], ['Standard', 'Those guys', 'The Other guys', 'Neon Chill', 'Neon', 'Neon OMG']);
 assert.deepEqual(selects[1], ['Följ systemet', 'Ljust', 'Mörkt']);
 await shot('42-theme-settings');
 await win.keyboard.press('Escape');
-ok('Inställningar har tema och läge som två val');
+ok('Inställningar har tema och läge som två val, på fliken Tema');
 
 // ---------- a user theme, reloaded on save ----------
 const mine = path.join(userThemes, 'mitt-tema');

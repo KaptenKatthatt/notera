@@ -387,13 +387,14 @@
           "type": "number",
           "minimum": 1,
           "maximum": 3,
-          "description": "Line height in the editor, e.g. 1.75 for an airy writing theme. Default 1.4."
+          "description": "Line height in the editor, e.g. 1.75 for an airy writing theme. Default 1.4.",
+          "default": 1.4
         }
       },
       "additionalProperties": true
     },
     "read": {
-      "description": "Overrides for the preview (Läs).",
+      "description": "Overrides for the preview (L\u00e4s).",
       "type": "object",
       "properties": {
         "fonts": {
@@ -412,13 +413,14 @@
         },
         "effects": {
           "$ref": "#/definitions/effects",
-          "description": "Effects in Läs, merged over notera.effects."
+          "description": "Effects in L\u00e4s, merged over notera.effects."
         },
         "lineHeight": {
           "type": "number",
           "minimum": 1,
           "maximum": 3,
-          "description": "Line height in Läs. Default 1.6."
+          "description": "Line height in L\u00e4s. Default 1.6.",
+          "default": 1.6
         }
       },
       "additionalProperties": true
