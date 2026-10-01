@@ -215,7 +215,11 @@ function colorsFor(fx) {
     const caret = rgb('--caret');
     palette = { many: many.length ? many : [accent], caret: caret && vivid(caret) ? caret : accent };
   }
-  if (fx.colors && fx.colors.length) return fx.colors.map(rgbOf).filter(Boolean);
+  if (fx.colors && fx.colors.length) {
+    // Colours the canvas cannot parse (a typo, var(…)) drop out; none left follows the theme.
+    const own = fx.colors.map(rgbOf).filter(Boolean);
+    if (own.length) return own;
+  }
   if (fx.color) return [rgbOf(fx.color) || palette.caret];
   return fx.id === 'pulse' ? [palette.caret] : palette.many;
 }
