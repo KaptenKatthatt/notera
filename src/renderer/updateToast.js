@@ -1,5 +1,7 @@
-// updateToast.js: the small card that offers a new version, shows the download and asks to restart.
-// The state comes from the main process (src/main/updater.js) through api.onUpdateStatus.
+// updateToast.js: the small card that offers a new version and shows the download and install.
+// One click on "Download and install" does both; "Restart and install" only shows when the install
+// was called off, e.g. the user cancelled a save. The state and the intent to install live in the
+// main process (src/main/updater.js, main.js) and arrive through api.onUpdateStatus.
 
 /**
  * @param {{ api: any, t: () => (key: string, vars?: object) => string }} ctx
@@ -15,18 +17,21 @@ export function createUpdateToast(ctx) {
     if (!box) return;
     const t = ctx.t();
     const st = update.state;
-    const visible = !hidden && ['available', 'downloading', 'downloaded', 'error'].includes(st);
+    const visible = !hidden && ['available', 'downloading', 'installing', 'downloaded', 'error'].includes(st);
     box.hidden = !visible;
     if (!visible) return;
     const go = $('#update-go'), later = $('#update-later'), bar = $('#update-bar');
     later.textContent = t('update.later');
-    go.hidden = st === 'downloading';
-    later.hidden = st === 'downloading';
-    bar.hidden = st !== 'downloading';
+    const busy = st === 'downloading' || st === 'installing';
+    go.hidden = busy;
+    later.hidden = busy;
+    go.parentElement.hidden = busy; // no empty button row under the bar
+    bar.hidden = !busy; // full while installing: the download is done
     bar.firstElementChild.style.width = `${update.percent || 0}%`;
     box.dataset.state = st;
     if (st === 'available') { $('#update-text').textContent = t('update.available', { version: update.version }); go.textContent = t('update.download'); }
     else if (st === 'downloading') { $('#update-text').textContent = t('update.downloading', { version: update.version, percent: update.percent || 0 }); }
+    else if (st === 'installing') { $('#update-text').textContent = t('update.installing', { version: update.version }); }
     else if (st === 'downloaded') { $('#update-text').textContent = t('update.ready', { version: update.version }); go.textContent = t('update.restart'); }
     else if (st === 'error') { $('#update-text').textContent = t('update.downloadError'); go.textContent = t('update.download'); }
   }
