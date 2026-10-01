@@ -91,7 +91,28 @@ const en = {
   },
   theme: {
     error: 'The theme "{theme}" could not be loaded: {message}', errorAt: 'The theme "{theme}" could not be loaded: theme.json line {line}: {message}',
-    openFolder: 'Open themes folder', dismiss: 'OK'
+    openFolder: 'Open themes folder', dismiss: 'OK',
+    ownCopy: '{name} (own)', ownCopyComment: 'Your own copy of {base}: only your changes are here, everything else comes from {base}.'
+  },
+  themeTab: {
+    editTitle: 'Edit {name}', variant: 'Which version to change', light: 'Light', dark: 'Dark', both: 'Both',
+    builtinHint: 'A built-in theme stays as it is: your first change makes your own copy, "{copy}", which keeps everything else from the original and follows its updates.',
+    ownHint: 'Changes go to this version of the theme and show at once. ↺ goes back to what the theme inherits.',
+    bothHint: 'Changes go to the light and the dark version alike. ↺ goes back to what the theme inherits.',
+    reset: 'Back to the inherited value', fromTheme: 'from the theme', addColor: 'Add a colour', removeColorHint: 'Right-click a colour to remove it',
+    noSuggestion: 'No suggestion of its own', paramsOf: 'Settings for {name}:',
+    sec: { cursorEffect: 'Cursor effect', effects: 'Glow, gradient and cursor', background: 'Background', colors: 'Colours', fonts: 'Fonts and line height', read: 'Read view' },
+    f: {
+      typing: 'Suggested cursor effect', glow: 'Glow', gradient: 'Gradient headings', cursor: 'Cursor', strength: 'Strength', target: 'Glows', color: 'Colour', colors: 'Colours',
+      levels: 'Heading levels', style: 'Style', smooth: 'Glides', amount: 'Amount', size: 'Size', trailColor: 'Trail colour', trailOpacity: 'Trail opacity',
+      grid: 'Moving grid', sun: 'Sun', opacity: 'Opacity', speed: 'Speed', scanlines: 'Scanlines', vignette: 'Vignette',
+      heading: 'Headings', heading1: 'Heading 1', heading2: 'Heading 2', heading3: 'Heading 3', heading4: 'Heading 4', heading5: 'Heading 5', heading6: 'Heading 6',
+      link: 'Links', quote: 'Quotes', code: 'Code', markup: 'Markdown marks',
+      editor_background: 'Background', editor_foreground: 'Text', button_background: 'Accent', editor_selectionBackground: 'Selection',
+      editor_lineHighlightBackground: 'Current line', editorCursor_foreground: 'Cursor colour',
+      ui: 'Interface', editor: 'Editor', headings: 'Headings', lineHeight: 'Line height', read_body: 'Text', read_headings: 'Headings', readGlow: 'Glow'
+    },
+    v: { headings: 'Headings', all: 'All text', line: 'Line', block: 'Block', underline: 'Underline', none: 'None' }
   },
   // Cursor effects: one name per id in CURSOR_EFFECTS (themeFormat.js), plus the two choices around them.
   fx: {
@@ -197,7 +218,28 @@ const sv = {
   },
   theme: {
     error: 'Temat "{theme}" gick inte att läsa in: {message}', errorAt: 'Temat "{theme}" gick inte att läsa in: theme.json rad {line}: {message}',
-    openFolder: 'Öppna temamappen', dismiss: 'OK'
+    openFolder: 'Öppna temamappen', dismiss: 'OK',
+    ownCopy: '{name} (egen)', ownCopyComment: 'Din egen kopia av {base}: bara dina ändringar står här, resten kommer från {base}.'
+  },
+  themeTab: {
+    editTitle: 'Ändra {name}', variant: 'Vilken version som ändras', light: 'Ljust', dark: 'Mörkt', both: 'Båda',
+    builtinHint: 'Ett inbyggt tema förblir som det är: din första ändring gör en egen kopia, "{copy}", som får allt annat från originalet och följer med när det uppdateras.',
+    ownHint: 'Ändringarna går till den här versionen av temat och syns direkt. ↺ går tillbaka till det temat ärver.',
+    bothHint: 'Ändringarna går till både den ljusa och den mörka versionen. ↺ går tillbaka till det temat ärver.',
+    reset: 'Tillbaka till det ärvda värdet', fromTheme: 'från temat', addColor: 'Lägg till en färg', removeColorHint: 'Högerklicka på en färg för att ta bort den',
+    noSuggestion: 'Inget eget förslag', paramsOf: 'Inställningar för {name}:',
+    sec: { cursorEffect: 'Marköreffekt', effects: 'Glöd, gradient och markör', background: 'Bakgrund', colors: 'Färger', fonts: 'Typsnitt och radavstånd', read: 'Läsvyn' },
+    f: {
+      typing: 'Föreslagen marköreffekt', glow: 'Glöd', gradient: 'Rubriker med gradient', cursor: 'Markör', strength: 'Styrka', target: 'Det som glöder', color: 'Färg', colors: 'Färger',
+      levels: 'Rubriknivåer', style: 'Form', smooth: 'Glider', amount: 'Antal', size: 'Storlek', trailColor: 'Svansens färg', trailOpacity: 'Svansens täckning',
+      grid: 'Rörligt rutnät', sun: 'Sol', opacity: 'Täckning', speed: 'Fart', scanlines: 'Sveplinjer', vignette: 'Vinjett',
+      heading: 'Rubriker', heading1: 'Rubrik 1', heading2: 'Rubrik 2', heading3: 'Rubrik 3', heading4: 'Rubrik 4', heading5: 'Rubrik 5', heading6: 'Rubrik 6',
+      link: 'Länkar', quote: 'Citat', code: 'Kod', markup: 'Markdown-tecken',
+      editor_background: 'Bakgrund', editor_foreground: 'Text', button_background: 'Accent', editor_selectionBackground: 'Markering',
+      editor_lineHighlightBackground: 'Aktuell rad', editorCursor_foreground: 'Markörens färg',
+      ui: 'Gränssnitt', editor: 'Editorn', headings: 'Rubriker', lineHeight: 'Radavstånd', read_body: 'Text', read_headings: 'Rubriker', readGlow: 'Glöd'
+    },
+    v: { headings: 'Rubriker', all: 'All text', line: 'Streck', block: 'Block', underline: 'Understreck', none: 'Ingen' }
   },
   fx: {
     theme: 'Temats val', themeWith: 'Temats val ({name})', none: 'Ingen',
