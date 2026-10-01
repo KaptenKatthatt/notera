@@ -5,7 +5,6 @@
   "name": "Neon Chill",
   "fonts": [
     { "family": "Orbitron", "src": "fonts/Orbitron.ttf", "weight": "400 900" },
-    { "family": "Monoton", "src": "fonts/Monoton.ttf" },
     { "family": "Victor Mono", "src": "fonts/VictorMono.ttf", "weight": "100 700" },
     { "family": "Victor Mono", "src": "fonts/VictorMono-Italic.ttf", "weight": "100 700", "style": "italic" }
   ],
