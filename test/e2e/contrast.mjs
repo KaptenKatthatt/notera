@@ -108,9 +108,21 @@ async function axe(variant, state, context = 'html') {
     const res = await window.axe.run(ctx, { runOnly: ['color-contrast'], resultTypes: ['violations', 'incomplete', 'passes'] });
     const { parse, over, ratio } = window.__c;
     const hexRgb = (h) => h && /^#[0-9a-f]{6}$/i.test(h) ? [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).concat(1) : parse(h);
+    // Text on the effect scrim (.cm-scroller and #preview under html.fx-bg): axe composites the
+    // translucent scrim (a color-mix, serialised as color(srgb …)) and an active-line tint on top
+    // of it wrongly (#3f3457 for what renders as #322a4b in Neon OMG), so the background there is
+    // composited here from the element's ancestors. What shows through the scrim is measured with
+    // pixels further down.
+    const onScrim = (n) => {
+      if (!document.documentElement.classList.contains('fx-bg')) return null;
+      const el = document.querySelector(n.target[n.target.length - 1]);
+      return el && el.closest('.cm-scroller, #preview') ? window.__c.backdrop(el) : null;
+    };
     const pick = (list) => list.flatMap((v) => v.nodes.map((n) => {
       const data = (n.any[0] || {}).data || {};
-      const fg = hexRgb(data.fgColor), bg = hexRgb(data.bgColor);
+      const scrim = data.fgColor ? onScrim(n) : null;
+      if (scrim) data.bgColor = window.__c.hex(scrim);
+      const fg = hexRgb(data.fgColor), bg = scrim || hexRgb(data.bgColor);
       const shade = [0, 0, 0, dark];
       const value = fg && bg ? ratio(over(shade, fg), over(shade, bg)) : Number(data.contrastRatio) || 0;
       return { target: n.target.join(' '), html: n.html.slice(0, 90), data, value, msg: (n.any[0] || {}).message || '' };

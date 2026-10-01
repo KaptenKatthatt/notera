@@ -60,7 +60,10 @@ const litPixels = () => win.evaluate(() => {
   return n;
 });
 const phosphorMarks = () => win.evaluate(() => [...document.querySelectorAll('.cm-content .fx-ph')].map((e) => ({
-  text: e.textContent, anim: e.getAnimations().map((a) => /** @type {CSSAnimation} */ (a).animationName).join(),
+  text: e.textContent, anim: e.getAnimations({ subtree: true }).map((a) => /** @type {CSSAnimation} */ (a).animationName).join(),
+  // Only the glowing copy in ::after animates, and only its opacity (compositor work, no repaint).
+  own: e.getAnimations().length, props: e.getAnimations({ subtree: true }).flatMap((a) => Object.keys(/** @type {KeyframeEffect} */ (a.effect).getKeyframes()[0]).filter((k) => !['offset', 'easing', 'composite', 'computedOffset'].includes(k))).join(),
+  copy: getComputedStyle(e, '::after').content,
   inToken: e.parentElement.classList.contains('cm-line') ? '' : e.parentElement.className
 })));
 /**
@@ -119,11 +122,26 @@ assert.equal(await css('#fx-bg .fx-sun', 'display'), 'block');
 await typeAtEnd('Neon!');
 let marks = await phosphorMarks();
 assert.ok(marks.length >= 2 && marks.length <= 5, `the newest letters flash: ${JSON.stringify(marks)}`);
-assert.ok(marks.every((m) => m.anim === 'fx-phosphor'), JSON.stringify(marks));
+assert.ok(marks.every((m) => m.anim === 'fx-phosphor' && m.own === 0 && m.props === 'opacity' && m.copy === `"${m.text}"`), JSON.stringify(marks));
 assert.equal(marks.map((m) => m.text).join('').slice(-1), '!');
 await shot('60-neon-omg-dark');
 await win.waitForFunction(() => !document.querySelector('.cm-content .fx-ph'), null, { timeout: 2000 });
 ok('fosforbokstav: de senaste bokstäverna lyser upp och märkningen tas bort efteråt');
+
+// The grid moves by transform (compositor only), holds still while typing and goes on afterwards.
+const gridAnim = () => win.evaluate(() => {
+  const a = document.querySelector('#fx-bg .fx-grid').getAnimations({ subtree: true })[0];
+  return a ? { name: /** @type {CSSAnimation} */ (a).animationName, state: a.playState, props: Object.keys(/** @type {KeyframeEffect} */ (a.effect).getKeyframes()[1]).filter((k) => k === 'transform' || k === 'backgroundPosition').join() } : null;
+});
+await win.waitForFunction(() => !document.documentElement.classList.contains('fx-typing'), null, { timeout: 3000 });
+assert.deepEqual(await gridAnim(), { name: 'fx-grid-run', state: 'running', props: 'transform' });
+await win.keyboard.type('x', { delay: 10 });
+assert.ok((await cls()).includes('fx-typing'));
+assert.equal((await gridAnim()).state, 'paused', 'the grid holds still while typing');
+await win.waitForFunction(() => !document.documentElement.classList.contains('fx-typing'), null, { timeout: 3000 });
+assert.equal((await gridAnim()).state, 'running', 'and moves again after a pause');
+await win.keyboard.press('Backspace');
+ok('rutnätet rör sig med transform och står still medan man skriver');
 
 // The phosphor mark sits inside the heading's own span, so it flashes in the heading's colour.
 await win.evaluate(() => { const v = window.__notera.view; const l = v.state.doc.line(10); v.dispatch({ selection: { anchor: l.to } }); });
@@ -190,7 +208,12 @@ const lit = await litPixels();
 assert.ok(lit > 20, `particles drawn (${lit} lit pixels)`);
 assert.equal((await phosphorMarks()).length, 0, 'no phosphor where the theme turned it off');
 await shot('62c-particles');
-await win.waitForTimeout(1500);
+assert.deepEqual(await win.evaluate(() => { const cv = document.querySelector('#fx-particles'); return [cv.width, cv.height]; }),
+  await win.evaluate(() => [innerWidth, innerHeight]), 'the effects canvas is drawn at 1x');
+await win.waitForFunction(() => {
+  const cv = /** @type {HTMLCanvasElement} */ (document.querySelector('#fx-particles'));
+  return !cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data.some((v, i) => i % 4 === 3 && v > 0);
+}, null, { timeout: 6000, polling: 200 });
 ok('partiklar finns kvar för teman som vill ha dem');
 
 for (const [theme, mode, name] of [['neon', 'dark', '63-neon-dark'], ['neon', 'light', '64-neon-light'], ['neon-chill', 'dark', '65-neon-chill-dark'], ['neon-chill', 'light', '66-neon-chill-light']]) {
