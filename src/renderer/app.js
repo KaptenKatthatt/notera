@@ -1095,6 +1095,9 @@ function themeCursorEffect() {
 function applyTheme(msg) {
   themeMsg = msg;
   paintTheme(msg);
+  // Only for main's messages: a preview (the Theme tab's, many a second while a slider is dragged)
+  // must not re-render the settings dialog under the control being dragged.
+  void api.listThemes().then((list) => { themeList = list; if (settingsDialog) settingsDialog.refresh(); });
 }
 
 /** Paint a theme message: main's, or a preview from the theme picker. */
@@ -1104,7 +1107,6 @@ function paintTheme(msg) {
   isDark = themes.isDark();
   if (view && flipped) reconfigureAll();
   applyEffects();
-  void api.listThemes().then((list) => { themeList = list; if (settingsDialog) settingsDialog.refresh(); });
 }
 
 function markDirty() {

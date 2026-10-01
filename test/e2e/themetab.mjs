@@ -108,6 +108,18 @@ assert.ok(!/00ff00/.test(fs.readFileSync(copy, 'utf8')), 'reset removes the key'
 assert.equal(fs.readdirSync(userThemes).filter((d) => d.startsWith('neon-omg')).length, 1, 'later changes go to the same copy');
 ok('färg ändras och ↺ går tillbaka till det ärvda värdet');
 
+// A real drag: input events over a few hundred ms, previews in between, then change on release.
+// The slider must not be redrawn under the pointer, and the value it ends on is the one saved.
+for (const v of [0.6, 0.65, 0.7, 0.75]) {
+  await slide('notera.effects.background.grid.opacity', v, false);
+  await win.waitForTimeout(90);
+}
+assert.equal(await win.inputValue(`${rowSel('notera.effects.background.grid.opacity')} input`), '0.75', 'the dragged slider stays where it is');
+await slide('notera.effects.background.grid.opacity', 0.75);
+await win.waitForTimeout(400);
+assert.match(fs.readFileSync(copy, 'utf8'), /"opacity": 0\.75/, 'the value from the drag is saved');
+ok('ett riktigt drag: reglaget står kvar och värdet sparas');
+
 // 4. Both: written into the light and the dark version.
 await win.click('#set-theme .tt-seg button:has-text("Båda")');
 await win.selectOption(`${rowSel('notera.effects.cursor.style')} select`, 'underline');

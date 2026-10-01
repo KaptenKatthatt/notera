@@ -153,10 +153,12 @@ function themeEditInfo() {
 }
 
 /** One change: `path` inside a variant ('colors', …, or 'notera', …), in light, dark or both. */
-function applyThemeEdit(text, { variant, path: p, value }) {
+function applyThemeEdit(text, { variant, path: p, value }, existing = []) {
   const parts = Array.isArray(p) ? p.map(String) : [];
   if (!parts.length) return text;
-  const variants = variant === 'light' || variant === 'dark' ? [variant] : ['light', 'dark'];
+  // Both, in a theme with only one variant (it is used for both modes): only that one, since a new
+  // section for the other would replace it in that mode instead of adding to it.
+  const variants = variant === 'light' || variant === 'dark' ? [variant] : existing.length === 1 ? existing : ['light', 'dark'];
   // Both: written into each variant, since a value at the top would lose to a variant's own value
   // inherited from the original. Resetting both also clears the top level.
   if (variants.length === 2 && value === undefined) text = setJsonc(text, parts, undefined);
@@ -167,16 +169,19 @@ function applyThemeEdit(text, { variant, path: p, value }) {
 /** The text an edit would give, and the theme it goes to, without writing anything. */
 async function themeEditText(edit) {
   const base = activeThemeId();
-  if (isBuiltinTheme(base)) return { id: null, base, text: applyThemeEdit(ownCopyText(base).text, edit) };
+  const resolved = resolveTheme(base, themeStore.raw).theme;
+  const existing = ['light', 'dark'].filter((k) => resolved[k] && typeof resolved[k] === 'object' && !Array.isArray(resolved[k]));
+  if (isBuiltinTheme(base)) return { id: null, base, text: applyThemeEdit(ownCopyText(base).text, edit, existing) };
   const file = path.join(themeStore.dirOf(base), 'theme.json');
-  return { id: base, base, file, text: applyThemeEdit(await fs.readFile(file, 'utf8'), edit) };
+  return { id: base, base, file, text: applyThemeEdit(await fs.readFile(file, 'utf8'), edit, existing) };
 }
 
 /** The window painted with an edit, before it is written: the Theme tab's live preview. */
 async function previewThemeEdit(edit) {
   try {
-    const { text } = await themeEditText(edit);
-    return { dark: nativeTheme.shouldUseDarkColors, theme: themeStore.payloadFromRaw(parseJsonc(text), '__theme-edit', locale), error: null };
+    const { id, text } = await themeEditText(edit);
+    // A theme of your own keeps its id, so its own style.css and fonts still load in the preview.
+    return { dark: nativeTheme.shouldUseDarkColors, theme: themeStore.payloadFromRaw(parseJsonc(text), id || '__theme-edit', locale), error: null };
   } catch (e) { return { dark: nativeTheme.shouldUseDarkColors, theme: null, error: describeError(activeThemeId(), e) }; }
 }
 
@@ -200,6 +205,15 @@ async function editTheme(edit) {
   if (settings.get('theme') !== id) { updateSettings({ theme: id }); buildMenu(); }
   else { loadActiveTheme(); broadcastTheme(); }
   return themeEditInfo();
+}
+
+/** Edits one at a time: two at once would read the same file, and the second would undo the first. */
+/** @type {Promise<any>} */
+let themeEditQueue = Promise.resolve();
+function queueThemeEdit(edit) {
+  const run = themeEditQueue.then(() => editTheme(edit)).catch((e) => ({ error: describeError(activeThemeId(), e) }));
+  themeEditQueue = run;
+  return run;
 }
 
 // ---------- VS Code themes ----------
@@ -532,7 +546,7 @@ ipcMain.handle('themes:preview', (_e, id) => {
 ipcMain.handle('themes:create', (_e, name) => createThemeFromCurrent(String(name || '')));
 ipcMain.handle('themes:editInfo', () => themeEditInfo());
 ipcMain.handle('themes:previewEdit', (_e, edit) => previewThemeEdit(edit || {}));
-ipcMain.handle('themes:edit', (_e, edit) => editTheme(edit || {}).catch((e) => ({ error: describeError(activeThemeId(), e) })));
+ipcMain.handle('themes:edit', (_e, edit) => queueThemeEdit(edit || {}));
 ipcMain.handle('settings:path', () => settings.file);
 ipcMain.handle('vscode:list', () => listVsCodeThemes(vscode.listInstalled()));
 ipcMain.handle('vscode:openVsix', async (e) => {

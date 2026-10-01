@@ -90,7 +90,8 @@ export function createThemeTab(ctx) {
   /** True when the theme's own theme.json sets this (where an edit would go), so it can be reset. */
   function isOwn(path) {
     if (info.builtin || !info.own) return false;
-    const where = variant === 'light' || variant === 'dark' ? [variant] : ['light', 'dark'];
+    // Where a reset would take it out: the variant edits go to, or every one (and the top) for both.
+    const where = variant === 'both' ? ['light', 'dark'] : [variant || shown()];
     return where.some((w) => getIn(info.own, [w, ...path]) !== undefined) || (variant === 'both' && getIn(info.own, path) !== undefined);
   }
 
@@ -144,11 +145,12 @@ export function createThemeTab(ctx) {
     const input = el('input');
     input.type = 'range';
     input.min = String(spec.minimum); input.max = String(spec.maximum);
-    input.step = spec.type === 'integer' ? '1' : String((spec.maximum - spec.minimum) / 100);
+    // Hundredths, not a hundredth of the range: 1.75 on a 1–3 slider would snap to 1.76.
+    input.step = spec.type === 'integer' ? '1' : '0.01';
     const v = valueAt(path);
     input.value = String(typeof v === 'number' ? v : spec.default ?? spec.minimum);
-    const out = el('output', 'tt-num', input.value);
     const num = () => (spec.type === 'integer' ? Math.round(Number(input.value)) : Math.round(Number(input.value) * 100) / 100);
+    const out = el('output', 'tt-num', String(num()));
     input.addEventListener('input', () => { out.textContent = String(num()); preview(path, num()); });
     input.addEventListener('change', () => void commit(path, num()));
     box.append(input, out);
