@@ -1,7 +1,7 @@
 // Theme effects and the Neon family: per-level heading colours, glow, the H1 gradient, the
-// cursor, the phosphor letter and cursor trail, typing particles (in a theme of one's own), the
-// synthwave background, scanlines, the Theme effects switch, reduced motion, and that printing
-// stays plain.
+// cursor, the synthwave background, scanlines, the Theme effects switch, reduced motion, and that
+// printing stays plain. The cursor effects: the theme's suggestion, the user's own choice over it
+// (Settings, the menu, the palette with its preview), and each of the ten effects mid-animation.
 import { _electron as electron } from 'playwright';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -59,10 +59,10 @@ const litPixels = () => win.evaluate(() => {
   for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
   return n;
 });
-const phosphorMarks = () => win.evaluate(() => [...document.querySelectorAll('.cm-content .fx-ph')].map((e) => ({
+const phosphorMarks = () => win.evaluate(() => [...document.querySelectorAll('.cm-content .fx-ltr')].map((e) => ({
   text: e.textContent, anim: e.getAnimations({ subtree: true }).map((a) => /** @type {CSSAnimation} */ (a).animationName).join(),
   // Only the glowing copy in ::after animates, and only its opacity (compositor work, no repaint).
-  own: e.getAnimations().length, props: e.getAnimations({ subtree: true }).flatMap((a) => Object.keys(/** @type {KeyframeEffect} */ (a.effect).getKeyframes()[0]).filter((k) => !['offset', 'easing', 'composite', 'computedOffset'].includes(k))).join(),
+  own: e.getAnimations().length, props: [...new Set(e.getAnimations({ subtree: true }).flatMap((a) => Object.keys(/** @type {KeyframeEffect} */ (a.effect).getKeyframes()[0]).filter((k) => !['offset', 'easing', 'composite', 'computedOffset'].includes(k))))].sort().join(),
   copy: getComputedStyle(e, '::after').content,
   inToken: e.parentElement.classList.contains('cm-line') ? '' : e.parentElement.className
 })));
@@ -90,20 +90,21 @@ const peakLit = async (ms) => {
   }, ms);
   return () => win.evaluate(() => window.__peakLit);
 };
-/** Waits until earlier trails and particles have faded, jumps from the end to the top, and
- * returns the most pixels the trail lit. */
-const jumpTrail = async () => {
-  await win.keyboard.press('Control+End');
-  await win.waitForTimeout(400);
-  const peak = await peakLit(300);
-  await win.keyboard.press('Control+Home');
-  return peak();
+/** Waits until nothing is drawn on the effects canvas. */
+const canvasClear = () => win.waitForFunction(() => {
+  const cv = /** @type {HTMLCanvasElement | null} */ (document.querySelector('#fx-particles'));
+  return !cv || !cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data.some((v, i) => i % 4 === 3 && v > 0);
+}, null, { timeout: 6000, polling: 200 });
+const setCursorEffect = async (id) => {
+  await win.evaluate((v) => window.notera.setSettings({ cursorEffect: v }), id);
+  await win.waitForFunction((v) => window.__notera.settings.cursorEffect === v, id);
+  await win.waitForTimeout(100);
 };
 
 // ---------- Neon OMG, dark: everything on ----------
 await setTheme('neon-omg', 'dark');
 let c = await cls();
-for (const want of ['fx-e-glow-all', 'fx-r-glow-headings', 'fx-e-grad-1', 'fx-e-grad-2', 'fx-cursor-block', 'fx-cursor-glow', 'fx-cursor-smooth', 'fx-phosphor', 'fx-bg', 'fx-grid', 'fx-grid-move', 'fx-sun', 'fx-scanlines', 'fx-vignette']) {
+for (const want of ['fx-e-glow-all', 'fx-r-glow-headings', 'fx-e-grad-1', 'fx-e-grad-2', 'fx-cursor-block', 'fx-cursor-glow', 'fx-cursor-smooth', 'fx-type-phosphor', 'fx-bg', 'fx-grid', 'fx-grid-move', 'fx-sun', 'fx-scanlines', 'fx-vignette']) {
   assert.ok(c.includes(want), `${want} in ${c.join(' ')}`);
 }
 assert.equal(await css('.cm-line.cm-h2 .cm-hd:last-child', 'color'), 'rgba(0, 0, 0, 0)', 'H2 text is transparent under its gradient');
@@ -122,11 +123,11 @@ assert.equal(await css('#fx-bg .fx-sun', 'display'), 'block');
 await typeAtEnd('Neon!');
 let marks = await phosphorMarks();
 assert.ok(marks.length >= 2 && marks.length <= 5, `the newest letters flash: ${JSON.stringify(marks)}`);
-assert.ok(marks.every((m) => m.anim === 'fx-phosphor' && m.own === 0 && m.props === 'opacity' && m.copy === `"${m.text}"`), JSON.stringify(marks));
+assert.ok(marks.every((m) => m.anim === 'fx-fade' && m.own === 0 && m.props === 'opacity' && m.copy === `"${m.text}"`), JSON.stringify(marks));
 assert.equal(marks.map((m) => m.text).join('').slice(-1), '!');
 await shot('60-neon-omg-dark');
-await win.waitForFunction(() => !document.querySelector('.cm-content .fx-ph'), null, { timeout: 2000 });
-ok('fosforbokstav: de senaste bokstäverna lyser upp och märkningen tas bort efteråt');
+await win.waitForFunction(() => !document.querySelector('.cm-content .fx-ltr'), null, { timeout: 2000 });
+ok('Neon OMG föreslår fosforbokstaven: de senaste bokstäverna lyser upp och märkningen tas bort efteråt');
 
 // The grid moves by transform (compositor only), holds still while typing and goes on afterwards.
 const gridAnim = () => win.evaluate(() => {
@@ -151,26 +152,27 @@ assert.ok(marks.length === 1 && /cm-hd/.test(marks[0].inToken), `inside the H3 t
 await win.keyboard.press('Backspace');
 ok('fosfor i en rubrik ärver rubrikens färg');
 
+// Whole characters: an emoji is one mark with the whole emoji, not two halves.
+await win.keyboard.type('a😀', { delay: 10 });
+marks = await phosphorMarks();
+assert.deepEqual(marks.slice(-2).map((m) => m.text), ['a', '😀'], JSON.stringify(marks));
+assert.equal(marks[marks.length - 1].copy, '"😀"');
+await win.keyboard.press('Backspace');
+await win.keyboard.press('Backspace');
+ok('en emoji blinkar hel');
+
 // A dead key or an IME composes; nothing may be wrapped around the text while it does.
 await win.evaluate(() => { const v = window.__notera.view; const at = v.state.selection.main.head; v.dispatch({ changes: { from: at, insert: 'é' }, selection: { anchor: at + 1 }, userEvent: 'input.type.compose' }); });
 assert.equal((await phosphorMarks()).length, 0, 'no phosphor mark while composing');
 await win.keyboard.press('Backspace');
 ok('ingen fosfor runt en pågående komposition (döda tangenter)');
 
-const trailLit = await jumpTrail();
-assert.ok(trailLit > 200, `the cursor trail is drawn on a jump (${trailLit} lit pixels)`);
-await shot('60b-neon-omg-dark-jump');
+// The cursor trail is gone: moving the cursor draws nothing.
 await win.keyboard.press('Control+End');
-await win.keyboard.type('Ny rad', { delay: 30 });
-await win.waitForTimeout(400);
-const enterPeak = await peakLit(300);
-await win.keyboard.press('Enter');
-await win.waitForTimeout(30);
-await shot('60c-neon-omg-dark-enter');
-assert.ok(await enterPeak() > 20, 'a trail at a new line');
-await win.waitForTimeout(400);
-assert.equal(await litPixels(), 0, 'the trail fades out');
-ok('Neon OMG mörkt: glöd, gradient, Bungee Inline, blockmarkör, fosfor, markörsvans, sol och rutnät');
+const jumpPeak = await peakLit(300);
+await win.keyboard.press('Control+Home');
+assert.equal(await jumpPeak(), 0, 'no trail on a jump');
+ok('Neon OMG mörkt: glöd, gradient, Bungee Inline, blockmarkör, fosfor, sol och rutnät');
 
 // Smooth cursor: CodeMirror moves the same element, so the transition glides.
 assert.match(await css('.cm-cursorLayer .cm-cursor', 'transitionProperty'), /left/);
@@ -184,24 +186,17 @@ ok('Neon OMG i Läs');
 await setTheme('neon-omg', 'light');
 c = await cls();
 // No glow on a light page: a halo in the text's colour lowers its contrast (contrast.mjs).
-assert.ok(!c.some((x) => /glow-(headings|all)/.test(x)) && c.includes('fx-sun') && c.includes('fx-phosphor'), c.join(' '));
+assert.ok(!c.some((x) => /glow-(headings|all)/.test(x)) && c.includes('fx-sun') && c.includes('fx-type-phosphor'), c.join(' '));
 assert.equal(await win.evaluate(() => document.documentElement.style.getPropertyValue('--fx-ph-color')), '#d6249f', 'a light page flashes pink, not white');
 await typeAtEnd(' ljus');
 assert.ok((await phosphorMarks()).length >= 2);
 await shot('62-neon-omg-light');
-await win.waitForTimeout(400);
-const lightPeak = await peakLit(300);
-await win.keyboard.press('Enter');
-await win.waitForTimeout(30);
-await shot('62b-neon-omg-light-enter');
-assert.ok(await lightPeak() > 20, 'the trail shows on a light page');
-await win.keyboard.press('Backspace');
-ok('Neon OMG ljust: ingen glöd, rosa fosfor, markörsvans, dämpad bakgrund');
+ok('Neon OMG ljust: ingen glöd, rosa fosfor, dämpad bakgrund');
 
-// ---------- particles, in a theme of one's own ----------
+// ---------- a theme from before cursor effects: particles are sparks ----------
 await setTheme('gnistor', 'dark');
 c = await cls();
-assert.ok(!c.includes('fx-phosphor'), c.join(' '));
+assert.ok(!c.includes('fx-type-phosphor') && c.includes('fx-type-sparks'), c.join(' '));
 await typeAtEnd('Gnistor');
 await win.waitForTimeout(60);
 const lit = await litPixels();
@@ -210,11 +205,17 @@ assert.equal((await phosphorMarks()).length, 0, 'no phosphor where the theme tur
 await shot('62c-particles');
 assert.deepEqual(await win.evaluate(() => { const cv = document.querySelector('#fx-particles'); return [cv.width, cv.height]; }),
   await win.evaluate(() => [innerWidth, innerHeight]), 'the effects canvas is drawn at 1x');
-await win.waitForFunction(() => {
-  const cv = /** @type {HTMLCanvasElement} */ (document.querySelector('#fx-particles'));
-  return !cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data.some((v, i) => i % 4 === 3 && v > 0);
-}, null, { timeout: 6000, polling: 200 });
-ok('partiklar finns kvar för teman som vill ha dem');
+await canvasClear();
+ok('ett äldre tema med particles får fyrverkeriet');
+// Moving the cursor draws the trail of phosphorTrail; a jump gives a clear streak.
+await setCursorEffect('phosphorTrail');
+await win.keyboard.press('Control+End');
+await canvasClear();
+const jump = await peakLit(300);
+await win.keyboard.press('Control+Home');
+assert.ok(await jump() > 200, 'a streak on a jump');
+await setCursorEffect('theme');
+ok('fosfor och svans: svansen följer markören vid hopp');
 
 for (const [theme, mode, name] of [['neon', 'dark', '63-neon-dark'], ['neon', 'light', '64-neon-light'], ['neon-chill', 'dark', '65-neon-chill-dark'], ['neon-chill', 'light', '66-neon-chill-light']]) {
   await setTheme(theme, mode);
@@ -241,8 +242,7 @@ assert.equal(await css('.cm-line.cm-h3 .cm-hd:last-child', 'color'), 'rgb(254, 2
 assert.equal(await css('.cm-content', 'textShadow'), 'none');
 await shot('67-neon-omg-effects-off');
 await typeAtEnd('av');
-assert.equal((await phosphorMarks()).length, 0, 'no phosphor with effects off');
-assert.equal(await jumpTrail(), 0, 'no trail with effects off');
+assert.equal((await phosphorMarks()).length, 0, 'no phosphor with effects off: it was only the theme\'s suggestion');
 const menuEffects = await app.evaluate(({ Menu }) => {
   let hit = null;
   const walk = (items) => { for (const i of items) { if (i.type === 'checkbox' && i.label === 'Temaeffekter') hit = i.checked; if (i.submenu) walk(i.submenu.items); } };
@@ -263,6 +263,97 @@ assert.equal(await css('#fx-bg', 'display'), 'none');
 await win.emulateMedia({ media: 'screen' });
 ok('utskrift utan effekter och med vanliga färger');
 
+// ---------- the cursor effect is the user's ----------
+await setTheme('neon-omg', 'dark');
+await setCursorEffect('ripple');
+c = await cls();
+assert.ok(c.includes('fx-type-ripple') && !c.includes('fx-type-phosphor'), `the user's pick wins over the theme's: ${c.join(' ')}`);
+await setTheme('neon-chill', 'dark');
+assert.ok((await cls()).includes('fx-type-ripple'), 'and survives a theme switch, also to a theme that suggests none');
+await win.evaluate(() => window.notera.setSettings({ effects: false }));
+await win.waitForFunction(() => !document.documentElement.classList.contains('fx-e-glow-headings'));
+assert.deepEqual(await cls(), ['fx-type-ripple'], 'Theme effects off keeps the effect the user picked');
+await win.evaluate(() => window.notera.setSettings({ effects: true }));
+await setCursorEffect('none');
+assert.ok(!(await cls()).some((x) => x.startsWith('fx-type-')), 'none');
+await setTheme('neon-omg', 'dark');
+assert.ok(!(await cls()).some((x) => x.startsWith('fx-type-')), 'none stays none in a theme that suggests phosphor');
+await setCursorEffect('theme');
+assert.ok((await cls()).includes('fx-type-phosphor'), "back to the theme's choice");
+ok('marköreffekten är användarens: vinner över temat, följer med vid temabyte, kvar med temaeffekter av');
+
+// The menu, the settings and the palette offer the theme's choice, none and the ten effects.
+const NAMES = ['Fyrverkeri', 'Älvstoft', 'Ringar', 'Pulserande markör', 'Fosforbokstav', 'Fosfor och svans', 'Röd laser', 'Lasersikte', 'Neonrör', 'Glitch', 'Skärpa'];
+const menuFx = await app.evaluate(({ Menu }) => {
+  let hit = null;
+  const walk = (items) => { for (const i of items) { if (i.label === 'Marköreffekt' && i.submenu) hit = i.submenu.items.filter((x) => x.type === 'radio').map((x) => [x.label, x.checked]); else if (i.submenu) walk(i.submenu.items); } };
+  walk(Menu.getApplicationMenu().items);
+  return hit;
+});
+assert.deepEqual(menuFx.map((x) => x[0]), ['Temats val', 'Ingen', ...NAMES]);
+assert.deepEqual(menuFx.filter((x) => x[1]).map((x) => x[0]), ['Temats val']);
+await win.evaluate(() => window.__notera.handleAction('settings'));
+await win.waitForSelector('#dlg-settings[open]');
+const opts = await win.evaluate(() => [...document.querySelectorAll('#set-general select')].map((sel) => [...sel.options].map((o) => o.textContent)).find((o) => o.includes('Ingen')));
+assert.deepEqual(opts, ['Temats val (Fosforbokstav)', 'Ingen', ...NAMES]);
+await win.keyboard.press('Escape');
+await win.waitForSelector('#dlg-settings:not([open])', { state: 'attached' });
+// Closing the dialog gives the editor focus back; open the picker after that, not before.
+await win.waitForFunction(() => window.__notera.view.hasFocus);
+const openPicker = async () => {
+  await win.evaluate(() => window.__notera.handleAction('pickCursorEffect'));
+  await win.waitForSelector('#quick-pick:not([hidden]) .qp-item');
+  await win.waitForFunction(() => document.activeElement && document.activeElement.closest('#quick-pick'));
+};
+await openPicker();
+assert.deepEqual(await win.locator('#quick-pick .qp-label').allTextContents(), ['Temats val (Fosforbokstav)', 'Ingen', ...NAMES]);
+await win.keyboard.press('ArrowDown');
+await win.keyboard.press('ArrowDown');
+await win.waitForFunction(() => document.documentElement.classList.contains('fx-type-sparks'));
+const demoLit = await peakLit(400);
+assert.ok(await demoLit() > 20, 'the highlighted effect plays at the cursor without typing');
+await win.keyboard.press('Escape');
+await win.waitForFunction(() => document.documentElement.classList.contains('fx-type-phosphor'));
+assert.equal(await win.evaluate(() => window.__notera.settings.cursorEffect), 'theme', 'Esc puts the old one back');
+await openPicker();
+await win.keyboard.type('glitch');
+await win.keyboard.press('Enter');
+await win.waitForFunction(() => window.__notera.settings.cursorEffect === 'glitch');
+ok('meny, inställningar och palett (med förhandsvisning) erbjuder temats val, ingen och de elva');
+
+// Every effect, mid-animation, on a dark and a light theme. Letter effects animate only
+// opacity, transform and filter on copies of the letter (or the letter's own opacity: neon).
+const LETTER = { phosphor: 'fx-fade', phosphorTrail: 'fx-fade', laser: 'fx-burn-hot,fx-burn-warm', neon: 'fx-flicker,fx-flicker-glow', glitch: 'fx-glitch-a,fx-glitch-b', focus: 'fx-focus' };
+const CANVAS = ['sparks', 'pixie', 'ripple', 'pulse', 'phosphorTrail', 'laser', 'sight'];
+const caretClip = () => win.evaluate(() => {
+  const v = window.__notera.view; const r = v.coordsAtPos(v.state.selection.main.head);
+  return { x: Math.max(0, Math.round(r.left) - 260), y: Math.max(0, Math.round(r.top) - 70), width: 420, height: 140 };
+});
+for (const [theme, mode] of [['neon-omg', 'dark'], ['default', 'light']]) {
+  await setTheme(theme, mode);
+  for (const id of ['sparks', 'pixie', 'ripple', 'pulse', 'phosphor', 'phosphorTrail', 'laser', 'sight', 'neon', 'glitch', 'focus']) {
+    await setCursorEffect(id);
+    await canvasClear();
+    await typeAtEnd('\nGlöd');
+    const peak = await peakLit(250);
+    await win.keyboard.type('x', { delay: 0 });
+    await win.waitForTimeout(id === 'glitch' || id === 'focus' ? 40 : 80);
+    await win.screenshot({ path: path.join(shots, `68-fx-${id}-${theme}-${mode}.png`), clip: await caretClip() });
+    if (LETTER[id]) {
+      const m = await phosphorMarks();
+      assert.ok(m.length >= 1, `${id}: the letter carries its mark`);
+      const last = m[m.length - 1];
+      assert.equal(last.anim.split(',').sort().join(','), LETTER[id].split(',').sort().join(','), `${id} animations`);
+      assert.ok(last.props.split(',').every((p) => ['opacity', 'transform', 'filter'].includes(p)), `${id} animates only compositor properties: ${last.props}`);
+    } else assert.equal((await phosphorMarks()).length, 0, `${id} marks no letters`);
+    if (CANVAS.includes(id)) assert.ok(await peak() > 5, `${id} draws on the canvas (${theme} ${mode})`);
+    else assert.equal(await peak(), 0, `${id} draws nothing on the canvas`);
+  }
+}
+await setCursorEffect('theme');
+await setTheme('neon-omg', 'dark');
+ok('alla elva effekterna mitt i animationen, mörkt och ljust');
+
 await win.evaluate(() => { const t = window.__notera.active; t.dirty = false; t.savedDoc = window.__notera.view.state.doc; });
 await app.close();
 
@@ -275,17 +366,20 @@ await win.evaluate(() => window.notera.setSettings({ mode: 'light' }));
 await win.evaluate(() => window.notera.setSettings({ mode: 'dark' }));
 await win.waitForFunction(() => document.documentElement.classList.contains('fx-grid'));
 c = await cls();
-assert.ok(!c.includes('fx-grid-move') && !c.includes('fx-cursor-smooth') && !c.includes('fx-phosphor'), c.join(' '));
+assert.ok(!c.includes('fx-grid-move') && !c.includes('fx-cursor-smooth') && !c.some((x) => x.startsWith('fx-type-')), c.join(' '));
 assert.ok(c.includes('fx-e-glow-all'), 'glow is not motion and stays');
 await typeAtEnd('x');
 assert.equal((await phosphorMarks()).length, 0, 'no phosphor with reduced motion');
-assert.equal(await jumpTrail(), 0, 'no trail with reduced motion');
 await win.evaluate(() => window.notera.setSettings({ theme: 'gnistor' }));
 await win.waitForFunction(() => document.documentElement.dataset.themeId === 'gnistor');
 await typeAtEnd('x');
 await win.waitForTimeout(60);
 assert.equal(await litPixels(), 0, 'no particles with reduced motion');
-ok('minska animationer: ingen fosfor, svans eller partiklar, stilla rutnät, markören hoppar');
+await win.evaluate(() => window.notera.setSettings({ cursorEffect: 'ripple' }));
+await typeAtEnd('x');
+await win.waitForTimeout(60);
+assert.equal(await litPixels(), 0, 'not even a cursor effect the user picked');
+ok('minska animationer: ingen marköreffekt, stilla rutnät, markören hoppar');
 await win.evaluate(() => { const t = window.__notera.active; t.dirty = false; t.savedDoc = window.__notera.view.state.doc; });
 await app.close();
 console.log('effects OK');

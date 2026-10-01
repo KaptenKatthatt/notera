@@ -131,7 +131,7 @@ Check that a font's licence lets you share it before you put it in a theme you g
 
 ## Effects
 
-`notera.effects` switches on Notera's built-in effects. A theme only picks effects and sets their parameters; it never runs code. Every effect is off unless the theme turns it on, and `false` turns off one the theme inherited. View > Theme > Theme effects switches them all off without changing theme, and turning off Windows' "Animation effects" (Accessibility > Visual effects) stops everything that moves: particles, the phosphor flash, the cursor trail, the gliding cursor and the moving grid. Glow stays, since it does not move.
+`notera.effects` switches on Notera's built-in effects. A theme only picks effects and sets their parameters; it never runs code. Every effect is off unless the theme turns it on, and `false` turns off one the theme inherited. View > Theme > Theme effects switches them all off without changing theme, and turning off Windows' "Animation effects" (Accessibility > Visual effects) stops everything that moves: the cursor effect, the gliding cursor and the moving grid. Glow stays, since it does not move.
 
 ```jsonc
 "notera": {
@@ -139,9 +139,8 @@ Check that a font's licence lets you share it before you put it in a theme you g
     "glow":      { "target": "headings", "strength": 0.6 },          // or "all"; optional "color"
     "gradient":  { "colors": ["#ff7edb", "#fede5d"], "levels": [1] }, // headings drawn with a gradient
     "cursor":    { "style": "block", "glow": 0.8, "smooth": true },   // "line", "block", "underline"
-    "particles": { "amount": 10, "colors": ["#ff7edb", "#36f9f6"], "size": 2.5 },
-    "phosphor":  { "strength": 1 },                                  // the letter just typed flashes
-    "trail":     { "opacity": 0.55 },                                // a streak behind the moving cursor
+    "typing":    "phosphor",                                         // the cursor effect it suggests
+    "phosphor":  { "strength": 1 },                                  // and that effect's parameters
     "background": {
       "grid": { "color": "#ff7edb", "opacity": 0.6, "speed": 0.5 },   // a synthwave floor, moving
       "sun":  { "colors": ["#fede5d", "#ff7edb"], "opacity": 0.3 },   // a striped sun on the horizon
@@ -157,10 +156,30 @@ Check that a font's licence lets you share it before you put it in a theme you g
 | `glow` | `target`: `headings` or `all`. `strength` 0 to 1. `color`, default the text's own colour. The glow is wide and soft, and glowing headings get a core mixed 30 % toward white (black on a light page), like a neon tube, so the halo does not blur the letters into the page. |
 | `gradient` | `colors`: two or more. `levels`: which heading levels, default `[1]`. |
 | `cursor` | `style`: `line`, `block` or `underline`. `glow` 0 to 1. `smooth`: the cursor glides to where it goes. |
-| `particles` | `amount` per keystroke, 1 to 40. `colors`, default the theme's accent and heading colours. `size` in pixels. |
-| `phosphor` | The letter you just typed flashes and settles to its normal colour and glow in about half a second, like the phosphor of an old CRT. `color`: the flash, default white on a dark page and the text's own colour on a light one (where white would not show; the halo is wider there instead). `strength` 0 to 1, the size of the halo, default 1. Only the newest few letters flash, never a paste. |
-| `trail` | When the cursor moves, by typing, Enter, a click, the arrow keys or a jump, a streak fades from where it was to where it went in about 150 ms. Barely there while you type, clear at a new line or a jump. `color`, default the cursor's colour. `opacity` 0 to 1, default 0.55. Goes well with `"smooth": true` on the cursor. |
+| `typing` | The cursor effect the theme suggests (see below), or `"none"`. |
 | `background` | `grid`, `sun`: `true` or an object as above. `scanlines`, `vignette`: 0 to 1. The editor and preview get a frosted pane in the background colour, so the sun and the grid show through it but never sit straight behind the text. Scanlines and vignette darken text too, so keep them low (the built-in themes use 0.1 or less). |
+
+### Cursor effects
+
+What happens where you type is the user's own choice: Settings, View > Theme > Cursor effect, or "Cursor effect…" in the command palette. Any cursor effect works with any theme. The default is "Theme's choice": the effect in the theme's `typing`, so a theme only suggests one, and the user's pick survives a theme switch. Theme effects off drops the theme's suggestion but not an effect the user picked.
+
+| Effect | What it does | Parameters |
+| --- | --- | --- |
+| `sparks` | Sparks fly up from the cursor at every key. | `amount` 1 to 40, default 10. `size` 1 to 8 px, default 2.5. `colors`. |
+| `pixie` | Two or three small dots drift down from the baseline and fade within a line height. | `colors`. |
+| `ripple` | A thin ring grows out of the cursor and fades in a fifth of a second. | `colors`. |
+| `pulse` | The cursor's glow flares up at every key and dies down. | `color`, default the cursor's. |
+| `phosphor` | The letter just typed flashes and settles to its normal colour and glow in about half a second, like the phosphor of an old CRT. | `color`: the flash, default white on a dark page and the text's own colour on a light one (where white would not show; the halo is wider there instead). `strength` 0 to 1, the size of the halo, default 1. |
+| `phosphorTrail` | The phosphor letter, and when the cursor moves (typing, Enter, a click, the arrow keys, a jump) a streak fades from where it was to where it went in about 150 ms: barely there while you type, clear at a new line or a jump. | As `phosphor`, plus `trailColor` (default the cursor's) and `trailOpacity` 0 to 1, default 0.55. |
+| `laser` | A laser beam from the right edge of the text hits the cursor and burns the letter in: white-hot, orange, then its own colour. | `color`, default red. |
+| `sight` | A thin laser line flashes along the line under the baseline, like a laser level. | `color`, default red. |
+| `neon` | The letter lights up like a neon tube: it flickers off and on before it burns steadily. | none |
+| `glitch` | A red and a cyan copy of the letter jump apart and slide back together. | none |
+| `focus` | The letter lands large and blurred and pulls together sharp. | none |
+
+A theme tunes an effect under its own key, e.g. `"sparks": { "amount": 4 }`, whether or not it suggests it; those parameters apply when the user picks that effect. `colors` left out are the theme's accent and heading colours. Letter effects only touch the newest few letters, never a paste.
+
+Themes from before 0.11 had no `typing`: `phosphor` switched the phosphor letter on, `phosphor` and `trail` together the phosphor letter with the trail (`phosphorTrail`), and `particles` the sparks (read as `sparks` now). `trail` alone is no longer drawn.
 
 Effects can differ per mode (put them in `light` or `dark`; a glow reads as a smudge on a light page, so the built-in themes turn it off there) and in the preview: `read.effects` is merged over the editor's effects in Läs, so a theme can glow every letter while you write and only the headings while you read. The `neon-chill`, `neon` and `neon-omg` built-in themes show all of it, from calm to everything.
 

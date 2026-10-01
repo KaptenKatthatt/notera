@@ -21,6 +21,7 @@ const VIEWS = { viewEditor: 'editor', viewSplit: 'split', viewPreview: 'preview'
  *   t: () => (key: string, vars?: object) => string, api: any, getSettings: () => any,
  *   run: (id: string) => Promise<void> | void, focusEditor: () => void,
  *   previewTheme: (msg: any) => void, restoreTheme: () => void, openPaths: (paths: string[]) => Promise<void> | void,
+ *   cursorEffects: string[], themeCursorEffect: () => string | null, previewCursorEffect: (id: string) => void, restoreCursorEffect: () => void,
  *   notice: (text: string) => void
  * }} ctx
  */
@@ -104,6 +105,32 @@ export function createPalette(ctx) {
       },
       onPick: (item) => { if (item) void ctx.api.setSettings({ theme: item.id }); ctx.focusEditor(); },
       onCancel: () => ctx.restoreTheme()
+    });
+  }
+
+  // ---------- cursor effect picker ----------
+  /** The choices: the theme's, none, then every effect; [id, label]. */
+  function cursorEffectChoices() {
+    const t = ctx.t();
+    const suggested = ctx.themeCursorEffect();
+    return [
+      ['theme', suggested ? t('fx.themeWith', { name: t(`fx.${suggested}`) }) : t('fx.theme')],
+      ['none', t('fx.none')],
+      ...ctx.cursorEffects.map((id) => [id, t(`fx.${id}`)])
+    ];
+  }
+
+  /** Like the theme picker: the highlighted effect runs on the open document as you type. */
+  function pickCursorEffect() {
+    const t = ctx.t();
+    const now = ctx.getSettings().cursorEffect || 'theme';
+    pick.open({
+      placeholder: t('palette.cursorEffects'),
+      items: cursorEffectChoices().map(([id, label]) => ({ id, label, checked: id === now })),
+      initial: now,
+      onHighlight: (item) => ctx.previewCursorEffect(item.id),
+      onPick: (item) => { ctx.restoreCursorEffect(); if (item) void ctx.api.setSettings({ cursorEffect: item.id }); ctx.focusEditor(); },
+      onCancel: () => ctx.restoreCursorEffect()
     });
   }
 
@@ -208,5 +235,5 @@ export function createPalette(ctx) {
     });
   }
 
-  return { openCommands, pickTheme, pickMode, newTheme, importVsCode, importVsix, get isOpen() { return pick.isOpen; } };
+  return { openCommands, pickTheme, pickCursorEffect, cursorEffectChoices, pickMode, newTheme, importVsCode, importVsix, get isOpen() { return pick.isOpen; } };
 }

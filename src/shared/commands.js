@@ -99,6 +99,7 @@ const COMMANDS = [
   { id: 'effects', cat: 'view', label: 'menu.effects', keys: [], global: true },
   { id: 'commandPalette', cat: 'view', label: 'menu.commandPalette', keys: ['Ctrl+Shift+P'], global: true },
   { id: 'pickTheme', cat: 'view', label: 'menu.pickTheme', keys: [], global: true },
+  { id: 'pickCursorEffect', cat: 'view', label: 'menu.pickCursorEffect', keys: [], global: true },
   { id: 'newThemeFromCurrent', cat: 'view', label: 'menu.newThemeFromCurrent', keys: [], global: true },
   { id: 'openThemesFolder', cat: 'view', label: 'menu.openThemesFolder', keys: [], global: true },
   { id: 'importVsCodeTheme', cat: 'view', label: 'menu.importVsCodeTheme', keys: [], global: true },

@@ -359,21 +359,87 @@ const clamp01 = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? Math.mi
 const colorList = (v) => (Array.isArray(v) ? v : [v]).map(safeCss).filter(Boolean).slice(0, 6);
 
 /**
+ * The cursor effects: what happens where you type. The user picks one in Settings, any of them
+ * with any theme; a theme only suggests one (`notera.effects.typing`) and may tune each one's
+ * parameters under its id (`notera.effects.sparks`, …). Each parameter has its type, range and
+ * default here, so Settings and theme.schema.json follow this table. Colours left out follow the
+ * theme: `colors` the accent and heading colours, `color` the cursor's (phosphor: see THEMES.md).
+ * `kind`: drawn on the effects canvas, or a glowing copy over the letter just typed.
+ */
+const CURSOR_EFFECTS = {
+  sparks: { kind: 'canvas', params: { amount: { type: 'int', min: 1, max: 40, default: 10 }, size: { type: 'number', min: 1, max: 8, default: 2.5 }, colors: { type: 'colors' } } },
+  pixie: { kind: 'canvas', params: { colors: { type: 'colors' } } },
+  ripple: { kind: 'canvas', params: { colors: { type: 'colors' } } },
+  pulse: { kind: 'canvas', params: { color: { type: 'color' } } },
+  phosphor: { kind: 'letter', params: { color: { type: 'color' }, strength: { type: 'number', min: 0, max: 1, default: 1 } } },
+  phosphorTrail: { kind: 'both', params: { color: { type: 'color' }, strength: { type: 'number', min: 0, max: 1, default: 1 }, trailColor: { type: 'color' }, trailOpacity: { type: 'number', min: 0, max: 1, default: 0.55 } } },
+  laser: { kind: 'both', params: { color: { type: 'color', default: '#ff3344' } } },
+  sight: { kind: 'canvas', params: { color: { type: 'color', default: '#ff3344' } } },
+  neon: { kind: 'letter', params: {} },
+  glitch: { kind: 'letter', params: {} },
+  focus: { kind: 'letter', params: {} }
+};
+const CURSOR_EFFECT_IDS = Object.keys(CURSOR_EFFECTS);
+
+/** One cursor effect's parameters, checked against CURSOR_EFFECTS and defaulted. */
+function effectParams(id, raw) {
+  const p = isPlainObject(raw) ? raw : {};
+  /** @type {Record<string, any>} */
+  const out = {};
+  for (const [name, spec] of Object.entries(CURSOR_EFFECTS[id].params)) {
+    const v = p[name];
+    if (spec.type === 'colors') out[name] = colorList(v);
+    else if (spec.type === 'color') out[name] = safeCss(v) || spec.default || null;
+    else {
+      const n = typeof v === 'number' && Number.isFinite(v) ? Math.min(spec.max, Math.max(spec.min, v)) : spec.default;
+      out[name] = spec.type === 'int' ? Math.round(n) : n;
+    }
+  }
+  return out;
+}
+
+/**
+ * Which cursor effect is on: the user's choice ('none' or an id) when there is one, else the one
+ * the theme suggests in `typing`. Themes from before 0.11 had no `typing` and switched effects on
+ * by their keys: `phosphor` (with `trail`: phosphorTrail), then `particles` (now sparks). A theme's `typing` naming an effect it
+ * also sets to false (an inherited suggestion switched off) falls back the same way.
+ * @param {any} e the theme's effects
+ * @param {string | null | undefined} choice the user's setting; 'theme' or empty follows the theme
+ */
+function typingEffect(e, choice) {
+  const obj = (v) => (isPlainObject(v) ? v : {});
+  // Before 0.11 the phosphor letter and the trail were two keys; together they are phosphorTrail.
+  const legacy = (id) => (id === 'sparks' ? e.particles
+    : id === 'phosphorTrail' ? { ...obj(e.phosphor), trailColor: obj(e.trail).color, trailOpacity: obj(e.trail).opacity } : undefined);
+  const params = (id) => effectParams(id, e[id] === undefined ? legacy(id) : e[id]);
+  if (choice === 'none') return null;
+  if (CURSOR_EFFECT_IDS.includes(choice)) return { id: choice, ...params(choice) };
+  const on = (v) => v === true || isPlainObject(v);
+  if (e.typing === 'none') return null;
+  if (CURSOR_EFFECT_IDS.includes(e.typing) && e[e.typing] !== false && !(e.typing === 'sparks' && e.particles === false && e.sparks === undefined)) {
+    return { id: e.typing, ...params(e.typing) };
+  }
+  if (on(e.phosphor) && on(e.trail)) return { id: 'phosphorTrail', ...params('phosphorTrail') };
+  if (on(e.phosphor)) return { id: 'phosphor', ...params('phosphor') };
+  if (on(e.sparks) || on(e.particles)) return { id: 'sparks', ...params('sparks') };
+  return null;
+}
+
+/**
  * The built-in effects a theme switched on, with every parameter checked and defaulted. Missing
  * or false means off. The same shape comes back for the editor and for Läs (the preview), where
- * `read.effects` is merged over the theme's own effects.
+ * `read.effects` is merged over the theme's own effects. `typing` is the cursor effect, with the
+ * user's choice (`opts.cursorEffect`) over the theme's suggestion.
  * @param {any} fx
+ * @param {{ cursorEffect?: string | null }} [opts]
  */
-function normalizeEffects(fx) {
+function normalizeEffects(fx, opts = {}) {
   const e = isPlainObject(fx) ? fx : {};
   const on = (v) => v === true || isPlainObject(v);
   const obj = (v) => (isPlainObject(v) ? v : {});
   const glow = obj(e.glow);
   const grad = obj(e.gradient);
   const cursor = obj(e.cursor);
-  const parts = obj(e.particles);
-  const phosphor = obj(e.phosphor);
-  const trail = obj(e.trail);
   const bg = obj(e.background);
   const grid = obj(bg.grid);
   const sun = obj(bg.sun);
@@ -390,14 +456,7 @@ function normalizeEffects(fx) {
         glow: clamp01(cursor.glow, 0), smooth: cursor.smooth === true
       }
       : null,
-    particles: on(e.particles)
-      ? {
-        amount: Math.round(Math.min(40, Math.max(1, typeof parts.amount === 'number' ? parts.amount : 8))),
-        colors: colorList(parts.colors), size: Math.min(8, Math.max(1, typeof parts.size === 'number' ? parts.size : 2.5))
-      }
-      : null,
-    phosphor: on(e.phosphor) ? { color: safeCss(phosphor.color), strength: clamp01(phosphor.strength, 1) } : null,
-    trail: on(e.trail) ? { color: safeCss(trail.color), opacity: clamp01(trail.opacity, 0.55) } : null,
+    typing: typingEffect(e, opts.cursorEffect),
     background: {
       grid: on(bg.grid) ? { color: safeCss(grid.color), opacity: clamp01(grid.opacity, 0.5), speed: clamp01(grid.speed, 0.5) } : null,
       sun: on(bg.sun) ? { colors: colorList(sun.colors), opacity: clamp01(sun.opacity, 0.5) } : null,
@@ -429,5 +488,6 @@ function migrateThemeSettings(data) {
 
 module.exports = {
   MODES, DEFAULT_THEME, ThemeError, isValidId, parseJsonc, deepMerge, resolveTheme, themeName,
-  variantOf, cssVars, cssBlock, tokenColor, fontStack, migrateThemeSettings, normalizeEffects, safeCss, COLOR_VARS, MD_VARS, KNOWN_COLOR_KEYS
+  variantOf, cssVars, cssBlock, tokenColor, fontStack, migrateThemeSettings, normalizeEffects, safeCss, COLOR_VARS, MD_VARS, KNOWN_COLOR_KEYS,
+  CURSOR_EFFECTS, CURSOR_EFFECT_IDS
 };

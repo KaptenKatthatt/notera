@@ -20,7 +20,7 @@ const en = {
     view: '&View', zoom: 'Zoom', zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomReset: 'Restore default zoom',
     statusBar: 'Status bar', narrowColumn: 'Narrow text column', wordWrap: 'Word wrap', lineNumbers: 'Line numbers', formattingBar: 'Formatting toolbar',
     editorOnly: 'Write', split: 'Split', previewOnly: 'Read', theme: 'Theme', themeSystem: 'Use system setting',
-    themeLight: 'Light', themeDark: 'Dark', themeBroken: '{name} (broken)', openThemesFolder: 'Open themes folder', effects: 'Theme effects', commandPalette: 'Command palette…', pickTheme: 'Browse themes…', newThemeFromCurrent: 'New theme from current…', openSettingsJson: 'Open settings (JSON)', importVsCodeTheme: 'Import VS Code theme…', language: 'Language', langAuto: 'Automatic', langEn: 'English', langSv: 'Svenska',
+    themeLight: 'Light', themeDark: 'Dark', themeBroken: '{name} (broken)', openThemesFolder: 'Open themes folder', effects: 'Theme effects', cursorEffect: 'Cursor effect', pickCursorEffect: 'Cursor effect…', commandPalette: 'Command palette…', pickTheme: 'Browse themes…', newThemeFromCurrent: 'New theme from current…', openSettingsJson: 'Open settings (JSON)', importVsCodeTheme: 'Import VS Code theme…', language: 'Language', langAuto: 'Automatic', langEn: 'English', langSv: 'Svenska',
     help: '&Help', about: 'About Notera', toggleDevTools: 'Developer tools',
     writingMode: 'Writing mode', fullscreen: 'Full screen', autosave: 'Autosave', hideMarkers: 'Hide Markdown markers',
     shortcuts: 'Keyboard shortcuts',
@@ -54,7 +54,7 @@ const en = {
   },
   settings: {
     title: 'Settings', general: 'General', keyboard: 'Keyboard shortcuts', close: 'Close',
-    appearance: 'Appearance', theme: 'Theme', mode: 'Mode', effects: 'Theme effects: glow, particles, backgrounds', language: 'Language', font: 'Editor font', fontChange: 'Change…',
+    appearance: 'Appearance', theme: 'Theme', mode: 'Mode', effects: 'Theme effects: glow, backgrounds', cursorEffect: 'Cursor effect', language: 'Language', font: 'Editor font', fontChange: 'Change…',
     editing: 'Editing', autosave: 'Save files automatically while typing', hideMarkers: 'Hide Markdown markers off the cursor line',
     wordWrap: 'Word wrap', narrowColumn: 'Narrow text column', lineNumbers: 'Line numbers', spellcheck: 'Spell check (Swedish and English)', updates: 'Updates',
     tabsWindows: 'Tabs and windows', ctrlW: 'Ctrl+W closes', ctrlWTab: 'the tab', ctrlWWindow: 'the window', ctrlWOther: 'another command (see Keyboard shortcuts)', checkUpdates: 'Check for updates automatically',
@@ -77,7 +77,7 @@ const en = {
   },
   palette: {
     commands: 'Type a command or a setting', noMatches: 'No command matches', setting: 'Setting',
-    themes: 'Pick a theme (arrow keys preview it)', modes: 'Pick a mode', languages: 'Pick a language', ctrlW: 'Ctrl+W closes',
+    themes: 'Pick a theme (arrow keys preview it)', cursorEffects: 'Pick a cursor effect (arrow keys preview it)', modes: 'Pick a mode', languages: 'Pick a language', ctrlW: 'Ctrl+W closes',
     userTheme: 'your own', themeName: 'Name of the new theme', createTheme: 'Press Enter to create "{name}"',
     defaultThemeName: 'My theme', newThemeComment1: 'Built on "{base}". Change any value and save: Notera repaints right away.',
     newThemeComment2: 'Every key is described in THEMES.md: https://github.com/KaptenKatthatt/notera/blob/master/THEMES.md',
@@ -92,6 +92,12 @@ const en = {
   theme: {
     error: 'The theme "{theme}" could not be loaded: {message}', errorAt: 'The theme "{theme}" could not be loaded: theme.json line {line}: {message}',
     openFolder: 'Open themes folder', dismiss: 'OK'
+  },
+  // Cursor effects: one name per id in CURSOR_EFFECTS (themeFormat.js), plus the two choices around them.
+  fx: {
+    theme: "Theme's choice", themeWith: "Theme's choice ({name})", none: 'None',
+    sparks: 'Sparks', pixie: 'Pixie dust', ripple: 'Ripple', pulse: 'Pulse', phosphor: 'Phosphor letter', phosphorTrail: 'Phosphor and trail',
+    laser: 'Red laser', sight: 'Laser sight', neon: 'Neon tube', glitch: 'Glitch', focus: 'Focus'
   },
   search: {
     'Find': 'Find', 'Replace': 'Replace', 'next': 'Next', 'previous': 'Previous', 'all': 'All', 'match case': 'Match case',
@@ -120,7 +126,7 @@ const sv = {
     view: '&Visa', zoom: 'Zoom', zoomIn: 'Zooma in', zoomOut: 'Zooma ut', zoomReset: 'Återställ standardzoom',
     statusBar: 'Statusfält', narrowColumn: 'Begränsad textbredd', wordWrap: 'Radbyte', lineNumbers: 'Radnummer', formattingBar: 'Formateringsfält',
     editorOnly: 'Skriv', split: 'Delad', previewOnly: 'Läs', theme: 'Tema', themeSystem: 'Följ systemet',
-    themeLight: 'Ljust', themeDark: 'Mörkt', themeBroken: '{name} (trasigt)', openThemesFolder: 'Öppna temamappen', effects: 'Temaeffekter', commandPalette: 'Kommandopalett…', pickTheme: 'Bläddra bland teman…', newThemeFromCurrent: 'Nytt tema från nuvarande…', openSettingsJson: 'Öppna inställningar (JSON)', importVsCodeTheme: 'Importera VS Code-tema…', language: 'Språk', langAuto: 'Automatiskt', langEn: 'English', langSv: 'Svenska',
+    themeLight: 'Ljust', themeDark: 'Mörkt', themeBroken: '{name} (trasigt)', openThemesFolder: 'Öppna temamappen', effects: 'Temaeffekter', cursorEffect: 'Marköreffekt', pickCursorEffect: 'Marköreffekt…', commandPalette: 'Kommandopalett…', pickTheme: 'Bläddra bland teman…', newThemeFromCurrent: 'Nytt tema från nuvarande…', openSettingsJson: 'Öppna inställningar (JSON)', importVsCodeTheme: 'Importera VS Code-tema…', language: 'Språk', langAuto: 'Automatiskt', langEn: 'English', langSv: 'Svenska',
     help: '&Hjälp', about: 'Om Notera', toggleDevTools: 'Utvecklarverktyg',
     writingMode: 'Skrivläge', fullscreen: 'Helskärm', autosave: 'Spara automatiskt', hideMarkers: 'Dölj Markdown-tecken',
     shortcuts: 'Kortkommandon',
@@ -154,7 +160,7 @@ const sv = {
   },
   settings: {
     title: 'Inställningar', general: 'Allmänt', keyboard: 'Kortkommandon', close: 'Stäng',
-    appearance: 'Utseende', theme: 'Tema', mode: 'Läge', effects: 'Temaeffekter: glöd, partiklar, bakgrunder', language: 'Språk', font: 'Teckensnitt i editorn', fontChange: 'Ändra…',
+    appearance: 'Utseende', theme: 'Tema', mode: 'Läge', effects: 'Temaeffekter: glöd, bakgrunder', cursorEffect: 'Marköreffekt', language: 'Språk', font: 'Teckensnitt i editorn', fontChange: 'Ändra…',
     editing: 'Redigering', autosave: 'Spara filer automatiskt medan du skriver', hideMarkers: 'Dölj Markdown-tecken utanför markörens rad',
     wordWrap: 'Radbyte', narrowColumn: 'Begränsad textbredd', lineNumbers: 'Radnummer', spellcheck: 'Stavningskontroll (svenska och engelska)', updates: 'Uppdateringar',
     tabsWindows: 'Flikar och fönster', ctrlW: 'Ctrl+W stänger', ctrlWTab: 'fliken', ctrlWWindow: 'fönstret', ctrlWOther: 'ett annat kommando (se Kortkommandon)', checkUpdates: 'Sök efter uppdateringar automatiskt',
@@ -177,7 +183,7 @@ const sv = {
   },
   palette: {
     commands: 'Skriv ett kommando eller en inställning', noMatches: 'Inget kommando matchar', setting: 'Inställning',
-    themes: 'Välj tema (piltangenterna förhandsvisar)', modes: 'Välj läge', languages: 'Välj språk', ctrlW: 'Ctrl+W stänger',
+    themes: 'Välj tema (piltangenterna förhandsvisar)', cursorEffects: 'Välj marköreffekt (piltangenterna förhandsvisar)', modes: 'Välj läge', languages: 'Välj språk', ctrlW: 'Ctrl+W stänger',
     userTheme: 'eget', themeName: 'Namn på det nya temat', createTheme: 'Tryck Enter för att skapa "{name}"',
     defaultThemeName: 'Mitt tema', newThemeComment1: 'Bygger på "{base}". Ändra ett värde och spara: Notera målar om direkt.',
     newThemeComment2: 'Alla nycklar beskrivs i THEMES.md: https://github.com/KaptenKatthatt/notera/blob/master/THEMES.md',
@@ -192,6 +198,11 @@ const sv = {
   theme: {
     error: 'Temat "{theme}" gick inte att läsa in: {message}', errorAt: 'Temat "{theme}" gick inte att läsa in: theme.json rad {line}: {message}',
     openFolder: 'Öppna temamappen', dismiss: 'OK'
+  },
+  fx: {
+    theme: 'Temats val', themeWith: 'Temats val ({name})', none: 'Ingen',
+    sparks: 'Fyrverkeri', pixie: 'Älvstoft', ripple: 'Ringar', pulse: 'Pulserande markör', phosphor: 'Fosforbokstav', phosphorTrail: 'Fosfor och svans',
+    laser: 'Röd laser', sight: 'Lasersikte', neon: 'Neonrör', glitch: 'Glitch', focus: 'Skärpa'
   },
   search: {
     'Find': 'Sök', 'Replace': 'Ersätt', 'next': 'Nästa', 'previous': 'Föregående', 'all': 'Alla', 'match case': 'Matcha skiftläge',

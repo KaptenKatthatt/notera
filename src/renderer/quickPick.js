@@ -138,6 +138,10 @@ export function createQuickPick(ctx) {
 
   /** @param {PickOptions} o */
   function open(o) {
+    // A picker opened over another one cancels it, so the one before can undo its preview.
+    const prev = opts;
+    opts = null;
+    if (prev && prev.onCancel) prev.onCancel();
     opts = o;
     lastHighlight = null;
     input.value = '';
