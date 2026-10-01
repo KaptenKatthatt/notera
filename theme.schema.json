@@ -533,6 +533,7 @@
             "ripple",
             "pulse",
             "phosphor",
+            "phosphorTrail",
             "laser",
             "sight",
             "neon",
@@ -647,6 +648,38 @@
                   "minimum": 0,
                   "maximum": 1,
                   "default": 1
+                }
+              }
+            }
+          ]
+        },
+        "phosphorTrail": {
+          "description": "The phosphor letter, and a fading streak from where the cursor was to where it went. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "color": {
+                  "$ref": "#/definitions/color"
+                },
+                "strength": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "default": 1
+                },
+                "trailColor": {
+                  "$ref": "#/definitions/color"
+                },
+                "trailOpacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "default": 0.55
                 }
               }
             }

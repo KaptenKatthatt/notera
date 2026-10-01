@@ -96,7 +96,7 @@ const en = {
   // Cursor effects: one name per id in CURSOR_EFFECTS (themeFormat.js), plus the two choices around them.
   fx: {
     theme: "Theme's choice", themeWith: "Theme's choice ({name})", none: 'None',
-    sparks: 'Sparks', pixie: 'Pixie dust', ripple: 'Ripple', pulse: 'Pulse', phosphor: 'Phosphor letter',
+    sparks: 'Sparks', pixie: 'Pixie dust', ripple: 'Ripple', pulse: 'Pulse', phosphor: 'Phosphor letter', phosphorTrail: 'Phosphor and trail',
     laser: 'Red laser', sight: 'Laser sight', neon: 'Neon tube', glitch: 'Glitch', focus: 'Focus'
   },
   search: {
@@ -201,7 +201,7 @@ const sv = {
   },
   fx: {
     theme: 'Temats val', themeWith: 'Temats val ({name})', none: 'Ingen',
-    sparks: 'Fyrverkeri', pixie: 'Älvstoft', ripple: 'Ringar', pulse: 'Pulserande markör', phosphor: 'Fosforbokstav',
+    sparks: 'Fyrverkeri', pixie: 'Älvstoft', ripple: 'Ringar', pulse: 'Pulserande markör', phosphor: 'Fosforbokstav', phosphorTrail: 'Fosfor och svans',
     laser: 'Röd laser', sight: 'Lasersikte', neon: 'Neonrör', glitch: 'Glitch', focus: 'Skärpa'
   },
   search: {

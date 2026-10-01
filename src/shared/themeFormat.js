@@ -372,6 +372,7 @@ const CURSOR_EFFECTS = {
   ripple: { kind: 'canvas', params: { colors: { type: 'colors' } } },
   pulse: { kind: 'canvas', params: { color: { type: 'color' } } },
   phosphor: { kind: 'letter', params: { color: { type: 'color' }, strength: { type: 'number', min: 0, max: 1, default: 1 } } },
+  phosphorTrail: { kind: 'both', params: { color: { type: 'color' }, strength: { type: 'number', min: 0, max: 1, default: 1 }, trailColor: { type: 'color' }, trailOpacity: { type: 'number', min: 0, max: 1, default: 0.55 } } },
   laser: { kind: 'both', params: { color: { type: 'color', default: '#ff3344' } } },
   sight: { kind: 'canvas', params: { color: { type: 'color', default: '#ff3344' } } },
   neon: { kind: 'letter', params: {} },
@@ -400,13 +401,17 @@ function effectParams(id, raw) {
 /**
  * Which cursor effect is on: the user's choice ('none' or an id) when there is one, else the one
  * the theme suggests in `typing`. Themes from before 0.11 had no `typing` and switched effects on
- * by their keys: `phosphor`, then `particles` (now sparks). A theme's `typing` naming an effect it
+ * by their keys: `phosphor` (with `trail`: phosphorTrail), then `particles` (now sparks). A theme's `typing` naming an effect it
  * also sets to false (an inherited suggestion switched off) falls back the same way.
  * @param {any} e the theme's effects
  * @param {string | null | undefined} choice the user's setting; 'theme' or empty follows the theme
  */
 function typingEffect(e, choice) {
-  const params = (id) => effectParams(id, id === 'sparks' && e.sparks === undefined ? e.particles : e[id]);
+  const obj = (v) => (isPlainObject(v) ? v : {});
+  // Before 0.11 the phosphor letter and the trail were two keys; together they are phosphorTrail.
+  const legacy = (id) => (id === 'sparks' ? e.particles
+    : id === 'phosphorTrail' ? { ...obj(e.phosphor), trailColor: obj(e.trail).color, trailOpacity: obj(e.trail).opacity } : undefined);
+  const params = (id) => effectParams(id, e[id] === undefined ? legacy(id) : e[id]);
   if (choice === 'none') return null;
   if (CURSOR_EFFECT_IDS.includes(choice)) return { id: choice, ...params(choice) };
   const on = (v) => v === true || isPlainObject(v);
@@ -414,6 +419,7 @@ function typingEffect(e, choice) {
   if (CURSOR_EFFECT_IDS.includes(e.typing) && e[e.typing] !== false && !(e.typing === 'sparks' && e.particles === false && e.sparks === undefined)) {
     return { id: e.typing, ...params(e.typing) };
   }
+  if (on(e.phosphor) && on(e.trail)) return { id: 'phosphorTrail', ...params('phosphorTrail') };
   if (on(e.phosphor)) return { id: 'phosphor', ...params('phosphor') };
   if (on(e.sparks) || on(e.particles)) return { id: 'sparks', ...params('sparks') };
   return null;

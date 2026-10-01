@@ -198,6 +198,15 @@ assert.deepEqual(await win.evaluate(() => { const cv = document.querySelector('#
   await win.evaluate(() => [innerWidth, innerHeight]), 'the effects canvas is drawn at 1x');
 await canvasClear();
 ok('ett äldre tema med particles får fyrverkeriet');
+// Moving the cursor draws the trail of phosphorTrail; a jump gives a clear streak.
+await setCursorEffect('phosphorTrail');
+await win.keyboard.press('Control+End');
+await canvasClear();
+const jump = await peakLit(300);
+await win.keyboard.press('Control+Home');
+assert.ok(await jump() > 200, 'a streak on a jump');
+await setCursorEffect('theme');
+ok('fosfor och svans: svansen följer markören vid hopp');
 
 for (const [theme, mode, name] of [['neon', 'dark', '63-neon-dark'], ['neon', 'light', '64-neon-light'], ['neon-chill', 'dark', '65-neon-chill-dark'], ['neon-chill', 'light', '66-neon-chill-light']]) {
   await setTheme(theme, mode);
@@ -265,7 +274,7 @@ assert.ok((await cls()).includes('fx-type-phosphor'), "back to the theme's choic
 ok('marköreffekten är användarens: vinner över temat, följer med vid temabyte, kvar med temaeffekter av');
 
 // The menu, the settings and the palette offer the theme's choice, none and the ten effects.
-const NAMES = ['Fyrverkeri', 'Älvstoft', 'Ringar', 'Pulserande markör', 'Fosforbokstav', 'Röd laser', 'Lasersikte', 'Neonrör', 'Glitch', 'Skärpa'];
+const NAMES = ['Fyrverkeri', 'Älvstoft', 'Ringar', 'Pulserande markör', 'Fosforbokstav', 'Fosfor och svans', 'Röd laser', 'Lasersikte', 'Neonrör', 'Glitch', 'Skärpa'];
 const menuFx = await app.evaluate(({ Menu }) => {
   let hit = null;
   const walk = (items) => { for (const i of items) { if (i.label === 'Marköreffekt' && i.submenu) hit = i.submenu.items.filter((x) => x.type === 'radio').map((x) => [x.label, x.checked]); else if (i.submenu) walk(i.submenu.items); } };
@@ -301,19 +310,19 @@ await openPicker();
 await win.keyboard.type('glitch');
 await win.keyboard.press('Enter');
 await win.waitForFunction(() => window.__notera.settings.cursorEffect === 'glitch');
-ok('meny, inställningar och palett (med förhandsvisning) erbjuder temats val, ingen och de tio');
+ok('meny, inställningar och palett (med förhandsvisning) erbjuder temats val, ingen och de elva');
 
 // Every effect, mid-animation, on a dark and a light theme. Letter effects animate only
 // opacity, transform and filter on copies of the letter (or the letter's own opacity: neon).
-const LETTER = { phosphor: 'fx-fade', laser: 'fx-burn-hot,fx-burn-warm', neon: 'fx-flicker,fx-flicker-glow', glitch: 'fx-glitch-a,fx-glitch-b', focus: 'fx-focus' };
-const CANVAS = ['sparks', 'pixie', 'ripple', 'pulse', 'laser', 'sight'];
+const LETTER = { phosphor: 'fx-fade', phosphorTrail: 'fx-fade', laser: 'fx-burn-hot,fx-burn-warm', neon: 'fx-flicker,fx-flicker-glow', glitch: 'fx-glitch-a,fx-glitch-b', focus: 'fx-focus' };
+const CANVAS = ['sparks', 'pixie', 'ripple', 'pulse', 'phosphorTrail', 'laser', 'sight'];
 const caretClip = () => win.evaluate(() => {
   const v = window.__notera.view; const r = v.coordsAtPos(v.state.selection.main.head);
   return { x: Math.max(0, Math.round(r.left) - 260), y: Math.max(0, Math.round(r.top) - 70), width: 420, height: 140 };
 });
 for (const [theme, mode] of [['neon-omg', 'dark'], ['default', 'light']]) {
   await setTheme(theme, mode);
-  for (const id of ['sparks', 'pixie', 'ripple', 'pulse', 'phosphor', 'laser', 'sight', 'neon', 'glitch', 'focus']) {
+  for (const id of ['sparks', 'pixie', 'ripple', 'pulse', 'phosphor', 'phosphorTrail', 'laser', 'sight', 'neon', 'glitch', 'focus']) {
     await setCursorEffect(id);
     await canvasClear();
     await typeAtEnd('\nGlöd');
@@ -334,7 +343,7 @@ for (const [theme, mode] of [['neon-omg', 'dark'], ['default', 'light']]) {
 }
 await setCursorEffect('theme');
 await setTheme('neon-omg', 'dark');
-ok('alla tio effekterna mitt i animationen, mörkt och ljust');
+ok('alla elva effekterna mitt i animationen, mörkt och ljust');
 
 await win.evaluate(() => { const t = window.__notera.active; t.dirty = false; t.savedDoc = window.__notera.view.state.doc; });
 await app.close();

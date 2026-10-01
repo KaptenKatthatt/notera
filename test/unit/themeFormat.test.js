@@ -179,7 +179,7 @@ test('effects are off unless a theme turns them on, and every parameter is check
 test('the cursor effect: the user\'s choice wins over the theme\'s suggestion, any effect with any theme', () => {
   const { normalizeEffects, CURSOR_EFFECTS, CURSOR_EFFECT_IDS } = require('../../src/shared/themeFormat');
   const typing = (fx, cursorEffect) => normalizeEffects(fx, { cursorEffect }).typing;
-  assert.deepEqual(CURSOR_EFFECT_IDS, ['sparks', 'pixie', 'ripple', 'pulse', 'phosphor', 'laser', 'sight', 'neon', 'glitch', 'focus']);
+  assert.deepEqual(CURSOR_EFFECT_IDS, ['sparks', 'pixie', 'ripple', 'pulse', 'phosphor', 'phosphorTrail', 'laser', 'sight', 'neon', 'glitch', 'focus']);
   assert.deepEqual(typing({ typing: 'phosphor', phosphor: { strength: 4, color: 'red; x' } }), { id: 'phosphor', color: null, strength: 1 });
   assert.deepEqual(typing({ typing: 'phosphor' }, 'ripple'), { id: 'ripple', colors: [] }, 'the user picks another');
   assert.equal(typing({ typing: 'phosphor' }, 'none'), null, 'or none');
@@ -192,6 +192,7 @@ test('the cursor effect: the user\'s choice wins over the theme\'s suggestion, a
   assert.equal(typing({ phosphor: true, particles: true }).id, 'phosphor');
   assert.deepEqual(typing({ particles: { amount: 3 } }), { id: 'sparks', amount: 3, size: 2.5, colors: [] });
   assert.equal(typing({ trail: true }), null);
+  assert.deepEqual(typing({ phosphor: { strength: 0.5 }, trail: { opacity: 0.3 } }), { id: 'phosphorTrail', color: null, strength: 0.5, trailColor: null, trailOpacity: 0.3 }, 'phosphor and trail together are phosphorTrail');
   assert.equal(typing({ typing: 'phosphor', phosphor: false, particles: { amount: 3 } }).id, 'sparks', 'an inherited suggestion switched off');
   for (const id of CURSOR_EFFECT_IDS) {
     for (const [name, spec] of Object.entries(CURSOR_EFFECTS[id].params)) {

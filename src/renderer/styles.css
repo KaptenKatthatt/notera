@@ -654,8 +654,8 @@ html[class*="fx-type-"] .cm-content .fx-ltr::before, html[class*="fx-type-"] .cm
   /* The line's own line height would set the copy lower than its letter when a theme makes it tall. */
   line-height: normal;
 }
-/* Phosphor letter: a glowing copy flashes and fades, like the phosphor of a CRT. */
-html.fx-type-phosphor .cm-content .fx-ltr::after {
+/* Phosphor letter (also with the trail): a glowing copy flashes and fades, like a CRT's phosphor. */
+html.fx-type-phosphor .cm-content .fx-ltr::after, html.fx-type-phosphorTrail .cm-content .fx-ltr::after {
   content: attr(data-t); -webkit-text-fill-color: var(--fx-ph-color);
   text-shadow: 0 0 calc(4px * var(--fx-ph-strength)) var(--fx-ph-color), 0 0 calc(12px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor), 0 0 calc(26px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor);
   animation: fx-fade 0.55s ease-out;

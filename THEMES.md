@@ -170,6 +170,7 @@ What happens where you type is the user's own choice: Settings, View > Theme > C
 | `ripple` | A thin ring grows out of the cursor and fades in a fifth of a second. | `colors`. |
 | `pulse` | The cursor's glow flares up at every key and dies down. | `color`, default the cursor's. |
 | `phosphor` | The letter just typed flashes and settles to its normal colour and glow in about half a second, like the phosphor of an old CRT. | `color`: the flash, default white on a dark page and the text's own colour on a light one (where white would not show; the halo is wider there instead). `strength` 0 to 1, the size of the halo, default 1. |
+| `phosphorTrail` | The phosphor letter, and when the cursor moves (typing, Enter, a click, the arrow keys, a jump) a streak fades from where it was to where it went in about 150 ms: barely there while you type, clear at a new line or a jump. | As `phosphor`, plus `trailColor` (default the cursor's) and `trailOpacity` 0 to 1, default 0.55. |
 | `laser` | A laser beam from the right edge of the text hits the cursor and burns the letter in: white-hot, orange, then its own colour. | `color`, default red. |
 | `sight` | A thin laser line flashes along the line under the baseline, like a laser level. | `color`, default red. |
 | `neon` | The letter lights up like a neon tube: it flickers off and on before it burns steadily. | none |
@@ -178,7 +179,7 @@ What happens where you type is the user's own choice: Settings, View > Theme > C
 
 A theme tunes an effect under its own key, e.g. `"sparks": { "amount": 4 }`, whether or not it suggests it; those parameters apply when the user picks that effect. `colors` left out are the theme's accent and heading colours. Letter effects only touch the newest few letters, never a paste.
 
-Themes from before 0.11 had no `typing`: `phosphor` switched the phosphor letter on and `particles` the sparks (read as `sparks` now). `trail` is no longer drawn.
+Themes from before 0.11 had no `typing`: `phosphor` switched the phosphor letter on, `phosphor` and `trail` together the phosphor letter with the trail (`phosphorTrail`), and `particles` the sparks (read as `sparks` now). `trail` alone is no longer drawn.
 
 Effects can differ per mode (put them in `light` or `dark`; a glow reads as a smudge on a light page, so the built-in themes turn it off there) and in the preview: `read.effects` is merged over the editor's effects in Läs, so a theme can glow every letter while you write and only the headings while you read. The `neon-chill`, `neon` and `neon-omg` built-in themes show all of it, from calm to everything.
 

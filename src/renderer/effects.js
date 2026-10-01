@@ -110,7 +110,7 @@ export function createEffects(ctx = {}) {
   function startTyping(fx) {
     typing = { ...fx, kind: CURSOR_EFFECTS[fx.id].kind };
     root.classList.add(`fx-type-${fx.id}`);
-    if (fx.id === 'phosphor') {
+    if (fx.id === 'phosphor' || fx.id === 'phosphorTrail') {
       // A white flash vanishes on a light page, so there the letter flashes in its own colour
       // with a wider halo instead.
       set('--fx-ph-color', fx.color || (isLightVariant ? 'currentColor' : '#ffffff'));
@@ -229,7 +229,8 @@ function colorsFor(fx) {
  * @typedef {{ type: 'halo', x: number, y: number, w: number, h: number, rgb: string }} Halo
  * @typedef {{ type: 'beam', x: number, y: number, right: number, rgb: string }} Beam
  * @typedef {{ type: 'sight', x: number, y: number, left: number, right: number, rgb: string }} Sight
- * @type {Array<(Dot | Ring | Halo | Beam | Sight) & { t: number, life: number, clip: DOMRect }>}
+ * @typedef {{ type: 'trail', x0: number, y0: number, h0: number, x1: number, y1: number, h1: number, w: number, alpha: number, rgb: string }} Trail
+ * @type {Array<(Dot | Ring | Halo | Beam | Sight | Trail) & { t: number, life: number, clip: DOMRect }>}
  */
 const items = [];
 let raf = 0;
@@ -283,6 +284,20 @@ function frame(now) {
       g.globalAlpha = a * 0.9; g.strokeStyle = '#ffd6d6'; g.lineWidth = 0.6; g.stroke();
       g.globalAlpha = a;
       g.drawImage(sprite(it.rgb), it.x - 9, it.y - 9, 18, 18);
+    } else if (it.type === 'trail') {
+      // A quad from the old cursor box to the new one, fading from nothing at the old end.
+      const inset = it.h0 * 0.17;
+      const gr = g.createLinearGradient(it.x0, it.y0 + it.h0 / 2, it.x1, it.y1 + it.h1 / 2);
+      gr.addColorStop(0, `rgba(${it.rgb}, 0)`);
+      gr.addColorStop(1, `rgba(${it.rgb}, ${it.alpha * a})`);
+      g.fillStyle = gr;
+      g.beginPath();
+      g.moveTo(it.x0, it.y0 + inset);
+      g.lineTo(it.x0 + it.w, it.y0 + it.h0 - inset);
+      g.lineTo(it.x1 + it.w, it.y1 + it.h1);
+      g.lineTo(it.x1, it.y1);
+      g.closePath();
+      g.fill();
     } else {
       const w = it.right - it.left;
       const at = Math.min(Math.max((it.x - it.left) / w, 0.01), 0.99);
@@ -361,6 +376,51 @@ function burst(fx, c) {
   kick();
 }
 
+/** A fading streak from where the cursor was to where it is, in about 150 ms. */
+function addTrail(fx, prev, c) {
+  ensureCanvas();
+  const rgb = fx.trailColor ? rgbOf(fx.trailColor) : colorsFor({ id: 'pulse' })[0];
+  if (!rgb) return;
+  items.push({ type: 'trail', x0: prev.x, y0: prev.top, h0: prev.bottom - prev.top, x1: c.x, y1: c.top, h1: c.bottom - c.top, w: c.w, alpha: fx.trailOpacity, rgb, t: ms(9), life: ms(9), clip: c.clip });
+  if (items.length > 600) items.splice(0, items.length - 600);
+  kick();
+}
+
+/**
+ * The trail of phosphorTrail: when the cursor moves (typing, Enter, a click, the arrow keys, a
+ * jump), a streak from where it was. Barely there while typing, clear at a new line or a jump.
+ */
+const cursorTrail = ViewPlugin.fromClass(class {
+  constructor() { this.last = null; }
+  update(u) {
+    const fx = typing;
+    if (!fx || fx.id !== 'phosphorTrail') { this.last = null; return; }
+    if (!u.selectionSet && !u.docChanged) return;
+    const view = u.view;
+    const { head, assoc } = view.state.selection.main;
+    view.requestMeasure({
+      read: () => {
+        const c = view.coordsAtPos(head, assoc || 1);
+        if (!c) return null;
+        const cur = view.dom.querySelector('.cm-cursor-primary');
+        return {
+          x: c.left, top: c.top, bottom: c.bottom, sl: view.scrollDOM.scrollLeft, st: view.scrollDOM.scrollTop,
+          w: Math.max(2, cur ? cur.getBoundingClientRect().width : 2), clip: view.scrollDOM.getBoundingClientRect()
+        };
+      },
+      write: (m) => {
+        const prev = this.last;
+        this.last = m;
+        if (!m || !prev || !view.hasFocus || typing !== fx) return;
+        // The old cursor box where it is on screen now, if the editor scrolled on the way.
+        const old = { x: prev.x - (m.sl - prev.sl), top: prev.top - (m.st - prev.st), bottom: prev.bottom - (m.st - prev.st) };
+        if (Math.hypot(m.x - old.x, m.top - old.top) < 0.5) return;
+        addTrail(fx, old, m);
+      }
+    });
+  }
+});
+
 /** The canvas part of the cursor effect, at the cursor after every typed or deleted character. */
 const typingCanvas = ViewPlugin.fromClass(class {
   update(u) {
@@ -397,7 +457,14 @@ function burstAtCursor(view, fx) {
 export function demoCursorEffect(view) {
   const fx = typing;
   if (!fx) return;
-  if (fx.kind !== 'letter') burstAtCursor(view, fx);
+  if (fx.id === 'phosphorTrail') {
+    // A streak into the cursor from a few letters back.
+    const head = view.state.selection.main.head;
+    view.requestMeasure({
+      read: () => { const c = view.coordsAtPos(head, 1); return c && { x: c.left, top: c.top, bottom: c.bottom, w: view.defaultCharacterWidth, clip: view.scrollDOM.getBoundingClientRect() }; },
+      write: (c) => { if (c && typing === fx) addTrail(fx, { x: c.x - 8 * c.w, top: c.top, bottom: c.bottom }, c); }
+    });
+  } else if (fx.kind !== 'letter') burstAtCursor(view, fx);
   if (fx.kind !== 'canvas') {
     const { state } = view;
     const head = state.selection.main.head;
@@ -410,7 +477,7 @@ export function demoCursorEffect(view) {
 
 // ---------- letter effects ----------
 /** How long each letter effect's copy shows, in ms; matches the animations in styles.css. */
-const LETTER_MS = { phosphor: 550, laser: 700, neon: 500, glitch: 320, focus: 300 };
+const LETTER_MS = { phosphor: 550, phosphorTrail: 550, laser: 700, neon: 500, glitch: 320, focus: 300 };
 /** Drops letter marks born before the given time. */
 const expireLetters = /** @type {import('@codemirror/state').StateEffectType<number>} */ (StateEffect.define());
 /** Runs the letter effect on the letter at a position, as if just typed (the picker's preview). */
@@ -507,4 +574,4 @@ const typingPause = ViewPlugin.fromClass(class {
 });
 
 /** Editor extension for the cursor effect and the pause of the moving background while typing. */
-export const typingEffects = [typingCanvas, letterField, letterExpiry, typingPause];
+export const typingEffects = [typingCanvas, cursorTrail, letterField, letterExpiry, typingPause];
