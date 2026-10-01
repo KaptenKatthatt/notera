@@ -74,6 +74,21 @@ assert.deepEqual(await titlesIn('Enlantis'), ['PBI-1234 Inloggningsfel', 'Sprint
 assert.equal(await win.textContent('#sb-foot .count'), '1');
 await shot('30-notes-sidebar');
 
+// 1b. Hidden row buttons take no width, so names run to the row's edge; the only "new project"
+// control is the plus on the Projects header, which opens the inline name field.
+await win.mouse.move(900, 400);
+const nameGap = await win.evaluate(() => {
+  const r = document.querySelector('#sb-list .sb-note');
+  return r.getBoundingClientRect().right - r.querySelector('.name').getBoundingClientRect().right;
+});
+assert.ok(nameGap < 14, `note name reaches the row's edge (gap ${nameGap}px)`);
+assert.equal(await win.locator('#sb-list .sb-newproj').count(), 0, 'no bottom "New project" row');
+await win.click('#sb-list .sb-sec [data-act="new-project"]');
+await win.waitForSelector('#sb-list .sb-newproj #sb-edit');
+await win.keyboard.press('Escape');
+await win.waitForFunction(() => !document.querySelector('#sb-edit'));
+assert.equal(await win.locator('#sb-list .sb-newproj').count(), 0, 'Escape leaves no row behind');
+
 // 2. + on a project: a new note on top with the header, renamed after the heading on Enter
 await win.hover(row('Enlantis'));
 await win.click(`${row('Enlantis')} [data-act="new-note"]`);
