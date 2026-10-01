@@ -1,12 +1,14 @@
 {
   "$schema": "https://raw.githubusercontent.com/KaptenKatthatt/notera/master/theme.schema.json",
-  // Neon OMG: everything on. Every letter glows, the H1 is set in neon-tube Monoton, the cursor
+  // Neon OMG: everything on. Every letter glows, the H1 is set in Bungee Inline, the cursor
   // is a glowing block, each letter flashes as you type it and the cursor leaves a fading trail,
   // and a synthwave sun sets over a moving grid.
   "name": "Neon OMG",
   "extends": "neon",
+  "fonts": [{ "family": "Bungee Inline", "src": "fonts/BungeeInline.ttf" }],
+  "style": "style.css",
   "notera": {
-    "fonts": { "heading1": ["Monoton", "Orbitron", "sans-serif"] },
+    "fonts": { "heading1": ["Bungee Inline", "Orbitron", "sans-serif"] },
     "effects": {
       "glow": { "target": "all", "strength": 0.45 },
       "gradient": { "colors": ["#ff7edb", "#fede5d", "#36f9f6"], "levels": [1, 2] },

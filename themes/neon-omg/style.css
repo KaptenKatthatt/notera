@@ -1,0 +1,10 @@
+/* Neon OMG: the H1 stays body-sized in the editor, like every line in a code editor, so its
+   display font must read at 15 px. Bungee Inline has one weight; the editor's bold would make the
+   browser smear a fake bold over its inline stripe, so draw it at its own weight. Air between the
+   letters and a tighter glow keep them apart. */
+.cm-line.cm-h1, .cm-line.cm-h1 .cm-hd, #preview h1 {
+  font-weight: 400; font-synthesis: none; letter-spacing: 0.05em;
+}
+html.fx-e-grad-1 .cm-line.cm-h1 .cm-hd {
+  filter: drop-shadow(0 0 calc(1px + 2px * var(--fx-glow-e, 0.3)) var(--fx-grad-glow-e));
+}

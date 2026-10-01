@@ -105,14 +105,15 @@ for (const want of ['fx-e-glow-all', 'fx-r-glow-headings', 'fx-e-grad-1', 'fx-e-
 }
 assert.equal(await css('.cm-line.cm-h2 .cm-hd:last-child', 'color'), 'rgba(0, 0, 0, 0)', 'H2 text is transparent under its gradient');
 assert.match(await css('.cm-line.cm-h1 .cm-hd', 'backgroundImage'), /linear-gradient/);
-assert.match(await css('.cm-line.cm-h1', 'fontFamily'), /^Monoton/);
+assert.match(await css('.cm-line.cm-h1', 'fontFamily'), /^"Bungee Inline"/);
+assert.equal(await css('.cm-line.cm-h1 .cm-hd', 'fontWeight'), '400', 'H1 at Bungee Inline\'s own weight, no fake bold');
 assert.match(await css('.cm-line.cm-h3', 'fontFamily'), /^Orbitron/);
 assert.equal(await css('.cm-line.cm-h3 .cm-hd:last-child', 'color'), 'rgb(254, 222, 93)', 'H3 is yellow');
 assert.match(await css('.cm-content', 'textShadow'), /px/, 'every letter glows in the editor');
 assert.equal(await css('#preview p', 'textShadow'), 'none', 'body text in Läs does not glow');
 assert.match(await css('#preview h3', 'textShadow'), /px/, 'headings in Läs glow');
 assert.match(await css('.cm-scroller', 'fontFamily'), /^"Victor Mono"/);
-assert.ok(await win.evaluate(() => document.fonts.check('16px Orbitron') && document.fonts.check('16px Monoton') && document.fonts.check('16px "Victor Mono"')), 'theme fonts loaded over notera-theme://');
+assert.ok(await win.evaluate(() => document.fonts.check('16px Orbitron') && document.fonts.check('16px "Bungee Inline"') && document.fonts.check('16px "Victor Mono"')), 'theme fonts loaded over notera-theme://');
 assert.equal(await css('.cm-editor', 'backgroundColor'), 'rgba(0, 0, 0, 0)', 'the editor is see-through to the background');
 assert.equal(await css('#fx-bg .fx-sun', 'display'), 'block');
 await typeAtEnd('Neon!');
@@ -151,7 +152,7 @@ await shot('60c-neon-omg-dark-enter');
 assert.ok(await enterPeak() > 20, 'a trail at a new line');
 await win.waitForTimeout(400);
 assert.equal(await litPixels(), 0, 'the trail fades out');
-ok('Neon OMG mörkt: glöd, gradient, Monoton, blockmarkör, fosfor, markörsvans, sol och rutnät');
+ok('Neon OMG mörkt: glöd, gradient, Bungee Inline, blockmarkör, fosfor, markörsvans, sol och rutnät');
 
 // Smooth cursor: CodeMirror moves the same element, so the transition glides.
 assert.match(await css('.cm-cursorLayer .cm-cursor', 'transitionProperty'), /left/);
