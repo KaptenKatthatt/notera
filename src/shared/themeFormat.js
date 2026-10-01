@@ -237,6 +237,7 @@ const COLOR_VARS = [
   ['--accent', ['button.background', 'focusBorder', 'textLink.foreground'], 'var(--fg)'],
   ['--accent-fg', ['button.foreground'], 'var(--bg)'],
   ['--selection', ['editor.selectionBackground'], 'color-mix(in srgb, var(--accent) 25%, transparent)'],
+  ['--selection-fg', ['editor.selectionForeground'], 'var(--fg)'],
   ['--active-line', ['editor.lineHighlightBackground'], 'color-mix(in srgb, var(--fg) 3%, var(--bg))'],
   ['--code-bg', ['textCodeBlock.background', 'textPreformat.background'], 'color-mix(in srgb, var(--fg) 5%, var(--bg))'],
   ['--caret', ['editorCursor.foreground']],
@@ -245,6 +246,9 @@ const COLOR_VARS = [
   ['--search-bg', ['input.background', 'editorWidget.background'], 'var(--bg-popup)'],
   ['--search-match', ['editor.findMatchHighlightBackground'], 'color-mix(in srgb, var(--accent) 30%, transparent)'],
   ['--search-current', ['editor.findMatchBackground'], 'color-mix(in srgb, var(--accent) 55%, transparent)'],
+  ['--search-fg', ['editor.findMatchHighlightForeground'], 'var(--fg)'],
+  ['--search-current-fg', ['editor.findMatchForeground'], 'var(--search-fg)'],
+  ['--input-border', ['input.border'], 'color-mix(in srgb, var(--fg) 58%, var(--bg))'],
   ['--widget-border', ['editorWidget.border'], 'var(--border)'],
   ['--dirty-dot', ['tab.activeModifiedBorder'], 'var(--accent)'],
   ['--flash', ['editor.rangeHighlightBackground'], 'color-mix(in srgb, var(--accent) 22%, transparent)']

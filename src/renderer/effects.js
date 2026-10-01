@@ -36,6 +36,8 @@ export function createEffects(ctx = {}) {
     last = next;
     clear();
     isLightVariant = next.type !== 'dark';
+    // Glowing headings get a core mixed toward white (dark) or black (light); see styles.css.
+    set('--fx-core', isLightVariant ? '#000000' : '#ffffff');
     if (!next.enabled) return;
     const raw = next.notera && next.notera.effects;
     const e = normalizeEffects(raw);

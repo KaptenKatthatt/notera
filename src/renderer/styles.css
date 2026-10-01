@@ -88,7 +88,7 @@ button { font: inherit; color: inherit; }
   position: relative;
 }
 .tab:hover { background: var(--bg-hover); color: var(--fg); }
-.tab.active { background: var(--bg-active); color: var(--fg); border-color: var(--border); }
+.tab.active { background: var(--bg-active); color: var(--fg); border-color: var(--border); box-shadow: inset 0 2px 0 var(--accent); }
 .tab .name { overflow: hidden; text-overflow: ellipsis; }
 .tab .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dirty-dot, var(--accent)); flex: none; }
 .tab .close {
@@ -174,8 +174,8 @@ body.no-formatting-bar #toolbar { display: none; }
 .cm-editor .cm-cursorLayer .cm-cursor { border-left-color: var(--caret, var(--fg)); }
 .cm-line { padding: 0 16px; }
 .cm-placeholder { color: var(--md-meta); }
-.cm-gutters { background: var(--bg); color: var(--md-meta); border-right: 1px solid var(--border); }
-.cm-activeLineGutter { background: var(--active-line); }
+.cm-editor .cm-gutters { background: var(--bg); color: var(--md-meta); border-right: 1px solid var(--border); }
+.cm-editor .cm-activeLineGutter { background: var(--active-line); color: var(--fg-muted); } /* outranks CodeMirror's light/dark base theme */
 .cm-activeLine { background: var(--active-line); }
 .cm-editor .cm-selectionBackground, .cm-editor.cm-focused .cm-selectionBackground, .cm-editor ::selection { background: var(--selection) !important; }
 /* Specificity beats CodeMirror's own dark base theme (which paints matches cyan/magenta). */
@@ -195,9 +195,9 @@ body.no-formatting-bar #toolbar { display: none; }
 .cm-panel.cm-search label { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; color: var(--fg-muted); }
 .cm-panel.cm-search br { display: none; }
 .cm-panel.cm-search .cm-textfield, .cm-panel.cm-gotoLine .cm-textfield {
-  font: inherit; font-size: 15px; padding: 5px 8px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--fg); min-width: 200px;
+  font: inherit; font-size: 15px; padding: 5px 8px; border: 1px solid var(--input-border); border-radius: 4px; background: transparent; color: var(--fg); min-width: 200px;
 }
-.cm-panel.cm-search .cm-textfield:focus, .cm-panel.cm-gotoLine .cm-textfield:focus { outline: none; border-color: var(--border); }
+.cm-panel.cm-search .cm-textfield:focus, .cm-panel.cm-gotoLine .cm-textfield:focus { outline: none; border-color: var(--accent); }
 .cm-search-count { min-width: 44px; text-align: center; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
 .cm-panel.cm-search .cm-button, .cm-panel.cm-gotoLine .cm-button {
   font: inherit; padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--fg); background-image: none;
@@ -261,7 +261,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.25); }
 dialog h2 { margin: 0 0 14px; font-size: 16px; font-weight: 600; }
 dialog label { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 10px; margin-bottom: 10px; }
 dialog input, dialog select {
-  font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--fg);
+  font: inherit; padding: 6px 8px; border: 1px solid var(--input-border); border-radius: 4px; background: var(--bg); color: var(--fg);
 }
 dialog input:focus, dialog select:focus { outline: none; border-color: var(--accent); }
 .font-preview { border: 1px dashed var(--border); border-radius: 4px; padding: 12px; margin: 6px 0 14px; min-height: 48px; overflow: hidden; white-space: nowrap; }
@@ -323,7 +323,7 @@ dialog .set-check { display: flex; grid-template-columns: none; }
 .set-pane button:not(.kb-x):not(.kb-add):hover { background: var(--bg-hover); }
 .set-pane button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .kb-head { display: flex; gap: 10px; align-items: center; position: sticky; top: -18px; background: var(--bg-popup); padding: 4px 0 10px; margin-right: 32px; z-index: 1; }
-.kb-head input { flex: 1; font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.kb-head input { flex: 1; font: inherit; padding: 7px 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--bg); color: var(--fg); }
 .kb-head input:focus { outline: none; border-color: var(--accent); }
 .kb-row { display: grid; grid-template-columns: 230px minmax(0, 1fr) minmax(max-content, auto); align-items: center; gap: 12px; padding: 5px 8px; border-radius: 6px; min-height: 36px; }
 .kb-row:hover { background: var(--bg-hover); }
@@ -408,7 +408,7 @@ body.sb-open #sb-resizer { display: block; }
 .sb-ibtn:hover { background: var(--bg-hover); color: var(--fg); }
 .sb-search {
   display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; margin: 0;
-  border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg-muted);
+  border: 1px solid var(--input-border); border-radius: 6px; background: var(--bg); color: var(--fg-muted);
 }
 .sb-search:focus-within { border-color: var(--accent); }
 .sb-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--fg); font: inherit; padding: 0; }
@@ -443,7 +443,7 @@ body.sb-open #sb-resizer { display: block; }
 .sb-row .ico { color: var(--fg-muted); flex: none; }
 .sb-note { padding-left: 28px; }
 .sb-note .pin { color: var(--fg-muted); margin-left: -19px; flex: none; }
-.sb-note.active { background: var(--sel-row); }
+.sb-note.active { background: var(--sel-row); box-shadow: inset 3px 0 0 var(--accent); }
 .sb-note.active .name { font-weight: 600; }
 .sb-note.untitled .name { color: var(--fg-muted); font-style: italic; }
 .sb-arch-group { cursor: default; }
@@ -560,6 +560,16 @@ body.writing #notes-banner { display: none; }
 .cm-editor .cm-content .cm-line.cm-activeLine { background: var(--active-line); }
 /* It is drawn over the selection layer, so it goes while text is selected (cm-selecting, editor.js). */
 .cm-editor.cm-selecting .cm-content .cm-line.cm-activeLine { background: transparent; }
+/* Selected text and search matches take one colour picked for their background (editor.js). */
+.cm-editor .cm-content .cm-selectedText, .cm-editor .cm-content .cm-selectedText * {
+  color: var(--selection-fg) !important; -webkit-text-fill-color: var(--selection-fg); background-image: none; text-shadow: none; filter: none;
+}
+.cm-editor .cm-content .cm-searchMatch, .cm-editor .cm-content .cm-searchMatch * {
+  color: var(--search-fg) !important; -webkit-text-fill-color: var(--search-fg); background-image: none; text-shadow: none; filter: none;
+}
+.cm-editor .cm-content .cm-searchMatch-selected, .cm-editor .cm-content .cm-searchMatch-selected * {
+  color: var(--search-current-fg) !important; -webkit-text-fill-color: var(--search-current-fg);
+}
 
 /* ---------- Headings per level (themes set --md-h1..6 and heading fonts) ---------- */
 .cm-line.cm-h1 { --h-color: var(--md-h1, var(--md-h)); font-family: var(--heading1-font, var(--heading-font)); }
@@ -571,24 +581,30 @@ body.writing #notes-banner { display: none; }
 .cm-line.cm-h:not(.cm-h1) { font-family: var(--heading-font); }
 /* Preview headings take the theme's heading colour, per level when the theme has one.
    :where() keeps these below any theme style.css rule such as `.preview h1 { color: ... }`. */
-:where(#preview) h1 { color: var(--md-h1, var(--md-h)); font-family: var(--read-heading-font, var(--heading1-font, var(--heading-font))); }
-:where(#preview) h2 { color: var(--md-h2, var(--md-h)); }
-:where(#preview) h3 { color: var(--md-h3, var(--md-h)); }
-:where(#preview) h4 { color: var(--md-h4, var(--md-h)); }
-:where(#preview) h5 { color: var(--md-h5, var(--md-h)); }
-:where(#preview) h6 { color: var(--md-h6, var(--md-h)); }
+:where(#preview) h1 { --hc: var(--md-h1, var(--md-h)); color: var(--hc); font-family: var(--read-heading-font, var(--heading1-font, var(--heading-font))); }
+:where(#preview) h2 { --hc: var(--md-h2, var(--md-h)); color: var(--hc); }
+:where(#preview) h3 { --hc: var(--md-h3, var(--md-h)); color: var(--hc); }
+:where(#preview) h4 { --hc: var(--md-h4, var(--md-h)); color: var(--hc); }
+:where(#preview) h5 { --hc: var(--md-h5, var(--md-h)); color: var(--hc); }
+:where(#preview) h6 { --hc: var(--md-h6, var(--md-h)); color: var(--hc); }
 :where(#preview) :is(h2, h3, h4, h5, h6) { font-family: var(--read-heading-font, var(--heading-font)); }
 
 /* ---------- Theme effects (effects.js sets the fx-* classes on <html>) ----------
    fx-e-* is the editor, fx-r-* the preview. #preview, not .preview, so printing stays plain. */
-html.fx-e-glow-headings .cm-line.cm-h,
-html.fx-e-glow-all .cm-content {
-  text-shadow: 0 0 calc(1px + 4px * var(--fx-glow-e)) var(--fx-glow-color-e, currentColor), 0 0 calc(4px + 14px * var(--fx-glow-e)) var(--fx-glow-color-e, currentColor);
+/* A glow in the text's own colour blurs the letter edges into the background (WCAG 1.4.3 counts
+   that halo as background). So the glow is wide and soft, never a tight inner ring, and glowing
+   headings work like a neon tube: the halo keeps the heading colour while the letters themselves
+   are mixed 30 % toward white (black in a light theme, --fx-core from effects.js). */
+html.fx-e-glow-headings .cm-line.cm-h {
+  --h-text: color-mix(in srgb, var(--h-color, var(--md-h)) 70%, var(--fx-core, #fff));
+  text-shadow: 0 0 calc(8px + 8px * var(--fx-glow-e)) var(--fx-glow-color-e, var(--h-color, var(--md-h))), 0 0 calc(20px + 20px * var(--fx-glow-e)) var(--fx-glow-color-e, var(--h-color, var(--md-h)));
 }
-html.fx-r-glow-headings #preview :is(h1, h2, h3, h4, h5, h6),
-html.fx-r-glow-all #preview {
-  text-shadow: 0 0 calc(1px + 4px * var(--fx-glow-r)) var(--fx-glow-color-r, currentColor), 0 0 calc(4px + 14px * var(--fx-glow-r)) var(--fx-glow-color-r, currentColor);
+html.fx-e-glow-all .cm-content { text-shadow: 0 0 calc(18px + 16px * var(--fx-glow-e)) var(--fx-glow-color-e, currentColor); }
+html.fx-r-glow-headings #preview :is(h1, h2, h3, h4, h5, h6) {
+  color: color-mix(in srgb, var(--hc, currentColor) 70%, var(--fx-core, #fff));
+  text-shadow: 0 0 calc(8px + 8px * var(--fx-glow-r)) var(--fx-glow-color-r, var(--hc, currentColor)), 0 0 calc(20px + 20px * var(--fx-glow-r)) var(--fx-glow-color-r, var(--hc, currentColor));
 }
+html.fx-r-glow-all #preview { text-shadow: 0 0 calc(18px + 16px * var(--fx-glow-r)) var(--fx-glow-color-r, currentColor); }
 /* Gradient headings: the gradient is clipped to the text, and a drop-shadow stands in for the
    glow, since a text-shadow would paint over a transparent text colour. */
 html.fx-e-grad-1 .cm-line.cm-h1 .cm-hd, html.fx-e-grad-2 .cm-line.cm-h2 .cm-hd, html.fx-e-grad-3 .cm-line.cm-h3 .cm-hd,
@@ -623,6 +639,14 @@ html.fx-cursor-smooth .cm-editor .cm-cursorLayer .cm-cursor { transition: left 9
 html.fx-bg #fx-bg { display: block; }
 html.fx-bg #editor, html.fx-bg #preview-pane { position: relative; z-index: 1; }
 html.fx-bg .cm-editor, html.fx-bg #preview-pane, html.fx-bg .cm-gutters { background: transparent; }
+/* Text never sits straight on the sun or the grid: the editor and the preview text get a frosted
+   pane in the theme's background colour, so every text colour keeps its contrast (72 % is the
+   least that passes test/e2e/contrast.mjs) while the effect shows faintly through it. The pane is
+   on .cm-scroller, not .cm-content: backdrop-filter makes the scroller a stacking context, so
+   CodeMirror's selection layer (z-index -2) still paints above the pane and below the text. */
+html.fx-bg .cm-scroller, html.fx-bg #preview {
+  background: color-mix(in srgb, var(--bg) var(--fx-scrim, 72%), transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
 #fx-bg .fx-sun, #fx-bg .fx-grid { display: none; position: absolute; }
 html.fx-sun #fx-bg .fx-sun {
   display: block; left: 50%; bottom: 38%; width: min(42vh, 340px); aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%;
@@ -668,7 +692,7 @@ html.fx-vignette #fx-overlay::after {
 .qp .sb-search input { padding-left: 2px; }
 .qp-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; cursor: default; color: var(--fg); }
 .qp-item:hover { background: var(--bg-hover); }
-.qp-item.sel { background: var(--sel-row); }
+.qp-item.sel { background: var(--sel-row); box-shadow: inset 3px 0 0 var(--accent); }
 .qp-check { flex: none; width: 16px; text-align: center; color: var(--accent); }
 .qp-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qp-label mark { background: none; color: var(--accent); font-weight: 600; }

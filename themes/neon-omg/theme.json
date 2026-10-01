@@ -14,8 +14,8 @@
       "background": {
         "grid": { "color": "#ff7edb", "opacity": 0.6, "speed": 0.5 },
         "sun": { "colors": ["#fede5d", "#ff7edb"], "opacity": 0.32 },
-        "scanlines": 0.22,
-        "vignette": 0.5
+        "scanlines": 0.06,
+        "vignette": 0.09
       }
     }
   },
@@ -24,18 +24,18 @@
     "effects": { "glow": { "target": "headings", "strength": 0.8 } }
   },
   "light": {
-    "read": { "effects": { "glow": { "target": "headings", "strength": 0.25 } } },
+    "read": { "effects": { "glow": false } },
     "notera": {
       "effects": {
-        "glow": { "target": "headings", "strength": 0.25 },
-        "gradient": { "colors": ["#d6249f", "#e0513a", "#0086a8"], "levels": [1, 2] },
+        "glow": false,
+        "gradient": { "colors": ["#b30081", "#b4240d", "#006586"], "levels": [1, 2] },
         "cursor": { "style": "block", "glow": 0.5, "smooth": true },
         "particles": { "amount": 10, "colors": ["#d6249f", "#0086a8", "#e0a100"], "size": 2.5 },
         "background": {
           "grid": { "color": "#d6249f", "opacity": 0.28, "speed": 0.5 },
           "sun": { "colors": ["#ffc94d", "#ff6fb5"], "opacity": 0.3 },
-          "scanlines": 0.05,
-          "vignette": 0.12
+          "scanlines": 0.03,
+          "vignette": 0.06
         }
       }
     }

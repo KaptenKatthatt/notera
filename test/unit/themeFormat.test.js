@@ -127,7 +127,7 @@ test('every built-in theme parses, resolves and ships both a light and a dark va
   }
 });
 
-test('Default reproduces the palette styles.css had before themes moved to files', () => {
+test('Default keeps its palette, with the AA contrast fixes', () => {
   const r = resolveTheme('default', builtin);
   const light = cssVars(variantOf(r.theme, false));
   const dark = cssVars(variantOf(r.theme, true));
@@ -136,7 +136,9 @@ test('Default reproduces the palette styles.css had before themes moved to files
   assert.equal(light['--md-code'], '#8b3a00');
   assert.equal(dark['--bg'], '#101010');
   assert.equal(dark['--accent'], '#4cc2ff');
-  assert.equal(dark['--md-meta'], '#4f525a');
+  assert.equal(dark['--md-meta'], '#80838a'); // was #4f525a, 2.4:1; now 4.5:1 or more
+  assert.equal(light['--selection-fg'], '#ffffff');
+  assert.equal(light['--input-border'], 'color-mix(in srgb, var(--fg) 58%, var(--bg))');
 });
 
 test('theme strings exist in both languages', () => {

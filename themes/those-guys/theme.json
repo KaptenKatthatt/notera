@@ -21,23 +21,24 @@
       "editorWidget.background": "#30302e",
       "descriptionForeground": "#a6a39a",
       "panel.border": "#3d3d3a",
-      "button.background": "#d77757",
+      "button.background": "#e38a6b",
       "button.foreground": "#1f1e1d",
-      "editor.selectionBackground": "rgba(215, 119, 87, 0.3)",
+      "editor.selectionBackground": "#b35637",
+      "editor.selectionForeground": "#faf9f5",
       "editor.lineHighlightBackground": "#2b2b29",
       "textCodeBlock.background": "#1f1e1d",
       "widget.shadow": "rgba(0, 0, 0, 0.55)",
       "input.background": "#262624",
       "editor.findMatchHighlightBackground": "rgba(177, 185, 249, 0.3)",
-      "editor.findMatchBackground": "rgba(215, 119, 87, 0.6)",
-      "editorCursor.foreground": "#d77757",
-      "list.activeSelectionBackground": "rgba(215, 119, 87, 0.16)",
+      "editor.findMatchBackground": "#676da8",
+      "editorCursor.foreground": "#e38a6b",
+      "list.activeSelectionBackground": "#363634",
       "errorForeground": "#ff6b80",
       "editor.rangeHighlightBackground": "#5c3a2c",
       "editorWidget.border": "#6b6a65"
     },
     "notera": {
-      "colors": { "heading": "#d77757", "link": "#b1b9f9", "quote": "#999999", "code": "#b1b9f9", "markup": "#6b6a65" }
+      "colors": { "heading": "#da7a5a", "link": "#b1b9f9", "quote": "#999999", "code": "#b1b9f9", "markup": "#95948f" }
     }
   },
   "light": {
@@ -48,25 +49,27 @@
       "list.hoverBackground": "#e8e6dc",
       "tab.activeBackground": "#faf9f5",
       "editorWidget.background": "#ffffff",
-      "descriptionForeground": "#73726c",
+      "descriptionForeground": "#66655f",
       "panel.border": "#dedcd1",
-      "button.background": "#c6613f",
+      "button.background": "#a84724",
       "button.foreground": "#ffffff",
-      "editor.selectionBackground": "rgba(217, 119, 87, 0.22)",
+      "editor.selectionBackground": "#a84724",
+      "editor.selectionForeground": "#ffffff",
       "editor.lineHighlightBackground": "#f3f1ea",
       "textCodeBlock.background": "#f0eee6",
       "widget.shadow": "rgba(60, 50, 30, 0.14)",
       "input.background": "#ffffff",
       "editor.findMatchHighlightBackground": "rgba(87, 103, 208, 0.22)",
-      "editor.findMatchBackground": "rgba(217, 119, 87, 0.45)",
-      "editorCursor.foreground": "#c6613f",
+      "editor.findMatchBackground": "#6577e2",
+      "editor.findMatchForeground": "#141413",
+      "editorCursor.foreground": "#a84724",
       "list.activeSelectionBackground": "rgba(217, 119, 87, 0.14)",
       "errorForeground": "#c62a47",
       "editor.rangeHighlightBackground": "#f3d9cc",
       "editorWidget.border": "#c9c6b8"
     },
     "notera": {
-      "colors": { "heading": "#c6613f", "link": "#5767d0", "quote": "#87867f", "code": "#5767d0", "markup": "#b0aea5" }
+      "colors": { "heading": "#a84724", "link": "#5160c9", "quote": "#6d6c65", "code": "#5160c9", "markup": "#6e6c64" }
     }
   }
 }
