@@ -7,7 +7,7 @@
 // Editor and preview (Läs) get separate classes (fx-e-*, fx-r-*) because split view shows both
 // at once and a theme's `read.effects` may differ from its editor effects.
 import { ViewPlugin, Decoration, EditorView } from '@codemirror/view';
-import { StateField, StateEffect, Prec } from '@codemirror/state';
+import { StateField, StateEffect, Prec, findClusterBreak } from '@codemirror/state';
 import { normalizeEffects, deepMerge } from '../shared/themeFormat.js';
 
 const FX_CLASS = /^fx-/;
@@ -347,10 +347,16 @@ const phosphorField = StateField.define({
       tr.changes.iterChangedRanges((_fA, _tA, fromB, toB) => {
         // A unique attribute, so CodeMirror never joins neighbouring marks into one element and
         // restarts the animation of a letter that is already fading.
-        for (let at = Math.max(fromB, toB - 3); at < toB; at++) {
-          const ch = tr.newDoc.sliceString(at, at + 1);
-          if (ch === '\n' || ch === ' ' || ch === '\t') continue;
-          add.push(Decoration.mark({ class: 'fx-ph', attributes: { 'data-ph': String(++phosphorSeq), 'data-t': ch }, born }).range(at, at + 1));
+        // Whole characters (grapheme clusters), never half an emoji's surrogate pair.
+        const base = Math.max(fromB, toB - 32);
+        const text = tr.newDoc.sliceString(base, toB);
+        for (let end = text.length, n = 0; end > 0 && n < 3; n++) {
+          const start = findClusterBreak(text, end, false);
+          const ch = text.slice(start, end);
+          if (!/^\s+$/.test(ch)) {
+            add.push(Decoration.mark({ class: 'fx-ph', attributes: { 'data-ph': String(++phosphorSeq), 'data-t': ch }, born }).range(base + start, base + end));
+          }
+          end = start;
         }
       });
       if (add.length) deco = deco.update({ add, sort: true });

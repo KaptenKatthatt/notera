@@ -652,6 +652,8 @@ html.fx-cursor-smooth .cm-editor .cm-cursorLayer .cm-cursor { transition: left 9
 html.fx-phosphor .cm-content .fx-ph { position: relative; }
 html.fx-phosphor .cm-content .fx-ph::after {
   content: attr(data-t); position: absolute; left: 0; top: 0; pointer-events: none; white-space: pre;
+  /* The copy's line box must be the letter's content area, or a taller theme line height pushes it down. */
+  line-height: normal;
   -webkit-text-fill-color: var(--fx-ph-color);
   text-shadow: 0 0 calc(4px * var(--fx-ph-strength)) var(--fx-ph-color), 0 0 calc(12px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor), 0 0 calc(26px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor);
   opacity: 0; animation: fx-phosphor 0.55s ease-out; will-change: opacity;
