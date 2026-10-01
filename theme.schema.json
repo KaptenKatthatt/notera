@@ -552,6 +552,48 @@
             }
           ]
         },
+        "phosphor": {
+          "description": "The letter just typed flashes and settles to its normal colour and glow, like CRT phosphor.",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "$ref": "#/definitions/color"
+                },
+                "strength": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        },
+        "trail": {
+          "description": "A fading streak from where the cursor was to where it went.",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "$ref": "#/definitions/color"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        },
         "background": {
           "type": "object",
           "properties": {

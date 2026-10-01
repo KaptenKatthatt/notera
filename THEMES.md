@@ -131,7 +131,7 @@ Check that a font's licence lets you share it before you put it in a theme you g
 
 ## Effects
 
-`notera.effects` switches on Notera's built-in effects. A theme only picks effects and sets their parameters; it never runs code. Every effect is off unless the theme turns it on, and `false` turns off one the theme inherited. View > Theme > Theme effects switches them all off without changing theme, and turning off Windows' "Animation effects" (Accessibility > Visual effects) stops everything that moves: particles, the gliding cursor and the moving grid. Glow stays, since it does not move.
+`notera.effects` switches on Notera's built-in effects. A theme only picks effects and sets their parameters; it never runs code. Every effect is off unless the theme turns it on, and `false` turns off one the theme inherited. View > Theme > Theme effects switches them all off without changing theme, and turning off Windows' "Animation effects" (Accessibility > Visual effects) stops everything that moves: particles, the phosphor flash, the cursor trail, the gliding cursor and the moving grid. Glow stays, since it does not move.
 
 ```jsonc
 "notera": {
@@ -140,6 +140,8 @@ Check that a font's licence lets you share it before you put it in a theme you g
     "gradient":  { "colors": ["#ff7edb", "#fede5d"], "levels": [1] }, // headings drawn with a gradient
     "cursor":    { "style": "block", "glow": 0.8, "smooth": true },   // "line", "block", "underline"
     "particles": { "amount": 10, "colors": ["#ff7edb", "#36f9f6"], "size": 2.5 },
+    "phosphor":  { "strength": 1 },                                  // the letter just typed flashes
+    "trail":     { "opacity": 0.55 },                                // a streak behind the moving cursor
     "background": {
       "grid": { "color": "#ff7edb", "opacity": 0.6, "speed": 0.5 },   // a synthwave floor, moving
       "sun":  { "colors": ["#fede5d", "#ff7edb"], "opacity": 0.3 },   // a striped sun on the horizon
@@ -156,6 +158,8 @@ Check that a font's licence lets you share it before you put it in a theme you g
 | `gradient` | `colors`: two or more. `levels`: which heading levels, default `[1]`. |
 | `cursor` | `style`: `line`, `block` or `underline`. `glow` 0 to 1. `smooth`: the cursor glides to where it goes. |
 | `particles` | `amount` per keystroke, 1 to 40. `colors`, default the theme's accent and heading colours. `size` in pixels. |
+| `phosphor` | The letter you just typed flashes and settles to its normal colour and glow in about half a second, like the phosphor of an old CRT. `color`: the flash, default white on a dark page and the text's own colour on a light one (where white would not show; the halo is wider there instead). `strength` 0 to 1, the size of the halo, default 1. Only the newest few letters flash, never a paste. |
+| `trail` | When the cursor moves, by typing, Enter, a click, the arrow keys or a jump, a streak fades from where it was to where it went in about 150 ms. Barely there while you type, clear at a new line or a jump. `color`, default the cursor's colour. `opacity` 0 to 1, default 0.55. Goes well with `"smooth": true` on the cursor. |
 | `background` | `grid`, `sun`: `true` or an object as above. `scanlines`, `vignette`: 0 to 1. The editor and preview get a frosted pane in the background colour, so the sun and the grid show through it but never sit straight behind the text. Scanlines and vignette darken text too, so keep them low (the built-in themes use 0.1 or less). |
 
 Effects can differ per mode (put them in `light` or `dark`; a glow reads as a smudge on a light page, so the built-in themes turn it off there) and in the preview: `read.effects` is merged over the editor's effects in Läs, so a theme can glow every letter while you write and only the headings while you read. The `neon-chill`, `neon` and `neon-omg` built-in themes show all of it, from calm to everything.

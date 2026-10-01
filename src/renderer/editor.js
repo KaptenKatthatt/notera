@@ -5,7 +5,7 @@ import {
 } from '@codemirror/view';
 import { hideMarkers } from './markers.js';
 import { headings } from './headings.js';
-import { typingParticles } from './effects.js';
+import { typingEffects } from './effects.js';
 import { searchCount } from './searchCount.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
@@ -139,7 +139,7 @@ export function baseExtensions(opts) {
     search({ top: true }),
     syntaxHighlighting(mdHighlight),
     headings,
-    typingParticles,
+    typingEffects,
     indentUnit.of('  '),
     EditorState.allowMultipleSelections.of(true),
     keymap.of(editorKeymap()),
