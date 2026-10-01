@@ -186,6 +186,7 @@ const wrapIndent = ViewPlugin.fromClass(class {
   /** @param {EditorView} view */
   constructor(view) {
     this.font = '';
+    this.w = 0;
     this.pad = '';
     this.decorations = this.build(view);
     this.measure(view);
@@ -215,13 +216,17 @@ const wrapIndent = ViewPlugin.fromClass(class {
         const plain = view.contentDOM.querySelector('.cm-line:not(.cm-wrap-indent)');
         const pad = plain ? getComputedStyle(plain).paddingLeft : '';
         const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-        if (font === this.font && (!pad || pad === this.pad)) return null;
+        // Measure every time: a web font that finishes loading changes the space width while the
+        // font string stays the same.
         measureCtx.font = font;
-        return { font, pad: pad || this.pad, w: measureCtx.measureText(' ').width };
+        const w = measureCtx.measureText(' ').width;
+        if (font === this.font && w === this.w && (!pad || pad === this.pad)) return null;
+        return { font, pad: pad || this.pad, w };
       },
       write: (m) => {
         if (!m) return;
         this.font = m.font;
+        this.w = m.w;
         this.pad = m.pad;
         view.contentDOM.style.setProperty('--space-w', `${m.w}px`);
         if (m.pad) view.contentDOM.style.setProperty('--line-pad', m.pad);
