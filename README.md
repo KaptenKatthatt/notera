@@ -19,7 +19,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Narrow text column (View menu, on by default): the text is centred at 66 characters, the same width as writing mode. Off gives the full window width. The last line can be scrolled up to the top of the editor.
 - Spell check (Edit menu or Settings, off by default) in Swedish and English at once. Right-clicking a flagged word offers suggestions and Add to dictionary.
 - Zoom (Ctrl+wheel too), font family and size, word wrap, line numbers.
-- Themes, each in a light and a dark version: Default, "Those guys" (looks like Claude Code), "The Other guys" (looks like Codex), and the synthwave family Neon Chill, Neon and Neon OMG (glowing headings, a gliding cursor with a fading trail, letters that flash as you type them, a sun setting over a moving grid). View > Theme > Theme effects turns the effects off without changing theme. View > Theme picks the theme and, below the line, the mode (follow system, light, dark). Import VS Code theme brings over any colour theme installed in VS Code (or a `.vsix` file), paired light and dark. Your own themes go in the themes folder (View > Theme > Open themes folder) and repaint the window when saved; [THEMES.md](THEMES.md) explains the format, which uses VS Code's colour names.
+- Themes, each in a light and a dark version: Default, "Those guys" (looks like Claude Code), "The Other guys" (looks like Codex), and the synthwave family Neon Chill, Neon and Neon OMG (glowing headings, a gliding cursor, letters that flash as you type them, a sun setting over a moving grid). View > Theme > Theme effects turns the effects off without changing theme. The cursor effect, what happens where you type, is your own pick and works with any theme: sparks, pixie dust, ripple, pulse, phosphor letter, red laser, laser sight, neon tube, glitch, focus or none (View > Theme > Cursor effect, Settings or the command palette). View > Theme picks the theme and, below the line, the mode (follow system, light, dark). Import VS Code theme brings over any colour theme installed in VS Code (or a `.vsix` file), paired light and dark. Your own themes go in the themes folder (View > Theme > Open themes folder) and repaint the window when saved; [THEMES.md](THEMES.md) explains the format, which uses VS Code's colour names.
 - Opening a file from Explorer reuses the running window as a new tab.
 - Print: rendered Markdown for `.md`, plain text for `.txt`.
 - Autosave (View > Autosave, on by default): a file with a name is written 0.8 s after you stop typing. Untitled tabs are kept as drafts under `%APPDATA%\Notera\drafts` and come back on the next start.
@@ -130,7 +130,7 @@ src/renderer/   UI: tabs, CodeMirror 6 editor, formatting, preview, status bar
   keybindings.js  dispatches every shortcut from the command registry
   settingsDialog.js  Settings: General and Keyboard shortcuts
   themeApply.js paints the active theme's variables, fonts and style sheets
-  effects.js    theme effects: glow, gradients, cursor, particles, synthwave background
+  effects.js    theme effects (glow, gradients, cursor, synthwave background) and the cursor effects
   headings.js   marks heading lines per level for colours, fonts and effects
   palette.js    Ctrl+Shift+P command palette, theme picker, VS Code import (on quickPick.js)
 src/shared/themeFormat.js  theme.json parsing, extends, VS Code colour keys -> CSS variables (unit tested)

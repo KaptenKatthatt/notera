@@ -9,7 +9,7 @@ const { resolveLocale, makeT } = require('../shared/strings');
 const commands = require('../shared/commands');
 const { createUpdater } = require('./updater');
 const templates = require('../shared/templates');
-const { DEFAULT_THEME, MODES, parseJsonc, migrateThemeSettings } = require('../shared/themeFormat');
+const { DEFAULT_THEME, MODES, parseJsonc, migrateThemeSettings, CURSOR_EFFECT_IDS } = require('../shared/themeFormat');
 const fsSync = require('fs');
 const { createThemeStore, describeError, SCHEME } = require('./themes');
 const vscode = require('./vscodeImport');
@@ -853,6 +853,15 @@ function buildMenu() {
             radio(t('menu.themeSystem'), 'mode', 'system'), radio(t('menu.themeLight'), 'mode', 'light'), radio(t('menu.themeDark'), 'mode', 'dark'),
             { type: 'separator' },
             check('effects'),
+            {
+              label: t('menu.cursorEffect'),
+              submenu: [
+                { ...radio(t('fx.theme'), 'cursorEffect', 'theme'), checked: !s.cursorEffect || s.cursorEffect === 'theme' },
+                radio(t('fx.none'), 'cursorEffect', 'none'),
+                { type: 'separator' },
+                ...CURSOR_EFFECT_IDS.map((id) => radio(t(`fx.${id}`), 'cursorEffect', id))
+              ]
+            },
             cmd('pickTheme'), cmd('newThemeFromCurrent'), cmd('importVsCodeTheme'),
             cmd('openThemesFolder', { click: () => openThemesFolder() })
           ]

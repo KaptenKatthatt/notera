@@ -644,21 +644,56 @@ html.fx-cursor-glow .cm-editor .cm-cursorLayer .cm-cursor {
 }
 html.fx-cursor-smooth .cm-editor .cm-cursorLayer .cm-cursor { transition: left 90ms cubic-bezier(0.2, 0.8, 0.2, 1), top 90ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 
-/* Phosphor: a letter just typed (an fx-ph mark, effects.js) flashes and settles to the line's
-   own colour and glow, like a CRT. A glowing copy of the letter (::after, from data-t) sits on top
-   of it and fades out; only its opacity animates, so the compositor runs it and the line is not
-   repainted every frame. Its fill is the flash colour; `color` stays the text's, so currentColor
-   in the halo is the line's colour. */
-html.fx-phosphor .cm-content .fx-ph { position: relative; }
-html.fx-phosphor .cm-content .fx-ph::after {
-  content: attr(data-t); position: absolute; left: 0; top: 0; pointer-events: none; white-space: pre;
-  /* The copy's line box must be the letter's content area, or a taller theme line height pushes it down. */
+/* Letter effects (the cursor effect, effects.js): the letter just typed carries .fx-ltr with the
+   letter in data-t. Copies of it in ::before and ::after sit on top and animate only opacity,
+   transform and filter, which the compositor runs, so the line is not repainted every frame. A
+   copy's fill is set; its `color` stays the text's, so currentColor in a halo is the line's own. */
+html[class*="fx-type-"] .cm-content .fx-ltr { position: relative; }
+html[class*="fx-type-"] .cm-content .fx-ltr::before, html[class*="fx-type-"] .cm-content .fx-ltr::after {
+  position: absolute; left: 0; top: 0; pointer-events: none; white-space: pre; opacity: 0; will-change: opacity;
+  /* The line's own line height would set the copy lower than its letter when a theme makes it tall. */
   line-height: normal;
-  -webkit-text-fill-color: var(--fx-ph-color);
-  text-shadow: 0 0 calc(4px * var(--fx-ph-strength)) var(--fx-ph-color), 0 0 calc(12px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor), 0 0 calc(26px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor);
-  opacity: 0; animation: fx-phosphor 0.55s ease-out; will-change: opacity;
 }
-@keyframes fx-phosphor { from { opacity: 1; } to { opacity: 0; } }
+/* Phosphor letter: a glowing copy flashes and fades, like the phosphor of a CRT. */
+html.fx-type-phosphor .cm-content .fx-ltr::after {
+  content: attr(data-t); -webkit-text-fill-color: var(--fx-ph-color);
+  text-shadow: 0 0 calc(4px * var(--fx-ph-strength)) var(--fx-ph-color), 0 0 calc(12px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor), 0 0 calc(26px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor);
+  animation: fx-fade 0.55s ease-out;
+}
+@keyframes fx-fade { from { opacity: 1; } to { opacity: 0; } }
+/* Red laser: the beam (canvas) burns the letter in: a white-hot copy gives way to an orange one,
+   which cools to the letter's own colour. */
+html.fx-type-laser .cm-content .fx-ltr::after {
+  content: attr(data-t); -webkit-text-fill-color: #fff;
+  text-shadow: 0 0 3px var(--fx-laser), 0 0 10px var(--fx-laser), 0 0 22px var(--fx-laser);
+  animation: fx-burn-hot 0.7s ease-out;
+}
+html.fx-type-laser .cm-content .fx-ltr::before {
+  content: attr(data-t); -webkit-text-fill-color: #ffb36b; text-shadow: 0 0 6px #ff5a2a;
+  animation: fx-burn-warm 0.7s ease-out;
+}
+@keyframes fx-burn-hot { 0% { opacity: 1; } 35%, 100% { opacity: 0; } }
+@keyframes fx-burn-warm { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 0; } }
+/* Neon tube: the letter flickers off and on a couple of times before it burns steadily. */
+html.fx-type-neon .cm-content .fx-ltr { animation: fx-flicker 0.5s linear; }
+html.fx-type-neon .cm-content .fx-ltr::after {
+  content: attr(data-t); text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; animation: fx-flicker-glow 0.5s linear;
+}
+@keyframes fx-flicker { 0% { opacity: 0.1; } 8% { opacity: 1; } 16% { opacity: 0.25; } 30% { opacity: 1; } 40% { opacity: 0.5; } 55%, 100% { opacity: 1; } }
+@keyframes fx-flicker-glow { 0%, 6% { opacity: 0; } 8% { opacity: 1; } 14%, 50% { opacity: 0; } 55% { opacity: 1; } 100% { opacity: 0; } }
+/* Glitch: a red and a cyan copy jump apart and slide back together. */
+html.fx-type-glitch .cm-content .fx-ltr::before { content: attr(data-t); -webkit-text-fill-color: #ff3344; text-shadow: none; animation: fx-glitch-a 0.32s steps(4, end); }
+html.fx-type-glitch .cm-content .fx-ltr::after { content: attr(data-t); -webkit-text-fill-color: #36f9f6; text-shadow: none; animation: fx-glitch-b 0.32s steps(4, end); }
+@keyframes fx-glitch-a { 0% { opacity: 0.8; transform: translateX(-4px); } 50% { opacity: 0.8; transform: translateX(2px); } 100% { opacity: 0; transform: none; } }
+@keyframes fx-glitch-b { 0% { opacity: 0.8; transform: translateX(4px); } 50% { opacity: 0.8; transform: translateX(-2px); } 100% { opacity: 0; transform: none; } }
+/* Focus: the letter lands large and blurred and pulls together sharp. The letter itself is hidden
+   while its copy lands (a gradient heading keeps its gradient letter: its fill is the heading's). */
+html.fx-type-focus .cm-content .fx-ltr { -webkit-text-fill-color: transparent; text-shadow: none; }
+html.fx-type-focus .cm-content .fx-ltr::after {
+  content: attr(data-t); -webkit-text-fill-color: currentColor; transform-origin: 50% 60%;
+  animation: fx-focus 0.3s ease-out forwards; will-change: opacity, transform, filter;
+}
+@keyframes fx-focus { from { opacity: 0.2; transform: scale(1.8); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 /* Gradient headings have transparent text, so their letters glow in the gradient's glow colour. */
 html.fx-e-grad-1 .cm-line.cm-h1 .cm-hd, html.fx-e-grad-2 .cm-line.cm-h2 .cm-hd, html.fx-e-grad-3 .cm-line.cm-h3 .cm-hd,
 html.fx-e-grad-4 .cm-line.cm-h4 .cm-hd, html.fx-e-grad-5 .cm-line.cm-h5 .cm-hd, html.fx-e-grad-6 .cm-line.cm-h6 .cm-hd { --fx-ph-glow: var(--fx-grad-glow-e); }
@@ -721,7 +756,7 @@ html.fx-vignette #fx-overlay::after {
 @media (prefers-reduced-motion: reduce) {
   html #fx-bg .fx-grid::before { animation: none; }
   html .cm-editor .cm-cursorLayer .cm-cursor { transition: none; }
-  html .cm-content .fx-ph::after { animation: none; }
+  html .cm-content .fx-ltr, html .cm-content .fx-ltr::before, html .cm-content .fx-ltr::after { animation: none; }
 }
 @media print {
   #fx-bg, #fx-overlay, #fx-particles { display: none !important; }

@@ -155,31 +155,60 @@ test('effects are off unless a theme turns them on, and every parameter is check
   const none = normalizeEffects(undefined);
   assert.equal(none.glow, null);
   assert.equal(none.cursor, null);
-  assert.equal(none.particles, null);
-  assert.equal(none.phosphor, null);
-  assert.equal(none.trail, null);
+  assert.equal(none.typing, null);
   assert.deepEqual(none.background, { grid: null, sun: null, scanlines: 0, vignette: 0 });
   const fx = normalizeEffects({
     glow: { target: 'all', strength: 3 },
     gradient: { colors: ['#f0f', 'red; x', '#0ff'], levels: [1, 9, 2] },
     cursor: { style: 'banana', glow: -1, smooth: true },
-    particles: { amount: 500 },
-    phosphor: { color: 'red; x', strength: 4 },
-    trail: { color: '#36f9f6', opacity: -2 },
+    typing: 'sparks',
+    sparks: { amount: 500, size: 'big', colors: ['#f0f', 'url(x)'] },
     background: { grid: true, sun: { colors: ['#fff'] }, scanlines: 0.3, vignette: 'lots' }
   });
   assert.deepEqual(fx.glow, { target: 'all', strength: 1, color: null });
   assert.deepEqual(fx.gradient, { colors: ['#f0f', '#0ff'], levels: [1, 2] });
   assert.deepEqual(fx.cursor, { style: 'line', glow: 0, smooth: true });
-  assert.equal(fx.particles.amount, 40);
-  assert.deepEqual(fx.phosphor, { color: null, strength: 1 });
-  assert.deepEqual(fx.trail, { color: '#36f9f6', opacity: 0 });
-  assert.deepEqual(normalizeEffects({ phosphor: true, trail: true }).trail, { color: null, opacity: 0.55 });
+  assert.deepEqual(fx.typing, { id: 'sparks', amount: 40, size: 2.5, colors: ['#f0f'] });
   assert.deepEqual(fx.background.grid, { color: null, opacity: 0.5, speed: 0.5 });
   assert.equal(fx.background.scanlines, 0.3);
   assert.equal(fx.background.vignette, 0);
   assert.equal(normalizeEffects({ glow: false }).glow, null, 'false switches an inherited effect off');
   assert.equal(normalizeEffects({ gradient: { colors: ['#fff'] } }).gradient, null, 'a gradient needs two colours');
+});
+
+test('the cursor effect: the user\'s choice wins over the theme\'s suggestion, any effect with any theme', () => {
+  const { normalizeEffects, CURSOR_EFFECTS, CURSOR_EFFECT_IDS } = require('../../src/shared/themeFormat');
+  const typing = (fx, cursorEffect) => normalizeEffects(fx, { cursorEffect }).typing;
+  assert.deepEqual(CURSOR_EFFECT_IDS, ['sparks', 'pixie', 'ripple', 'pulse', 'phosphor', 'laser', 'sight', 'neon', 'glitch', 'focus']);
+  assert.deepEqual(typing({ typing: 'phosphor', phosphor: { strength: 4, color: 'red; x' } }), { id: 'phosphor', color: null, strength: 1 });
+  assert.deepEqual(typing({ typing: 'phosphor' }, 'ripple'), { id: 'ripple', colors: [] }, 'the user picks another');
+  assert.equal(typing({ typing: 'phosphor' }, 'none'), null, 'or none');
+  assert.deepEqual(typing({ typing: 'phosphor' }, 'theme'), { id: 'phosphor', color: null, strength: 1 }, '"theme" follows the theme');
+  assert.deepEqual(typing({}, 'laser'), { id: 'laser', color: '#ff3344' }, 'any effect with a theme that has none; the laser is red of its own');
+  assert.deepEqual(typing({ typing: 'phosphor', phosphor: false }, 'phosphor'), { id: 'phosphor', color: null, strength: 1 }, 'the user may pick what the theme switched off');
+  assert.equal(typing({ typing: 'banana' }), null);
+  assert.equal(typing({ typing: 'none', phosphor: true }), null);
+  // Themes from before 0.11: the keys switched effects on; particles are now sparks, the trail is gone.
+  assert.equal(typing({ phosphor: true, particles: true }).id, 'phosphor');
+  assert.deepEqual(typing({ particles: { amount: 3 } }), { id: 'sparks', amount: 3, size: 2.5, colors: [] });
+  assert.equal(typing({ trail: true }), null);
+  assert.equal(typing({ typing: 'phosphor', phosphor: false, particles: { amount: 3 } }).id, 'sparks', 'an inherited suggestion switched off');
+  for (const id of CURSOR_EFFECT_IDS) {
+    for (const [name, spec] of Object.entries(CURSOR_EFFECTS[id].params)) {
+      assert.ok(['int', 'number', 'color', 'colors'].includes(spec.type), `${id}.${name}`);
+      if (spec.type === 'int' || spec.type === 'number') assert.ok(spec.min <= spec.default && spec.default <= spec.max, `${id}.${name} default in range`);
+    }
+  }
+});
+
+test('theme.schema.json lists every cursor effect and its parameters', () => {
+  const { CURSOR_EFFECTS } = require('../../src/shared/themeFormat');
+  const schema = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../../theme.schema.json'), 'utf8'));
+  const props = schema.definitions.effects.properties;
+  assert.deepEqual(props.typing.enum, ['none', ...Object.keys(CURSOR_EFFECTS)]);
+  for (const [id, fx] of Object.entries(CURSOR_EFFECTS)) {
+    assert.deepEqual(Object.keys(props[id].oneOf[1].properties), Object.keys(fx.params), id);
+  }
 });
 
 test('heading colours and fonts per level become variables', () => {
@@ -198,14 +227,14 @@ test('the Neon family goes from calm to everything, and light variants keep glow
     return { e: normalizeEffects(v.notera.effects), r: normalizeEffects(deepMerge(v.notera.effects || {}, v.read.effects || {})) };
   };
   assert.equal(fx('neon-chill', true).e.background.grid, null);
-  assert.equal(fx('neon', true).e.particles, null);
+  assert.equal(fx('neon', true).e.typing, null);
   const omg = fx('neon-omg', true);
   assert.equal(omg.e.glow.target, 'all');
   assert.equal(omg.r.glow.target, 'headings', 'Läs does not make a page of glowing body text');
-  assert.ok(omg.e.phosphor && omg.e.trail && omg.e.background.grid && omg.e.background.sun);
-  assert.equal(omg.e.particles, null, 'sparks covered the text being typed; phosphor and the trail replace them');
+  assert.ok(omg.e.background.grid && omg.e.background.sun);
+  assert.equal(omg.e.typing.id, 'phosphor', 'Neon OMG suggests the phosphor letter');
   const omgLight = fx('neon-omg', false);
-  assert.ok(omgLight.e.phosphor.color && omgLight.e.trail && !omgLight.e.particles, 'a light page flashes in a colour, not white');
+  assert.ok(omgLight.e.typing.id === 'phosphor' && omgLight.e.typing.color, 'a light page flashes in a colour, not white');
   for (const id of ['neon-chill', 'neon', 'neon-omg']) {
     const light = fx(id, false);
     for (const side of [light.e, light.r]) assert.ok(!side.glow || side.glow.strength <= 0.3, `${id} light glow`);

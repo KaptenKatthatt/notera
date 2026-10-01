@@ -8,7 +8,8 @@ import { attachTabDrag } from './tabdrag.js';
 import { display } from '../shared/commands.js';
 import { fillPlaceholders, cursorAfterHeading, standupTemplate, BUILTIN } from '../shared/templates.js';
 import { createThemeApplier } from './themeApply.js';
-import { createEffects } from './effects.js';
+import { createEffects, demoCursorEffect } from './effects.js';
+import { normalizeEffects, CURSOR_EFFECT_IDS } from '../shared/themeFormat.js';
 import { createPalette } from './palette.js';
 import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
@@ -793,7 +794,7 @@ function applySettings(next, prev = {}) {
   root.setProperty('--zoom-base', String((settings.zoom || 100) / 100));
   document.body.classList.toggle('writing', !!settings.writingMode);
   document.body.classList.toggle('narrow', settings.narrowColumn !== false);
-  if (prev.effects !== settings.effects || prev.viewMode !== settings.viewMode) applyEffects();
+  if (prev.effects !== settings.effects || prev.viewMode !== settings.viewMode || prev.cursorEffect !== settings.cursorEffect) applyEffects();
   root.setProperty('--editor-font', `"${settings.fontFamily || 'Consolas'}", Consolas, "Cascadia Mono", monospace`);
   root.setProperty('--editor-size', `${settings.fontSize || 15}px`);
   document.body.classList.toggle('no-statusbar', settings.statusBar === false);
@@ -954,6 +955,7 @@ async function handleAction(action, payload) {
     case 'checkForUpdates': await api.checkForUpdates(true); break;
     case 'commandPalette': palette.openCommands(); break;
     case 'pickTheme': await palette.pickTheme(); break;
+    case 'pickCursorEffect': palette.pickCursorEffect(); break;
     case 'newThemeFromCurrent': palette.newTheme(); break;
     case 'openThemesFolder': await api.openThemesFolder(); break;
     case 'importVsCodeTheme': await palette.importVsCode(); break;
@@ -1058,11 +1060,34 @@ async function prepareQuit(id) {
   }
 }
 
-/** The theme's effects, unless the Theme effects switch is off. */
-function applyEffects() {
+/**
+ * The theme's effects, unless the Theme effects switch is off, and the cursor effect: the user's
+ * setting, or `cursorEffect` while the picker previews one.
+ * @param {string} [cursorEffect]
+ */
+function applyEffects(cursorEffect = settings.cursorEffect) {
   if (!themes) return;
   if (!effects) effects = createEffects();
-  effects.update({ notera: themes.notera, read: themes.read, type: themes.type, enabled: settings.effects !== false, view: settings.viewMode || 'editor' });
+  effects.update({ notera: themes.notera, read: themes.read, type: themes.type, enabled: settings.effects !== false, view: settings.viewMode || 'editor', cursorEffect });
+}
+
+/** While the cursor effect picker highlights an effect, it runs at the cursor now and then. */
+const EFFECT_DEMO_MS = 900;
+let effectDemo = 0;
+function previewCursorEffect(id) {
+  stopEffectDemo();
+  applyEffects(id);
+  const demo = () => demoCursorEffect(view);
+  demo();
+  effectDemo = window.setInterval(demo, EFFECT_DEMO_MS);
+}
+function stopEffectDemo() { clearInterval(effectDemo); effectDemo = 0; }
+
+/** The cursor effect the current theme suggests, or null; shown next to "Theme's choice". */
+function themeCursorEffect() {
+  if (!themes || settings.effects === false) return null;
+  const fx = normalizeEffects(themes.notera && themes.notera.effects).typing;
+  return fx ? fx.id : null;
 }
 
 // The theme and its mode come from main as one message (see themeApply.js). CodeMirror only needs
@@ -1125,13 +1150,14 @@ async function boot() {
   });
   view.scrollDOM.addEventListener('scroll', preview.syncScroll, { passive: true });
   settingsDialog = createSettingsDialog({
-    t: (...a) => t(...a), api, getSettings: () => settings, getThemes: () => themeList, openFontDialog: dialogs.font, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
+    t: (...a) => t(...a), api, getSettings: () => settings, getThemes: () => themeList, cursorEffectChoices: () => palette.cursorEffectChoices(), openFontDialog: dialogs.font, version: b.version, chooseNotesRoot: () => chooseNotesRoot(),
     onClose: () => view.focus()
   });
   settingsFile = await api.settingsPath();
   palette = createPalette({
     t: () => t, api, getSettings: () => settings, run: (id) => handleAction(id), focusEditor: () => view.focus(),
     previewTheme: (msg) => paintTheme(msg), restoreTheme: () => { if (themeMsg) paintTheme(themeMsg); },
+    cursorEffects: CURSOR_EFFECT_IDS, themeCursorEffect, previewCursorEffect, restoreCursorEffect: () => { stopEffectDemo(); applyEffects(); },
     openPaths: (paths) => openPaths(paths), notice: (text) => themes.notice(text)
   });
   sidebar = createSidebar({

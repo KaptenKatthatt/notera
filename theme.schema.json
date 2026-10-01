@@ -524,7 +524,210 @@
             }
           ]
         },
+        "typing": {
+          "description": "The cursor effect this theme suggests. The user's choice in Settings wins; \"none\" suggests none.",
+          "enum": [
+            "none",
+            "sparks",
+            "pixie",
+            "ripple",
+            "pulse",
+            "phosphor",
+            "laser",
+            "sight",
+            "neon",
+            "glitch",
+            "focus"
+          ]
+        },
+        "sparks": {
+          "description": "Sparks fly up from the cursor at every key. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "amount": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 40,
+                  "default": 10
+                },
+                "size": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 8,
+                  "default": 2.5
+                },
+                "colors": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/color"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "pixie": {
+          "description": "Two or three small dots drift down from the baseline and fade. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "colors": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/color"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "ripple": {
+          "description": "A thin ring grows out of the cursor and fades. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "colors": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/color"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "pulse": {
+          "description": "The cursor's glow flares up at every key and dies down. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "color": {
+                  "$ref": "#/definitions/color"
+                }
+              }
+            }
+          ]
+        },
+        "phosphor": {
+          "description": "The letter just typed flashes and settles to its normal colour and glow, like CRT phosphor. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "color": {
+                  "$ref": "#/definitions/color"
+                },
+                "strength": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "default": 1
+                }
+              }
+            }
+          ]
+        },
+        "laser": {
+          "description": "A red laser beam from the right hits the cursor and burns the letter in. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "color": {
+                  "$ref": "#/definitions/color"
+                }
+              }
+            }
+          ]
+        },
+        "sight": {
+          "description": "A thin red laser line flashes along the line under the baseline. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "color": {
+                  "$ref": "#/definitions/color"
+                }
+              }
+            }
+          ]
+        },
+        "neon": {
+          "description": "The letter lights up like a neon tube: it flickers before it burns steadily. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          ]
+        },
+        "glitch": {
+          "description": "A red and a cyan copy of the letter jump apart and slide back together. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          ]
+        },
+        "focus": {
+          "description": "The letter lands large and blurred and pulls together sharp. Its parameters; the effect runs when it is the cursor effect (typing).",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          ]
+        },
         "particles": {
+          "description": "Before 0.11: sparks. Read as the sparks parameters, and as the suggestion when typing is not set.",
+          "deprecated": true,
           "oneOf": [
             {
               "const": false
@@ -552,47 +755,9 @@
             }
           ]
         },
-        "phosphor": {
-          "description": "The letter just typed flashes and settles to its normal colour and glow, like CRT phosphor.",
-          "oneOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "object",
-              "properties": {
-                "color": {
-                  "$ref": "#/definitions/color"
-                },
-                "strength": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1
-                }
-              }
-            }
-          ]
-        },
         "trail": {
-          "description": "A fading streak from where the cursor was to where it went.",
-          "oneOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "object",
-              "properties": {
-                "color": {
-                  "$ref": "#/definitions/color"
-                },
-                "opacity": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1
-                }
-              }
-            }
-          ]
+          "description": "Before 0.11: a streak behind the moving cursor. No longer drawn.",
+          "deprecated": true
         },
         "background": {
           "type": "object",

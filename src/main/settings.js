@@ -14,6 +14,7 @@ const DEFAULTS = {
   theme: 'default',     // a theme id: a folder in themes/ or <userData>/themes/
   mode: 'system',       // 'system' | 'light' | 'dark': which variant of the theme to show
   effects: true,        // the theme's glow, particles, backgrounds; off shows only its colours and fonts
+  cursorEffect: 'theme', // what happens where you type: 'theme' (its suggestion), 'none' or an effect id
   language: 'auto',     // 'auto' | 'en' | 'sv'
   zoom: 100,
   viewMode: 'editor',   // 'editor' | 'split' | 'preview'
