@@ -152,6 +152,15 @@ assert.ok(marks.length === 1 && /cm-hd/.test(marks[0].inToken), `inside the H3 t
 await win.keyboard.press('Backspace');
 ok('fosfor i en rubrik ärver rubrikens färg');
 
+// Whole characters: an emoji is one mark with the whole emoji, not two halves.
+await win.keyboard.type('a😀', { delay: 10 });
+marks = await phosphorMarks();
+assert.deepEqual(marks.slice(-2).map((m) => m.text), ['a', '😀'], JSON.stringify(marks));
+assert.equal(marks[marks.length - 1].copy, '"😀"');
+await win.keyboard.press('Backspace');
+await win.keyboard.press('Backspace');
+ok('en emoji blinkar hel');
+
 // A dead key or an IME composes; nothing may be wrapped around the text while it does.
 await win.evaluate(() => { const v = window.__notera.view; const at = v.state.selection.main.head; v.dispatch({ changes: { from: at, insert: 'é' }, selection: { anchor: at + 1 }, userEvent: 'input.type.compose' }); });
 assert.equal((await phosphorMarks()).length, 0, 'no phosphor mark while composing');
