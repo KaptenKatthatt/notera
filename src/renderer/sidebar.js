@@ -276,7 +276,7 @@ export function createSidebar(ctx) {
     if (editing && editing.kind === 'new') {
       h += `<div class="sb-row sb-newproj">${ICONS.folder}<input class="sb-edit" id="sb-edit" placeholder="${esc(t('notes.projectName'))}" value="${esc(editing.value)}" autocomplete="off" spellcheck="false" aria-label="${esc(t('notes.projectName'))}" /></div>`;
       if (editing.error) h += `<div class="sb-err">${esc(editing.error)}</div>`;
-    } else h += `<div class="sb-row sb-newproj" data-act="new-project">${ICONS.plus}<span class="name">${esc(t('notes.newProject'))}</span></div>`;
+    }
     return h + renderTemplates();
   }
 

@@ -447,8 +447,10 @@ body.sb-open #sb-resizer { display: block; }
 .sb-note.active .name { font-weight: 600; }
 .sb-note.untitled .name { color: var(--fg-muted); font-style: italic; }
 .sb-arch-group { cursor: default; }
-.sb-row .acts { display: flex; gap: 1px; opacity: 0; }
-.sb-row:hover .acts, .sb-row.menu-open .acts, .sb-row:focus-within .acts { opacity: 1; }
+/* The row buttons take no width until the row is hovered or focused, so names are not cut short
+   by buttons nobody can see. They stay in the tab order: focusing one shows them. */
+.sb-row .acts { display: flex; gap: 1px; flex: none; width: 0; overflow: hidden; opacity: 0; }
+.sb-row:hover .acts, .sb-row.menu-open .acts, .sb-row:focus-within .acts { width: auto; overflow: visible; opacity: 1; }
 .sb-row .acts button {
   width: 22px; height: 22px; border: none; background: transparent; border-radius: 4px; color: var(--fg-muted);
   display: grid; place-items: center; padding: 0; cursor: default;
