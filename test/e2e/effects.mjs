@@ -132,6 +132,12 @@ assert.ok(marks.length === 1 && /cm-hd/.test(marks[0].inToken), `inside the H3 t
 await win.keyboard.press('Backspace');
 ok('fosfor i en rubrik ärver rubrikens färg');
 
+// A dead key or an IME composes; nothing may be wrapped around the text while it does.
+await win.evaluate(() => { const v = window.__notera.view; const at = v.state.selection.main.head; v.dispatch({ changes: { from: at, insert: 'é' }, selection: { anchor: at + 1 }, userEvent: 'input.type.compose' }); });
+assert.equal((await phosphorMarks()).length, 0, 'no phosphor mark while composing');
+await win.keyboard.press('Backspace');
+ok('ingen fosfor runt en pågående komposition (döda tangenter)');
+
 const trailLit = await jumpTrail();
 assert.ok(trailLit > 200, `the cursor trail is drawn on a jump (${trailLit} lit pixels)`);
 await shot('60b-neon-omg-dark-jump');

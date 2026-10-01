@@ -315,7 +315,10 @@ const phosphorField = StateField.define({
     for (const ef of tr.effects) {
       if (ef.is(expirePhosphor)) deco = deco.update({ filter: (_f, _t, v) => v.spec.born > ef.value });
     }
-    if (tr.docChanged && tr.isUserEvent('input') && !tr.isUserEvent('input.paste') && !tr.isUserEvent('input.drop')) {
+    // Not while composing either (dead keys like ´ and ¨ on a Swedish keyboard, IMEs): changing
+    // the DOM around an active composition can cancel or garble it.
+    if (tr.docChanged && tr.isUserEvent('input') && !tr.isUserEvent('input.paste') && !tr.isUserEvent('input.drop') &&
+        !tr.isUserEvent('input.type.compose')) {
       const born = Date.now();
       /** @type {import('@codemirror/state').Range<Decoration>[]} */
       const add = [];
@@ -336,10 +339,14 @@ const phosphorField = StateField.define({
 const phosphorExpiry = ViewPlugin.fromClass(class {
   constructor(view) { this.view = view; this.timer = 0; }
   update(u) {
-    if (this.timer || !u.state.field(phosphorField).size) return;
+    if (!this.timer && u.state.field(phosphorField).size) this.arm();
+  }
+  arm() {
     this.timer = window.setTimeout(() => {
       this.timer = 0;
-      this.view.dispatch({ effects: expirePhosphor.of(Date.now() - PHOSPHOR_MS) });
+      // Wait out a composition rather than redraw the text under it.
+      if (this.view.composing) this.arm();
+      else this.view.dispatch({ effects: expirePhosphor.of(Date.now() - PHOSPHOR_MS) });
     }, PHOSPHOR_MS + 50);
   }
   destroy() { clearTimeout(this.timer); }
