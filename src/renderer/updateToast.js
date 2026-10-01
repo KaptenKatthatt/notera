@@ -25,7 +25,8 @@ export function createUpdateToast(ctx) {
     const busy = st === 'downloading' || st === 'installing';
     go.hidden = busy;
     later.hidden = busy;
-    bar.hidden = st !== 'downloading';
+    go.parentElement.hidden = busy; // no empty button row under the bar
+    bar.hidden = !busy; // full while installing: the download is done
     bar.firstElementChild.style.width = `${update.percent || 0}%`;
     box.dataset.state = st;
     if (st === 'available') { $('#update-text').textContent = t('update.available', { version: update.version }); go.textContent = t('update.download'); }
