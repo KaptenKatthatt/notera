@@ -136,6 +136,42 @@ await reset('ett\ntvå', 2);
 await win.keyboard.press('Alt+ArrowUp');
 await check('Alt+Up i en textfil', 'två\nett');
 
-await win.evaluate(() => { const t = window.__notera.active; t.dirty = false; t.savedDoc = window.__notera.view.state.doc; });
+// Word wrap keeps a wrapped line's indentation (VS Code's wrappingIndent "same"): the second
+// visual line starts under the first non-blank character, for spaces, a tab and a proportional font.
+await win.keyboard.press('Control+T');
+await win.waitForFunction(() => window.__notera.active.kind === 'md');
+const long = 'Hitta varför exporten tappar kolumner när filen har fler än tjugo fält och semikolon som avgränsare. Fixade.';
+await reset(`Inledning\n  - ${long}\n\t${long}\n${long}`, 1);
+const wrapOffsets = () => win.evaluate(() => {
+  const v = window.__notera.view;
+  return [2, 3, 4].map((n) => {
+    const line = v.state.doc.line(n);
+    const ws = /^[ \t]*/.exec(line.text)[0].length;
+    const first = v.coordsAtPos(line.from + ws);
+    for (let p = line.from + ws + 1; p < line.to; p++) {
+      const c = v.coordsAtPos(p, 1);
+      if (c.top > first.top + 2) return { start: Math.round(first.left), wrapped: Math.round(c.left), left: Math.round(v.coordsAtPos(v.state.doc.line(1).from).left) };
+    }
+    return null;
+  });
+});
+for (const font of [null, 'DejaVu Sans']) {
+  if (font) await win.evaluate((f) => window.notera.setSettings({ fontFamily: f }), font);
+  await win.waitForTimeout(300);
+  if (font) assert.match(await win.evaluate(() => getComputedStyle(window.__notera.view.contentDOM).fontFamily), /DejaVu Sans/);
+  const [sp, tab, flat] = await wrapOffsets();
+  assert.ok(sp && tab && flat, 'all three lines wrap');
+  assert.ok(Math.abs(sp.wrapped - sp.start) <= 1, `spaces: continuation under the "-" (${JSON.stringify(sp)}, ${font || 'default font'})`);
+  assert.ok(Math.abs(tab.wrapped - tab.start) <= 1, `tab: continuation under the text (${JSON.stringify(tab)}, ${font || 'default font'})`);
+  assert.ok(sp.start > sp.left + 5, 'the indented line itself still starts indented');
+  // The first visual line stays where it was: the "-" sits where two spaces after the left edge put it.
+  const twoSpaces = await win.evaluate(() => { const v = window.__notera.view; const l = v.state.doc.line(2); return Math.round(v.coordsAtPos(l.from + 2).left - v.coordsAtPos(l.from).left); });
+  assert.ok(Math.abs(sp.start - sp.left - twoSpaces) <= 1, `first line not shifted (${JSON.stringify(sp)}, two spaces ${twoSpaces})`);
+  assert.equal(flat.wrapped, flat.left, 'an unindented line wraps to the left edge');
+}
+await win.screenshot({ path: path.join(root, 'test/e2e/shots/lines-wrap-indent.png') });
+console.log('ok   radbrytning behåller radens indrag');
+
+await win.evaluate(() => { for (const t of window.__notera.tabs) { t.dirty = false; t.savedDoc = t.state.doc; } const t = window.__notera.active; t.dirty = false; t.savedDoc = window.__notera.view.state.doc; });
 await app.close();
 console.log('lines OK');

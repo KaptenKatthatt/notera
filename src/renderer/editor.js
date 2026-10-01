@@ -112,7 +112,7 @@ export function markdownExtension() {
 export function baseExtensions(opts) {
   return [
     compartments.language.of(opts.kind === 'md' ? markdownExtension() : []),
-    compartments.wrap.of(opts.wordWrap ? EditorView.lineWrapping : []),
+    compartments.wrap.of(opts.wordWrap ? wrapExt : []),
     compartments.gutter.of(opts.lineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
     compartments.theme.of(themeFor(opts.dark)),
     compartments.phrases.of(EditorState.phrases.of(opts.phrases || {})),
@@ -170,6 +170,88 @@ const selectedText = ViewPlugin.fromClass(class {
   }
 }, { decorations: (p) => p.decorations });
 
+// With word wrap on, the continuation of a wrapped indented line starts under the line's own start,
+// not at the left edge, like VS Code's wrappingIndent "same". Each indented line gets padding equal
+// to its leading whitespace and the same negative text-indent, so its first visual line stays put.
+// The width comes from the space width of the editor font (proportional fonts too); a tab counts
+// as tabSize spaces. Leading whitespace only: a list item's continuation goes under its "-".
+const indentDecos = new Map(); // columns -> line decoration
+function indentDeco(cols) {
+  let d = indentDecos.get(cols);
+  if (!d) indentDecos.set(cols, d = Decoration.line({ class: 'cm-wrap-indent', attributes: { style: `--wi:${cols}` } }));
+  return d;
+}
+const measureCtx = document.createElement('canvas').getContext('2d');
+const wrapIndent = ViewPlugin.fromClass(class {
+  /** @param {EditorView} view */
+  constructor(view) {
+    this.font = '';
+    this.pad = '';
+    this.decorations = this.build(view);
+    this.measure(view);
+    // The font changes from outside the editor (Settings, a theme's CSS variables or style.css, a
+    // web font finishing loading), which CodeMirror does not always report as a geometry change.
+    this.remeasure = () => this.measure(view);
+    this.observer = new MutationObserver(this.remeasure);
+    this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class', 'data-theme'] });
+    this.observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+    this.observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    document.fonts.addEventListener('loadingdone', this.remeasure);
+  }
+  destroy() {
+    this.observer.disconnect();
+    document.fonts.removeEventListener('loadingdone', this.remeasure);
+  }
+  /** @param {import('@codemirror/view').ViewUpdate} u */
+  update(u) {
+    if (u.docChanged || u.viewportChanged) this.decorations = this.build(u.view);
+    if (u.geometryChanged) this.measure(u.view);
+  }
+  /** @param {EditorView} view */
+  measure(view) {
+    view.requestMeasure({
+      read: () => {
+        const cs = getComputedStyle(view.contentDOM);
+        const plain = view.contentDOM.querySelector('.cm-line:not(.cm-wrap-indent)');
+        const pad = plain ? getComputedStyle(plain).paddingLeft : '';
+        const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        if (font === this.font && (!pad || pad === this.pad)) return null;
+        measureCtx.font = font;
+        return { font, pad: pad || this.pad, w: measureCtx.measureText(' ').width };
+      },
+      write: (m) => {
+        if (!m) return;
+        this.font = m.font;
+        this.pad = m.pad;
+        view.contentDOM.style.setProperty('--space-w', `${m.w}px`);
+        if (m.pad) view.contentDOM.style.setProperty('--line-pad', m.pad);
+      }
+    });
+  }
+  /** @param {EditorView} view */
+  build(view) {
+    /** @type {RangeSetBuilder<Decoration>} */
+    const b = new RangeSetBuilder();
+    const { doc, tabSize } = view.state;
+    for (const { from, to } of view.visibleRanges) {
+      for (let pos = from; pos <= to;) {
+        const line = doc.lineAt(pos);
+        let cols = 0, i = 0;
+        for (; i < line.length; i++) {
+          const c = line.text.charCodeAt(i);
+          if (c === 32) cols++;
+          else if (c === 9) cols += tabSize - (cols % tabSize);
+          else break;
+        }
+        if (cols && i < line.length) b.add(line.from, line.from, indentDeco(cols));
+        pos = line.to + 1;
+      }
+    }
+    return b.finish();
+  }
+}, { decorations: (v) => v.decorations });
+const wrapExt = [EditorView.lineWrapping, wrapIndent];
+
 function spellcheckExt(on) { return EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false' }); }
 
 function readOnlyExt(on) { return on ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []; }
@@ -186,7 +268,7 @@ export function reconfigureState(state, opts) {
 export function reconfigureEffects(opts) {
   return [
     compartments.language.reconfigure(opts.kind === 'md' ? markdownExtension() : []),
-    compartments.wrap.reconfigure(opts.wordWrap ? EditorView.lineWrapping : []),
+    compartments.wrap.reconfigure(opts.wordWrap ? wrapExt : []),
     compartments.gutter.reconfigure(opts.lineNumbers ? [lineNumbers(), highlightActiveLineGutter()] : []),
     compartments.theme.reconfigure(themeFor(opts.dark)),
     compartments.phrases.reconfigure(EditorState.phrases.of(opts.phrases || {})),
