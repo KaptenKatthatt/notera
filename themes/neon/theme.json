@@ -10,20 +10,20 @@
       "glow": { "target": "headings", "strength": 0.7 },
       "gradient": { "colors": ["#ff7edb", "#fede5d"], "levels": [1] },
       "cursor": { "style": "line", "glow": 0.8, "smooth": true },
-      "background": { "scanlines": 0.1, "vignette": 0.3 }
+      "background": { "scanlines": 0.05, "vignette": 0.1 }
     }
   },
   "read": {
     "effects": { "glow": { "target": "headings", "strength": 0.5 } }
   },
   "light": {
-    "read": { "effects": { "glow": { "target": "headings", "strength": 0.15 } } },
+    "read": { "effects": { "glow": false } },
     "notera": {
       "effects": {
-        "glow": { "target": "headings", "strength": 0.15 },
-        "gradient": { "colors": ["#d6249f", "#e0513a"], "levels": [1] },
+        "glow": false,
+        "gradient": { "colors": ["#b30081", "#b4240d"], "levels": [1] },
         "cursor": { "style": "line", "glow": 0.4, "smooth": true },
-        "background": { "scanlines": 0, "vignette": 0.08 }
+        "background": { "scanlines": 0, "vignette": 0.06 }
       }
     }
   }

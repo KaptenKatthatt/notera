@@ -73,7 +73,7 @@ function enterPastHeader(view) {
 const noteKeys = Prec.high(keymap.of([{ key: 'Enter', run: enterPastHeader }]));
 
 const mdHighlight = HighlightStyle.define([
-  { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--h-color, var(--md-h))' },
+  { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--h-text, var(--h-color, var(--md-h)))' },
   { tag: t.strong, fontWeight: '700' },
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, textDecoration: 'line-through' },
@@ -131,6 +131,7 @@ export function baseExtensions(opts) {
     highlightSpecialChars(),
     highlightActiveLine(),
     selectingClass,
+    selectedText,
     scrollPastEnd(),
     highlightSelectionMatches(),
     rectangularSelection(),
@@ -152,6 +153,22 @@ export function baseExtensions(opts) {
 const selectingClass = EditorView.editorAttributes.compute(['selection'], (state) => (
   state.selection.ranges.some((r) => !r.empty) ? { class: 'cm-selecting' } : {}
 ));
+
+// Selected text is drawn in --selection-fg. A selection strong enough to see (3:1 against the
+// background, WCAG 1.4.11) leaves no room for coloured Markdown on top of it to stay readable
+// (4.5:1), so the selected text takes one colour picked for that background, like Notepad does.
+const selectedMark = Decoration.mark({ class: 'cm-selectedText' });
+const selectedText = ViewPlugin.fromClass(class {
+  /** @param {EditorView} view */
+  constructor(view) { this.decorations = this.build(view); }
+  /** @param {import('@codemirror/view').ViewUpdate} u */
+  update(u) { if (u.selectionSet || u.docChanged || u.viewportChanged) this.decorations = this.build(u.view); }
+  /** @param {EditorView} view */
+  build(view) {
+    const ranges = view.state.selection.ranges.filter((r) => !r.empty).map((r) => selectedMark.range(r.from, r.to));
+    return Decoration.set(ranges, true);
+  }
+}, { decorations: (p) => p.decorations });
 
 function spellcheckExt(on) { return EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false' }); }
 

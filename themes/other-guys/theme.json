@@ -19,13 +19,14 @@
       "panel.border": "#2a2a2a",
       "button.background": "#ececec",
       "button.foreground": "#111111",
-      "editor.selectionBackground": "rgba(255, 255, 255, 0.16)",
+      "editor.selectionBackground": "#636363",
+      "editor.selectionForeground": "#ececec",
       "editor.lineHighlightBackground": "#161616",
       "textCodeBlock.background": "#1c1c1c",
       "widget.shadow": "rgba(0, 0, 0, 0.6)",
       "input.background": "#1c1c1c",
       "editor.findMatchHighlightBackground": "rgba(94, 196, 214, 0.25)",
-      "editor.findMatchBackground": "rgba(94, 196, 214, 0.55)",
+      "editor.findMatchBackground": "#007485",
       "editorCursor.foreground": "#ffffff",
       "list.activeSelectionBackground": "rgba(255, 255, 255, 0.08)",
       "errorForeground": "#ff7b72",
@@ -33,7 +34,7 @@
       "tab.activeModifiedBorder": "#d38aea"
     },
     "notera": {
-      "colors": { "heading": "#ffffff", "link": "#5ec4d6", "quote": "#8f8f8f", "code": "#5ec4d6", "markup": "#555555" }
+      "colors": { "heading": "#ffffff", "link": "#5ec4d6", "quote": "#8f8f8f", "code": "#5ec4d6", "markup": "#828282" }
     }
   },
   "light": {
@@ -48,13 +49,15 @@
       "panel.border": "#e5e5e5",
       "button.background": "#0d0d0d",
       "button.foreground": "#ffffff",
-      "editor.selectionBackground": "rgba(0, 0, 0, 0.1)",
+      "editor.selectionBackground": "#057d92",
+      "editor.selectionForeground": "#ffffff",
       "editor.lineHighlightBackground": "#f7f7f7",
       "textCodeBlock.background": "#f5f5f5",
       "widget.shadow": "rgba(0, 0, 0, 0.12)",
       "input.background": "#ffffff",
       "editor.findMatchHighlightBackground": "rgba(10, 127, 148, 0.18)",
-      "editor.findMatchBackground": "rgba(10, 127, 148, 0.4)",
+      "editor.findMatchBackground": "#349fb1",
+      "editor.findMatchForeground": "#0d0d0d",
       "editorCursor.foreground": "#0d0d0d",
       "list.activeSelectionBackground": "rgba(0, 0, 0, 0.06)",
       "errorForeground": "#d1242f",
@@ -62,7 +65,7 @@
       "tab.activeModifiedBorder": "#b44fd1"
     },
     "notera": {
-      "colors": { "heading": "#000000", "link": "#0a7f94", "quote": "#6e6e6e", "code": "#0a7f94", "markup": "#b4b4b4" }
+      "colors": { "heading": "#000000", "link": "#007a8f", "quote": "#6e6e6e", "code": "#007a8f", "markup": "#6f6f6f" }
     }
   }
 }

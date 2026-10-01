@@ -14,19 +14,20 @@
       "panel.border": "#dcdcdc",
       "button.background": "#0067c0",
       "button.foreground": "#ffffff",
-      "editor.selectionBackground": "#cce4ff",
+      "editor.selectionBackground": "#0067c0",
+      "editor.selectionForeground": "#ffffff",
       "editor.lineHighlightBackground": "#f6f8fa",
       "textCodeBlock.background": "#f8f8f8",
       "widget.shadow": "rgba(0, 0, 0, 0.16)",
       "input.background": "#fffef2",
       "editor.findMatchHighlightBackground": "#ffe58a",
-      "editor.findMatchBackground": "#ffad42",
+      "editor.findMatchBackground": "#cf8000",
       "list.activeSelectionBackground": "rgba(0, 103, 192, 0.12)",
       "errorForeground": "#c42b1c",
       "editor.rangeHighlightBackground": "#fff1a8"
     },
     "notera": {
-      "colors": { "heading": "#222324", "link": "#2077b2", "quote": "#aeb1b5", "code": "#8b3a00", "markup": "#aeb1b5" }
+      "colors": { "heading": "#222324", "link": "#2077b2", "quote": "#6e7074", "code": "#8b3a00", "markup": "#6e7074" }
     }
   },
   "dark": {
@@ -41,19 +42,20 @@
       "panel.border": "#333333",
       "button.background": "#4cc2ff",
       "button.foreground": "#002b45",
-      "editor.selectionBackground": "#2a4a6b",
+      "editor.selectionBackground": "#0067c0",
+      "editor.selectionForeground": "#ffffff",
       "editor.lineHighlightBackground": "#161616",
       "textCodeBlock.background": "#1c1a1a",
       "widget.shadow": "rgba(0, 0, 0, 0.5)",
       "input.background": "#22221f",
       "editor.findMatchHighlightBackground": "#725b18",
-      "editor.findMatchBackground": "#b36b20",
+      "editor.findMatchBackground": "#a05900",
       "list.activeSelectionBackground": "rgba(76, 194, 255, 0.16)",
       "errorForeground": "#ff99a4",
       "editor.rangeHighlightBackground": "#5a4a10"
     },
     "notera": {
-      "colors": { "heading": "#eeeeee", "link": "#5584aa", "quote": "#7a7d84", "code": "#f0a36b", "markup": "#4f525a" }
+      "colors": { "heading": "#eeeeee", "link": "#5584aa", "quote": "#80838a", "code": "#f0a36b", "markup": "#80838a" }
     }
   }
 }

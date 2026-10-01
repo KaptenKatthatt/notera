@@ -26,17 +26,19 @@
       "tab.activeModifiedBorder": "#ff7edb",
       "editorWidget.background": "#1e1a2e",
       "editorWidget.border": "#4d3b73",
-      "descriptionForeground": "#9d95c2",
+      "descriptionForeground": "#ada5d3",
       "panel.border": "#3b2f55",
       "button.background": "#ff7edb",
       "button.foreground": "#241b2f",
-      "editor.selectionBackground": "rgba(255, 126, 219, 0.22)",
+      "editor.selectionBackground": "#ff7edb",
+      "editor.selectionForeground": "#1b1426",
       "editor.lineHighlightBackground": "rgba(80, 60, 130, 0.28)",
       "textCodeBlock.background": "#1e1a2e",
       "widget.shadow": "rgba(10, 0, 30, 0.6)",
       "input.background": "#1e1a2e",
       "editor.findMatchHighlightBackground": "rgba(54, 249, 246, 0.25)",
-      "editor.findMatchBackground": "rgba(254, 222, 93, 0.45)",
+      "editor.findMatchBackground": "#fede5d",
+      "editor.findMatchForeground": "#1b1426",
       "editorCursor.foreground": "#36f9f6",
       "list.activeSelectionBackground": "rgba(255, 126, 219, 0.16)",
       "errorForeground": "#fe4450",
@@ -45,8 +47,8 @@
     "notera": {
       "colors": {
         "heading": "#ff7edb", "heading1": "#ff7edb", "heading2": "#36f9f6", "heading3": "#fede5d",
-        "heading4": "#f97e72", "heading5": "#72f1b8", "heading6": "#b893ce",
-        "link": "#36f9f6", "quote": "#b893ce", "code": "#ff8b39", "markup": "#6f67a0"
+        "heading4": "#ff887b", "heading5": "#72f1b8", "heading6": "#c19cd7",
+        "link": "#36f9f6", "quote": "#c19cd7", "code": "#ff8c3a", "markup": "#aaa3e0"
       }
     }
   },
@@ -57,30 +59,32 @@
       "editorGroupHeader.tabsBackground": "#f1e9fb",
       "list.hoverBackground": "#e7dcf5",
       "tab.activeBackground": "#fbf7ff",
-      "tab.activeModifiedBorder": "#d6249f",
+      "tab.activeModifiedBorder": "#b30081",
       "editorWidget.background": "#ffffff",
       "editorWidget.border": "#cdbde3",
-      "descriptionForeground": "#7a6d92",
+      "descriptionForeground": "#64577b",
       "panel.border": "#dccfee",
-      "button.background": "#d6249f",
+      "button.background": "#b30081",
       "button.foreground": "#ffffff",
-      "editor.selectionBackground": "rgba(214, 36, 159, 0.16)",
+      "editor.selectionBackground": "#b30081",
+      "editor.selectionForeground": "#ffffff",
       "editor.lineHighlightBackground": "rgba(214, 36, 159, 0.05)",
       "textCodeBlock.background": "#f1e9fb",
       "widget.shadow": "rgba(60, 20, 90, 0.14)",
       "input.background": "#ffffff",
-      "editor.findMatchHighlightBackground": "rgba(0, 134, 168, 0.18)",
-      "editor.findMatchBackground": "rgba(214, 36, 159, 0.35)",
-      "editorCursor.foreground": "#0086a8",
+      "editor.findMatchHighlightBackground": "rgba(0, 101, 134, 0.18)",
+      "editor.findMatchBackground": "#2294b6",
+      "editor.findMatchForeground": "#140d20",
+      "editorCursor.foreground": "#006586",
       "list.activeSelectionBackground": "rgba(214, 36, 159, 0.1)",
       "errorForeground": "#d11a4a",
       "editor.rangeHighlightBackground": "#f6d6ec"
     },
     "notera": {
       "colors": {
-        "heading": "#d6249f", "heading1": "#d6249f", "heading2": "#0086a8", "heading3": "#b7791f",
-        "heading4": "#e0513a", "heading5": "#0f9f6e", "heading6": "#7d4fb0",
-        "link": "#0086a8", "quote": "#7d4fb0", "code": "#c2410c", "markup": "#b4a6c9"
+        "heading": "#b30081", "heading1": "#b30081", "heading2": "#006586", "heading3": "#8a4f00",
+        "heading4": "#b4240d", "heading5": "#006c3f", "heading6": "#7547a7",
+        "link": "#006586", "quote": "#7547a7", "code": "#af2e00", "markup": "#645777"
       },
       // On a light page a glow reads as a smudge, so Chill keeps only the colours in Light.
       "effects": { "glow": false, "cursor": { "style": "line", "glow": 0.2 } }

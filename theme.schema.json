@@ -205,6 +205,10 @@
         "editor.selectionBackground": {
           "$ref": "#/definitions/color"
         },
+        "editor.selectionForeground": {
+          "$ref": "#/definitions/color",
+          "description": "The colour selected text is drawn in. Default: the text colour."
+        },
         "editor.lineHighlightBackground": {
           "$ref": "#/definitions/color"
         },
@@ -235,6 +239,18 @@
         },
         "editorError.foreground": {
           "$ref": "#/definitions/color"
+        },
+        "input.border": {
+          "$ref": "#/definitions/color",
+          "description": "The border of text fields. Default: 58 % text colour over the background."
+        },
+        "editor.findMatchForeground": {
+          "$ref": "#/definitions/color",
+          "description": "The text of the current search hit."
+        },
+        "editor.findMatchHighlightForeground": {
+          "$ref": "#/definitions/color",
+          "description": "The text of the other search hits."
         },
         "input.background": {
           "$ref": "#/definitions/color",

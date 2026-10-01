@@ -73,16 +73,23 @@ An imported theme is an ordinary theme: add a `notera` section to it for heading
 | `descriptionForeground` | Muted text |
 | `panel.border` | Borders and dividers |
 | `button.background`, `button.foreground` | The accent: primary buttons, the active view button |
-| `editor.selectionBackground` | Selected text |
+| `editor.selectionBackground`, `editor.selectionForeground` | Selected text and its colour. Selected text is drawn in one colour, default the text colour. |
 | `editor.lineHighlightBackground` | The line the cursor is on |
 | `editorCursor.foreground` | The cursor |
 | `textCodeBlock.background` | Code in the preview |
 | `list.activeSelectionBackground` | The open note in the sidebar |
-| `input.background` | The search field |
+| `input.background`, `input.border` | Text fields and their border |
 | `editor.findMatchHighlightBackground`, `editor.findMatchBackground` | Search hits, and the current one |
+| `editor.findMatchHighlightForeground`, `editor.findMatchForeground` | The text of search hits, and of the current one |
 | `editor.rangeHighlightBackground` | The flash on a note that just moved |
 | `errorForeground` | Errors |
 | `widget.shadow` | The shadow under menus and dialogs |
+
+## Contrast
+
+Every built-in theme, light and dark, meets WCAG 2.2 AA, and `test/e2e/contrast.mjs` checks it on every change: 4.5:1 for all text on everything it sits on (3:1 for large text), and 3:1 for what you need to see to use the app: the selection, the cursor, text field borders, the current search hit, and the accent that marks the active tab, note and palette row. Colours that pass on the page can fail where they meet: a selection strong enough to see leaves no room for coloured Markdown on top of it, which is why selected text takes one colour, `editor.selectionForeground`. On a light page that usually means a deep selection with white text; on a dark page with effects, a bright one with dark text.
+
+Your own themes are not checked, but the same rules make them easy to read. `node test/e2e/contrast.mjs --report` from a source checkout prints every measurement for the built-in themes.
 
 ## Markdown colours
 
@@ -145,13 +152,13 @@ Check that a font's licence lets you share it before you put it in a theme you g
 
 | Effect | Parameters |
 | --- | --- |
-| `glow` | `target`: `headings` or `all`. `strength` 0 to 1. `color`, default the text's own colour. |
+| `glow` | `target`: `headings` or `all`. `strength` 0 to 1. `color`, default the text's own colour. The glow is wide and soft, and glowing headings get a core mixed 30 % toward white (black on a light page), like a neon tube, so the halo does not blur the letters into the page. |
 | `gradient` | `colors`: two or more. `levels`: which heading levels, default `[1]`. |
 | `cursor` | `style`: `line`, `block` or `underline`. `glow` 0 to 1. `smooth`: the cursor glides to where it goes. |
 | `particles` | `amount` per keystroke, 1 to 40. `colors`, default the theme's accent and heading colours. `size` in pixels. |
-| `background` | `grid`, `sun`: `true` or an object as above. `scanlines`, `vignette`: 0 to 1. The editor and preview turn transparent so the background shows. |
+| `background` | `grid`, `sun`: `true` or an object as above. `scanlines`, `vignette`: 0 to 1. The editor and preview get a frosted pane in the background colour, so the sun and the grid show through it but never sit straight behind the text. Scanlines and vignette darken text too, so keep them low (the built-in themes use 0.1 or less). |
 
-Effects can differ per mode (put them in `light` or `dark`; a glow reads as a smudge on a light page, so keep it low there) and in the preview: `read.effects` is merged over the editor's effects in Läs, so a theme can glow every letter while you write and only the headings while you read. The `neon-chill`, `neon` and `neon-omg` built-in themes show all of it, from calm to everything.
+Effects can differ per mode (put them in `light` or `dark`; a glow reads as a smudge on a light page, so the built-in themes turn it off there) and in the preview: `read.effects` is merged over the editor's effects in Läs, so a theme can glow every letter while you write and only the headings while you read. The `neon-chill`, `neon` and `neon-omg` built-in themes show all of it, from calm to everything.
 
 ## Extra CSS
 
