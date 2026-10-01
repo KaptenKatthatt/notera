@@ -118,6 +118,8 @@ A theme brings its own font files. List them in `fonts` and use the family names
 - `notera.fonts.headings` is the font for headings, in the editor and the preview; `notera.fonts.heading1` sets the H1 apart.
 - `read.fonts.body` and `read.fonts.headings` apply to the preview only (Läs), for a theme that writes in monospace but reads in a serif.
 
+Line height is set the same way: `"notera": { "lineHeight": 1.75 }` for the editor (Notera's own is 1.4, close to VS Code) and `"read": { "lineHeight": 1.8 }` for Läs (default 1.6). Anything from 1 to 3 works.
+
 Check that a font's licence lets you share it before you put it in a theme you give away. Fonts under the SIL Open Font License are fine; include their `OFL.txt`.
 
 ## Effects

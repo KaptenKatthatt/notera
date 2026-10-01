@@ -85,6 +85,8 @@ await waitTheme('those-guys', 'light');
 await win.waitForFunction(() => getComputedStyle(document.querySelector('.preview')).fontFamily.startsWith('"Tiempos Text"'));
 await win.waitForFunction(() => getComputedStyle(document.querySelector('.tab.active')).boxShadow.includes('inset'));
 ok('Those guys läser med serif och har sin flikmarkering (style.css via notera-theme://)');
+const lh = () => win.evaluate(() => { const cs = getComputedStyle(document.querySelector('.cm-scroller')); return parseFloat(cs.lineHeight) / parseFloat(cs.fontSize); });
+assert.ok(Math.abs((await lh()) - 1.4) < 0.01, `editor line height is 1.4 (${await lh()})`);
 assert.deepEqual((await menuGroups())[0].map(([l]) => l), ['Standard', 'Those guys', 'The Other guys', 'Neon Chill', 'Neon', 'Neon OMG']);
 ok('menyn listar Standard, Those guys, The Other guys, Neon-familjen och sedan lägena');
 
@@ -107,6 +109,7 @@ const writeMine = (bg) => fs.writeFileSync(path.join(mine, 'theme.json'), `{
   "name": "Mitt tema",
   "extends": "those-guys",
   "style": "style.css",
+  "notera": { "lineHeight": 1.75 },
   "dark": { "colors": { "editor.background": "${bg}", }, },
   "light": { "colors": { "editor.background": "${bg}" } }
 }
@@ -118,7 +121,8 @@ await waitTheme('mitt-tema', 'dark');
 await win.waitForFunction(() => getComputedStyle(document.body).backgroundColor === 'rgb(32, 48, 64)');
 assert.equal(await cssVar('--accent'), '#d77757', 'inherits the accent from Those guys');
 await win.waitForFunction(() => getComputedStyle(document.querySelector('.tab.active')).outlineColor === 'rgb(1, 2, 3)');
-ok('eget tema i temamappen ärver av Those guys och laddar sin style.css');
+assert.ok(Math.abs((await lh()) - 1.75) < 0.01, `the theme's lineHeight applies (${await lh()})`);
+ok('eget tema i temamappen ärver av Those guys, laddar sin style.css och sätter radhöjd 1,75');
 
 writeMine('#402030');
 await win.waitForFunction(() => getComputedStyle(document.body).backgroundColor === 'rgb(64, 32, 48)', null, { timeout: 5000 });

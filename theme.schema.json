@@ -366,6 +366,12 @@
         },
         "effects": {
           "$ref": "#/definitions/effects"
+        },
+        "lineHeight": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "Line height in the editor, e.g. 1.75 for an airy writing theme. Default 1.4."
         }
       },
       "additionalProperties": true
@@ -391,6 +397,12 @@
         "effects": {
           "$ref": "#/definitions/effects",
           "description": "Effects in Läs, merged over notera.effects."
+        },
+        "lineHeight": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "Line height in Läs. Default 1.6."
         }
       },
       "additionalProperties": true
