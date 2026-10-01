@@ -17,19 +17,22 @@ export function createUpdateToast(ctx) {
     if (!box) return;
     const t = ctx.t();
     const st = update.state;
-    const visible = !hidden && ['available', 'downloading', 'installing', 'downloaded', 'error'].includes(st);
+    // A manual check shows that it is working; an automatic one only shows when there is news.
+    const checking = st === 'checking' && update.manual;
+    const visible = !hidden && (checking || ['available', 'downloading', 'installing', 'downloaded', 'error'].includes(st));
     box.hidden = !visible;
     if (!visible) return;
     const go = $('#update-go'), later = $('#update-later'), bar = $('#update-bar');
     later.textContent = t('update.later');
-    const busy = st === 'downloading' || st === 'installing';
+    const busy = st === 'downloading' || st === 'installing' || checking;
     go.hidden = busy;
     later.hidden = busy;
     go.parentElement.hidden = busy; // no empty button row under the bar
-    bar.hidden = !busy; // full while installing: the download is done
+    bar.hidden = !busy || checking; // full while installing: the download is done
     bar.firstElementChild.style.width = `${update.percent || 0}%`;
     box.dataset.state = st;
-    if (st === 'available') { $('#update-text').textContent = t('update.available', { version: update.version }); go.textContent = t('update.download'); }
+    if (checking) { $('#update-text').textContent = t('update.checking'); }
+    else if (st === 'available') { $('#update-text').textContent = t('update.available', { version: update.version }); go.textContent = t('update.download'); }
     else if (st === 'downloading') { $('#update-text').textContent = t('update.downloading', { version: update.version, percent: update.percent || 0 }); }
     else if (st === 'installing') { $('#update-text').textContent = t('update.installing', { version: update.version }); }
     else if (st === 'downloaded') { $('#update-text').textContent = t('update.ready', { version: update.version }); go.textContent = t('update.restart'); }
