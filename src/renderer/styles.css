@@ -645,15 +645,20 @@ html.fx-cursor-glow .cm-editor .cm-cursorLayer .cm-cursor {
 html.fx-cursor-smooth .cm-editor .cm-cursorLayer .cm-cursor { transition: left 90ms cubic-bezier(0.2, 0.8, 0.2, 1), top 90ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 
 /* Phosphor: a letter just typed (an fx-ph mark, effects.js) flashes and settles to the line's
-   own colour and glow, like a CRT. The fill colour animates, not `color`, so currentColor in the
-   halo stays the text's colour; the end state is whatever the letter has without the mark. */
-html.fx-phosphor .cm-content .fx-ph { animation: fx-phosphor 0.55s ease-out; }
-@keyframes fx-phosphor {
-  from {
-    -webkit-text-fill-color: var(--fx-ph-color);
-    text-shadow: 0 0 calc(4px * var(--fx-ph-strength)) var(--fx-ph-color), 0 0 calc(12px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor), 0 0 calc(26px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor);
-  }
+   own colour and glow, like a CRT. A glowing copy of the letter (::after, from data-t) sits on top
+   of it and fades out; only its opacity animates, so the compositor runs it and the line is not
+   repainted every frame. Its fill is the flash colour; `color` stays the text's, so currentColor
+   in the halo is the line's colour. */
+html.fx-phosphor .cm-content .fx-ph { position: relative; }
+html.fx-phosphor .cm-content .fx-ph::after {
+  content: attr(data-t); position: absolute; left: 0; top: 0; pointer-events: none; white-space: pre;
+  /* The copy's line box must be the letter's content area, or a taller theme line height pushes it down. */
+  line-height: normal;
+  -webkit-text-fill-color: var(--fx-ph-color);
+  text-shadow: 0 0 calc(4px * var(--fx-ph-strength)) var(--fx-ph-color), 0 0 calc(12px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor), 0 0 calc(26px * var(--fx-ph-strength)) var(--fx-ph-glow, currentColor);
+  opacity: 0; animation: fx-phosphor 0.55s ease-out; will-change: opacity;
 }
+@keyframes fx-phosphor { from { opacity: 1; } to { opacity: 0; } }
 /* Gradient headings have transparent text, so their letters glow in the gradient's glow colour. */
 html.fx-e-grad-1 .cm-line.cm-h1 .cm-hd, html.fx-e-grad-2 .cm-line.cm-h2 .cm-hd, html.fx-e-grad-3 .cm-line.cm-h3 .cm-hd,
 html.fx-e-grad-4 .cm-line.cm-h4 .cm-hd, html.fx-e-grad-5 .cm-line.cm-h5 .cm-hd, html.fx-e-grad-6 .cm-line.cm-h6 .cm-hd { --fx-ph-glow: var(--fx-grad-glow-e); }
@@ -683,17 +688,23 @@ html.fx-sun #fx-bg .fx-sun {
   mask-image: linear-gradient(to bottom, #000 0 52%, transparent 52% 56%, #000 56% 64%, transparent 64% 69%, #000 69% 76%, transparent 76% 82%, #000 82% 88%, transparent 88% 95%, #000 95%);
   opacity: var(--fx-sun-opacity); filter: drop-shadow(0 0 40px var(--fx-sun-b));
 }
-/* The floor: a tall plane hinged at the horizon (62 % down) and tipped away from the viewer. */
+/* The floor: a tall plane hinged at the horizon (62 % down) and tipped away from the viewer. The
+   lines are on a pseudo-element one cell taller than the plane, and the motion moves that layer
+   by one cell (transform, so the compositor does it without repainting the grid every frame). */
 html.fx-grid #fx-bg .fx-grid {
-  display: block; left: -60%; right: -60%; top: 62%; height: 200%;
+  display: block; left: -60%; right: -60%; top: 62%; height: 200%; overflow: hidden;
   transform-origin: 50% 0; transform: perspective(320px) rotateX(78deg);
-  background-image: linear-gradient(var(--fx-grid-color, var(--accent)) 2px, transparent 2px), linear-gradient(90deg, var(--fx-grid-color, var(--accent)) 2px, transparent 2px);
-  background-size: 56px 56px; background-position: 0 0;
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%); mask-image: linear-gradient(to bottom, transparent, #000 10%);
   opacity: var(--fx-grid-opacity);
 }
-html.fx-grid-move #fx-bg .fx-grid { animation: fx-grid-run var(--fx-grid-duration, 3s) linear infinite; }
-@keyframes fx-grid-run { to { background-position: 0 56px; } }
+#fx-bg .fx-grid::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -56px; bottom: 0;
+  background-image: linear-gradient(var(--fx-grid-color, var(--accent)) 2px, transparent 2px), linear-gradient(90deg, var(--fx-grid-color, var(--accent)) 2px, transparent 2px);
+  background-size: 56px 56px;
+}
+html.fx-grid-move #fx-bg .fx-grid::before { animation: fx-grid-run var(--fx-grid-duration, 3s) linear infinite; will-change: transform; }
+html.fx-grid-move.fx-typing #fx-bg .fx-grid::before { animation-play-state: paused; }
+@keyframes fx-grid-run { from { transform: translateY(0); } to { transform: translateY(56px); } }
 
 /* Scanlines and vignette over the whole window */
 #fx-overlay { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 60; }
@@ -708,9 +719,9 @@ html.fx-vignette #fx-overlay::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html #fx-bg .fx-grid { animation: none; }
+  html #fx-bg .fx-grid::before { animation: none; }
   html .cm-editor .cm-cursorLayer .cm-cursor { transition: none; }
-  html .cm-content .fx-ph { animation: none; }
+  html .cm-content .fx-ph::after { animation: none; }
 }
 @media print {
   #fx-bg, #fx-overlay, #fx-particles { display: none !important; }

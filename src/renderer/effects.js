@@ -7,7 +7,7 @@
 // Editor and preview (Läs) get separate classes (fx-e-*, fx-r-*) because split view shows both
 // at once and a theme's `read.effects` may differ from its editor effects.
 import { ViewPlugin, Decoration, EditorView } from '@codemirror/view';
-import { StateField, StateEffect, Prec } from '@codemirror/state';
+import { StateField, StateEffect, Prec, findClusterBreak } from '@codemirror/state';
 import { normalizeEffects, deepMerge } from '../shared/themeFormat.js';
 
 const FX_CLASS = /^fx-/;
@@ -128,11 +128,11 @@ function ensureCanvas() {
   canvas.setAttribute('aria-hidden', 'true');
   document.body.appendChild(canvas);
   g = canvas.getContext('2d');
+  // At 1x, not devicePixelRatio: everything drawn here is a soft glow, and a full-window canvas at
+  // 2x is four times the pixels to clear, draw and hand to the compositor every frame.
   const resize = () => {
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(window.innerWidth * dpr);
-    canvas.height = Math.round(window.innerHeight * dpr);
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
   };
   window.addEventListener('resize', resize);
   resize();
@@ -158,6 +158,24 @@ function burst(x, y, cfg) {
   }
   if (particles.length > 600) particles.splice(0, particles.length - 600);
   run();
+}
+
+/** Pre-rendered glow dots, one per colour: drawImage of a sprite instead of shadowBlur per particle. */
+const sprites = new Map();
+function sprite(color) {
+  let c = sprites.get(color);
+  if (c) return c;
+  const rgb = rgbOf(color) || '255, 126, 219';
+  c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const x = c.getContext('2d');
+  const gr = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.18, `rgb(${rgb})`); gr.addColorStop(0.32, `rgb(${rgb})`);
+  gr.addColorStop(0.55, `rgba(${rgb}, 0.33)`); gr.addColorStop(1, `rgba(${rgb}, 0)`);
+  x.fillStyle = gr;
+  x.fillRect(0, 0, 32, 32);
+  sprites.set(color, c);
+  return c;
 }
 
 function run() {
@@ -225,17 +243,13 @@ function frame() {
     if (p.life <= 0) { particles.splice(i, 1); continue; }
     const a = p.life / p.max;
     g.globalAlpha = a;
-    g.fillStyle = p.color;
-    g.shadowColor = p.color;
-    g.shadowBlur = p.size * 4;
-    g.beginPath();
-    g.arc(p.x, p.y, p.size * (0.5 + a * 0.5), 0, Math.PI * 2);
-    g.fill();
+    const rad = p.size * (0.5 + a * 0.5) * 3.2;
+    g.drawImage(sprite(p.color), p.x - rad, p.y - rad, rad * 2, rad * 2);
   }
   g.globalAlpha = 1;
-  g.shadowBlur = 0;
+  // The loop stops when nothing moves; the next burst or trail starts it again.
   if (particles.length || trails.length) requestAnimationFrame(frame);
-  else running = false;
+  else { g.clearRect(0, 0, canvas.width, canvas.height); running = false; }
 }
 
 /** A burst of particles at the cursor on every typed or deleted character. */
@@ -305,13 +319,21 @@ let phosphorSeq = 0;
 
 /**
  * The letters just typed carry an fx-ph mark while they flash. Only the newest few characters of
- * each insertion, never whole lines, and nothing for a paste or a drop.
+ * each insertion, never whole lines, and nothing for a paste or a drop. One mark per letter, with
+ * the letter in data-t: styles.css draws a glowing copy of it in ::after and fades only that
+ * copy's opacity, which the compositor does without repainting the line every frame.
  */
 const phosphorField = StateField.define({
   create: () => Decoration.none,
   update(deco, tr) {
     if (!phosphorOn) return deco.size ? Decoration.none : deco;
     deco = deco.map(tr.changes);
+    // A mark whose letter was just edited would show the old letter: drop it.
+    if (tr.docChanged && deco.size) {
+      tr.changes.iterChangedRanges((_fA, _tA, fromB, toB) => {
+        deco = deco.update({ filter: (f, t) => t <= fromB || f >= toB, filterFrom: fromB, filterTo: toB });
+      });
+    }
     for (const ef of tr.effects) {
       if (ef.is(expirePhosphor)) deco = deco.update({ filter: (_f, _t, v) => v.spec.born > ef.value });
     }
@@ -323,10 +345,19 @@ const phosphorField = StateField.define({
       /** @type {import('@codemirror/state').Range<Decoration>[]} */
       const add = [];
       tr.changes.iterChangedRanges((_fA, _tA, fromB, toB) => {
-        const from = Math.max(fromB, toB - 3);
         // A unique attribute, so CodeMirror never joins neighbouring marks into one element and
         // restarts the animation of a letter that is already fading.
-        if (toB > from) add.push(Decoration.mark({ class: 'fx-ph', attributes: { 'data-ph': String(++phosphorSeq) }, born }).range(from, toB));
+        // Whole characters (grapheme clusters), never half an emoji's surrogate pair.
+        const base = Math.max(fromB, toB - 32);
+        const text = tr.newDoc.sliceString(base, toB);
+        for (let end = text.length, n = 0; end > 0 && n < 3; n++) {
+          const start = findClusterBreak(text, end, false);
+          const ch = text.slice(start, end);
+          if (!/^\s+$/.test(ch)) {
+            add.push(Decoration.mark({ class: 'fx-ph', attributes: { 'data-ph': String(++phosphorSeq), 'data-t': ch }, born }).range(base + start, base + end));
+          }
+          end = start;
+        }
       });
       if (add.length) deco = deco.update({ add, sort: true });
     }
@@ -352,5 +383,24 @@ const phosphorExpiry = ViewPlugin.fromClass(class {
   destroy() { clearTimeout(this.timer); }
 });
 
+// ---------- typing ----------
+/** How long after the last keystroke the moving background starts again, in ms. */
+const TYPING_PAUSE_MS = 1200;
+let typingTimer = 0;
+/**
+ * html.fx-typing while the user types: the moving grid holds still then, so the compositor has one
+ * moving thing less to redraw while every keystroke wants a frame. It goes on where it stopped.
+ */
+const typingPause = ViewPlugin.fromClass(class {
+  update(u) {
+    if (!u.docChanged || !u.transactions.some((tr) => tr.isUserEvent('input') || tr.isUserEvent('delete'))) return;
+    const root = document.documentElement;
+    if (!root.classList.contains('fx-grid-move')) return;
+    root.classList.add('fx-typing');
+    clearTimeout(typingTimer);
+    typingTimer = window.setTimeout(() => root.classList.remove('fx-typing'), TYPING_PAUSE_MS);
+  }
+});
+
 /** Editor extension for the effects that follow typing: particles, phosphor, the cursor trail. */
-export const typingEffects = [typingParticles, phosphorField, phosphorExpiry, cursorTrail];
+export const typingEffects = [typingParticles, phosphorField, phosphorExpiry, cursorTrail, typingPause];

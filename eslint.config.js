@@ -29,7 +29,7 @@ module.exports = [
   },
   {
     // Code passed to page.evaluate()/waitForFunction() runs in the renderer.
-    files: ['test/e2e/**/*.mjs'],
+    files: ['test/e2e/**/*.mjs', 'test/perf/**/*.mjs'],
     languageOptions: { globals: { ...globals.browser } }
   }
 ];
