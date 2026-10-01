@@ -83,11 +83,16 @@ for (const c of cases) {
   await win.waitForTimeout(120);
   assert.equal(await css('.cm-cursorLayer .cm-cursor', 'borderLeftColor'), c.caret, `${c.id}/${c.mode} caret`);
   await shot(`40-theme-${c.id}-${c.mode}`);
-  // A selection on the cursor's own line shows: nothing opaque is painted over the selection layer.
-  await win.keyboard.press('Shift+Control+ArrowLeft');
-  assert.equal(await selectionOnTop(), true, `${c.id}/${c.mode} selection on the cursor line is visible`);
-  await win.keyboard.press('End');
   await win.keyboard.press('Backspace');
+  // A double-clicked word shows its selection: nothing opaque is painted over the selection layer.
+  const at = await win.evaluate(() => {
+    const v = window.__notera.view;
+    const c = v.coordsAtPos(v.state.doc.toString().indexOf('Handla') + 3);
+    return { x: c.left, y: (c.top + c.bottom) / 2 };
+  });
+  await win.mouse.dblclick(at.x, at.y);
+  assert.equal(await win.evaluate(() => { const v = window.__notera.view; const r = v.state.selection.main; return v.state.sliceDoc(r.from, r.to); }), 'Handla');
+  assert.equal(await selectionOnTop(), true, `${c.id}/${c.mode} a double-clicked word is visibly selected`);
   ok(`${c.id} ${c.mode}: egen palett, en bock per grupp i menyn`);
 }
 assert.equal(await css('.preview', 'fontFamily').then((f) => f.split(',')[0]), '"Segoe UI Variable"');
