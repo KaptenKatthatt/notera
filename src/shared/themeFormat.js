@@ -331,6 +331,11 @@ function cssVars(variant) {
   const ui = fontStack(fonts.ui);
   const editor = fontStack(fonts.editor);
   const read = fontStack(isPlainObject(variant.read?.fonts) ? variant.read.fonts.body : undefined);
+  const lineHeight = (v) => (typeof v === 'number' && v >= 1 && v <= 3 ? String(v) : null);
+  const editorLh = lineHeight(variant.notera?.lineHeight);
+  const readLh = lineHeight(variant.read?.lineHeight);
+  if (editorLh) out['--theme-line-height'] = editorLh;
+  if (readLh) out['--read-line-height'] = readLh;
   if (ui) out['--ui-font'] = ui;
   if (editor) out['--theme-editor-font'] = editor;
   if (read) out['--read-font'] = read;

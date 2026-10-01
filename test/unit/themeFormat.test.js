@@ -199,3 +199,12 @@ test('the Neon family goes from calm to everything, and light variants keep glow
     for (const side of [light.e, light.r]) assert.ok(!side.glow || side.glow.strength <= 0.3, `${id} light glow`);
   }
 });
+
+test('a theme can set the line height in the editor and in Läs, within 1 to 3', () => {
+  const vars = cssVars({ colors: {}, tokenColors: [], notera: { lineHeight: 1.75 }, read: { lineHeight: 1.8 } });
+  assert.equal(vars['--theme-line-height'], '1.75');
+  assert.equal(vars['--read-line-height'], '1.8');
+  const bad = cssVars({ colors: {}, tokenColors: [], notera: { lineHeight: 9 }, read: { lineHeight: '2; color: red' } });
+  assert.equal(bad['--theme-line-height'], undefined);
+  assert.equal(bad['--read-line-height'], undefined);
+});

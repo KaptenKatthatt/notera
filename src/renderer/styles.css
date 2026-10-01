@@ -167,7 +167,9 @@ body.no-formatting-bar #toolbar { display: none; }
 /* #editor, not just .cm-scroller: CodeMirror's base theme sets `.cm-scroller { font-family: monospace }`
    with a higher specificity, which until 0.10 hid the font chosen in Settings. */
 #editor .cm-scroller { font-family: var(--theme-editor-font, var(--editor-font)); }
-.cm-scroller { line-height: 1.65; }
+/* 1.4 is the line height Notera has always had (CodeMirror's; the 1.65 once written here never
+   applied). A theme can change it with notera.lineHeight. */
+#editor .cm-scroller { line-height: var(--theme-line-height, 1.4); }
 .cm-content { padding: 12px 0; caret-color: var(--caret, var(--fg)); }
 .cm-editor .cm-cursorLayer .cm-cursor { border-left-color: var(--caret, var(--fg)); }
 .cm-line { padding: 0 16px; }
@@ -204,7 +206,7 @@ body.no-formatting-bar #toolbar { display: none; }
 .cm-panel.cm-search [name="close"] { position: static; margin-left: auto; font-size: 18px; color: var(--fg-muted); background: transparent; border: none; padding: 0 6px; }
 
 /* ---------- Preview ---------- */
-.preview { padding: 18px 28px 40px; max-width: 860px; font-size: calc(15px * var(--zoom)); line-height: 1.6; font-family: var(--read-font, var(--ui-font)); }
+.preview { padding: 18px 28px 40px; max-width: 860px; font-size: calc(15px * var(--zoom)); line-height: var(--read-line-height, 1.6); font-family: var(--read-font, var(--ui-font)); }
 .preview.empty { color: var(--fg-muted); font-style: italic; }
 .preview h1, .preview h2, .preview h3, .preview h4 { line-height: 1.25; margin: 1.2em 0 0.5em; }
 .preview h1 { font-size: 2em; border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
@@ -285,7 +287,6 @@ body.writing #main { position: relative; }
 body.writing #main[data-view] { grid-template-columns: 1fr; }
 body.writing #preview-pane { display: none; }
 body.writing #editor { display: block; }
-body.writing .cm-scroller { line-height: 1.75; }
 body.narrow .cm-content, body.writing .cm-content { max-width: var(--text-column); margin: 0 auto; }
 body.writing .cm-content { padding-top: max(42px, 5vh); }
 body.writing .cm-line { padding: 0 8px; }
