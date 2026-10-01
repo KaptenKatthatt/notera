@@ -1,6 +1,7 @@
 // Theme effects and the Neon family: per-level heading colours, glow, the H1 gradient, the
-// cursor, typing particles, the synthwave background, scanlines, the Theme effects switch,
-// reduced motion, and that printing stays plain.
+// cursor, the phosphor letter and cursor trail, typing particles (in a theme of one's own), the
+// synthwave background, scanlines, the Theme effects switch, reduced motion, and that printing
+// stays plain.
 import { _electron as electron } from 'playwright';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -20,6 +21,12 @@ fs.writeFileSync(fixture, [
   '#### Fjärde', '', '##### Femte', '', '###### Sjätte', '', 'Sista raden.', ''
 ].join('\n'));
 fs.mkdirSync(userData, { recursive: true });
+// Neon OMG no longer has sparks, so a theme of one's own brings them back to test them.
+fs.mkdirSync(path.join(userData, 'themes', 'gnistor'), { recursive: true });
+fs.writeFileSync(path.join(userData, 'themes', 'gnistor', 'theme.json'), JSON.stringify({
+  name: 'Gnistor', extends: 'neon-omg',
+  notera: { effects: { phosphor: false, trail: false, particles: { amount: 10, colors: ['#ff7edb', '#36f9f6', '#fede5d'], size: 2.5 } } }
+}));
 fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({ language: 'sv', viewMode: 'split', checkUpdates: false, theme: 'neon-omg', mode: 'dark' }));
 const launch = (extra = {}) => electron.launch({ args: [root, fixture], env: { ...process.env, NOTERA_USER_DATA: userData, NOTERA_TEST: '1' }, ...extra });
 const ok = (label) => console.log('ok  ', label);
@@ -43,11 +50,57 @@ const typeAtEnd = async (text) => {
   await win.keyboard.press('Control+End');
   await win.keyboard.type(text, { delay: 30 });
 };
+/** Pixels drawn on the effects canvas (particles and the cursor trail). */
+const litPixels = () => win.evaluate(() => {
+  const cv = /** @type {HTMLCanvasElement | null} */ (document.querySelector('#fx-particles'));
+  if (!cv) return 0;
+  const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+  let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+  return n;
+});
+const phosphorMarks = () => win.evaluate(() => [...document.querySelectorAll('.cm-content .fx-ph')].map((e) => ({
+  text: e.textContent, anim: e.getAnimations().map((a) => /** @type {CSSAnimation} */ (a).animationName).join(),
+  inToken: e.parentElement.classList.contains('cm-line') ? '' : e.parentElement.className
+})));
+/**
+ * Starts counting the most pixels lit on the effects canvas in any frame over the next `ms`, and
+ * returns a function that waits for the count. Started before a key press, so it never misses it.
+ */
+const peakLit = async (ms) => {
+  await win.evaluate((ms) => {
+    const cv = /** @type {HTMLCanvasElement | null} */ (document.querySelector('#fx-particles'));
+    let peak = 0;
+    const end = performance.now() + ms;
+    window.__peakLit = new Promise((resolve) => {
+      const tick = () => {
+        if (cv) {
+          const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+          let n = 0;
+          for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+          peak = Math.max(peak, n);
+        }
+        if (performance.now() < end) requestAnimationFrame(tick); else resolve(peak);
+      };
+      requestAnimationFrame(tick);
+    });
+  }, ms);
+  return () => win.evaluate(() => window.__peakLit);
+};
+/** Waits until earlier trails and particles have faded, jumps from the end to the top, and
+ * returns the most pixels the trail lit. */
+const jumpTrail = async () => {
+  await win.keyboard.press('Control+End');
+  await win.waitForTimeout(400);
+  const peak = await peakLit(300);
+  await win.keyboard.press('Control+Home');
+  return peak();
+};
 
 // ---------- Neon OMG, dark: everything on ----------
 await setTheme('neon-omg', 'dark');
 let c = await cls();
-for (const want of ['fx-e-glow-all', 'fx-r-glow-headings', 'fx-e-grad-1', 'fx-e-grad-2', 'fx-cursor-block', 'fx-cursor-glow', 'fx-cursor-smooth', 'fx-bg', 'fx-grid', 'fx-grid-move', 'fx-sun', 'fx-scanlines', 'fx-vignette']) {
+for (const want of ['fx-e-glow-all', 'fx-r-glow-headings', 'fx-e-grad-1', 'fx-e-grad-2', 'fx-cursor-block', 'fx-cursor-glow', 'fx-cursor-smooth', 'fx-phosphor', 'fx-bg', 'fx-grid', 'fx-grid-move', 'fx-sun', 'fx-scanlines', 'fx-vignette']) {
   assert.ok(c.includes(want), `${want} in ${c.join(' ')}`);
 }
 assert.equal(await css('.cm-line.cm-h2 .cm-hd:last-child', 'color'), 'rgba(0, 0, 0, 0)', 'H2 text is transparent under its gradient');
@@ -63,19 +116,42 @@ assert.ok(await win.evaluate(() => document.fonts.check('16px Orbitron') && docu
 assert.equal(await css('.cm-editor', 'backgroundColor'), 'rgba(0, 0, 0, 0)', 'the editor is see-through to the background');
 assert.equal(await css('#fx-bg .fx-sun', 'display'), 'block');
 await typeAtEnd('Neon!');
-await win.waitForTimeout(60);
-const lit = await win.evaluate(() => {
-  const cv = document.querySelector('#fx-particles');
-  if (!cv) return 0;
-  const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-  let n = 0;
-  for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
-  return n;
-});
-assert.ok(lit > 20, `particles drawn (${lit} lit pixels)`);
+let marks = await phosphorMarks();
+assert.ok(marks.length >= 2 && marks.length <= 5, `the newest letters flash: ${JSON.stringify(marks)}`);
+assert.ok(marks.every((m) => m.anim === 'fx-phosphor'), JSON.stringify(marks));
+assert.equal(marks.map((m) => m.text).join('').slice(-1), '!');
 await shot('60-neon-omg-dark');
-await win.waitForTimeout(1500);
-ok('Neon OMG mörkt: glöd, gradient, Monoton, blockmarkör, partiklar, sol och rutnät');
+await win.waitForFunction(() => !document.querySelector('.cm-content .fx-ph'), null, { timeout: 2000 });
+ok('fosforbokstav: de senaste bokstäverna lyser upp och märkningen tas bort efteråt');
+
+// The phosphor mark sits inside the heading's own span, so it flashes in the heading's colour.
+await win.evaluate(() => { const v = window.__notera.view; const l = v.state.doc.line(10); v.dispatch({ selection: { anchor: l.to } }); });
+await win.keyboard.type('!', { delay: 10 });
+marks = await phosphorMarks();
+assert.ok(marks.length === 1 && /cm-hd/.test(marks[0].inToken), `inside the H3 token: ${JSON.stringify(marks)}`);
+await win.keyboard.press('Backspace');
+ok('fosfor i en rubrik ärver rubrikens färg');
+
+// A dead key or an IME composes; nothing may be wrapped around the text while it does.
+await win.evaluate(() => { const v = window.__notera.view; const at = v.state.selection.main.head; v.dispatch({ changes: { from: at, insert: 'é' }, selection: { anchor: at + 1 }, userEvent: 'input.type.compose' }); });
+assert.equal((await phosphorMarks()).length, 0, 'no phosphor mark while composing');
+await win.keyboard.press('Backspace');
+ok('ingen fosfor runt en pågående komposition (döda tangenter)');
+
+const trailLit = await jumpTrail();
+assert.ok(trailLit > 200, `the cursor trail is drawn on a jump (${trailLit} lit pixels)`);
+await shot('60b-neon-omg-dark-jump');
+await win.keyboard.press('Control+End');
+await win.keyboard.type('Ny rad', { delay: 30 });
+await win.waitForTimeout(400);
+const enterPeak = await peakLit(300);
+await win.keyboard.press('Enter');
+await win.waitForTimeout(30);
+await shot('60c-neon-omg-dark-enter');
+assert.ok(await enterPeak() > 20, 'a trail at a new line');
+await win.waitForTimeout(400);
+assert.equal(await litPixels(), 0, 'the trail fades out');
+ok('Neon OMG mörkt: glöd, gradient, Monoton, blockmarkör, fosfor, markörsvans, sol och rutnät');
 
 // Smooth cursor: CodeMirror moves the same element, so the transition glides.
 assert.match(await css('.cm-cursorLayer .cm-cursor', 'transitionProperty'), /left/);
@@ -89,11 +165,32 @@ ok('Neon OMG i Läs');
 await setTheme('neon-omg', 'light');
 c = await cls();
 // No glow on a light page: a halo in the text's colour lowers its contrast (contrast.mjs).
-assert.ok(!c.some((x) => /glow-(headings|all)/.test(x)) && c.includes('fx-sun'), c.join(' '));
+assert.ok(!c.some((x) => /glow-(headings|all)/.test(x)) && c.includes('fx-sun') && c.includes('fx-phosphor'), c.join(' '));
+assert.equal(await win.evaluate(() => document.documentElement.style.getPropertyValue('--fx-ph-color')), '#d6249f', 'a light page flashes pink, not white');
 await typeAtEnd(' ljus');
-await win.waitForTimeout(60);
+assert.ok((await phosphorMarks()).length >= 2);
 await shot('62-neon-omg-light');
-ok('Neon OMG ljust: ingen glöd, dämpad bakgrund');
+await win.waitForTimeout(400);
+const lightPeak = await peakLit(300);
+await win.keyboard.press('Enter');
+await win.waitForTimeout(30);
+await shot('62b-neon-omg-light-enter');
+assert.ok(await lightPeak() > 20, 'the trail shows on a light page');
+await win.keyboard.press('Backspace');
+ok('Neon OMG ljust: ingen glöd, rosa fosfor, markörsvans, dämpad bakgrund');
+
+// ---------- particles, in a theme of one's own ----------
+await setTheme('gnistor', 'dark');
+c = await cls();
+assert.ok(!c.includes('fx-phosphor'), c.join(' '));
+await typeAtEnd('Gnistor');
+await win.waitForTimeout(60);
+const lit = await litPixels();
+assert.ok(lit > 20, `particles drawn (${lit} lit pixels)`);
+assert.equal((await phosphorMarks()).length, 0, 'no phosphor where the theme turned it off');
+await shot('62c-particles');
+await win.waitForTimeout(1500);
+ok('partiklar finns kvar för teman som vill ha dem');
 
 for (const [theme, mode, name] of [['neon', 'dark', '63-neon-dark'], ['neon', 'light', '64-neon-light'], ['neon-chill', 'dark', '65-neon-chill-dark'], ['neon-chill', 'light', '66-neon-chill-light']]) {
   await setTheme(theme, mode);
@@ -119,6 +216,9 @@ await win.waitForFunction(() => ![...document.documentElement.classList].some((x
 assert.equal(await css('.cm-line.cm-h3 .cm-hd:last-child', 'color'), 'rgb(254, 222, 93)', 'heading colours stay without effects');
 assert.equal(await css('.cm-content', 'textShadow'), 'none');
 await shot('67-neon-omg-effects-off');
+await typeAtEnd('av');
+assert.equal((await phosphorMarks()).length, 0, 'no phosphor with effects off');
+assert.equal(await jumpTrail(), 0, 'no trail with effects off');
 const menuEffects = await app.evaluate(({ Menu }) => {
   let hit = null;
   const walk = (items) => { for (const i of items) { if (i.type === 'checkbox' && i.label === 'Temaeffekter') hit = i.checked; if (i.submenu) walk(i.submenu.items); } };
@@ -151,20 +251,17 @@ await win.evaluate(() => window.notera.setSettings({ mode: 'light' }));
 await win.evaluate(() => window.notera.setSettings({ mode: 'dark' }));
 await win.waitForFunction(() => document.documentElement.classList.contains('fx-grid'));
 c = await cls();
-assert.ok(!c.includes('fx-grid-move') && !c.includes('fx-cursor-smooth'), c.join(' '));
+assert.ok(!c.includes('fx-grid-move') && !c.includes('fx-cursor-smooth') && !c.includes('fx-phosphor'), c.join(' '));
 assert.ok(c.includes('fx-e-glow-all'), 'glow is not motion and stays');
 await typeAtEnd('x');
+assert.equal((await phosphorMarks()).length, 0, 'no phosphor with reduced motion');
+assert.equal(await jumpTrail(), 0, 'no trail with reduced motion');
+await win.evaluate(() => window.notera.setSettings({ theme: 'gnistor' }));
+await win.waitForFunction(() => document.documentElement.dataset.themeId === 'gnistor');
+await typeAtEnd('x');
 await win.waitForTimeout(60);
-const litReduced = await win.evaluate(() => {
-  const cv = document.querySelector('#fx-particles');
-  if (!cv) return 0;
-  const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-  let n = 0;
-  for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
-  return n;
-});
-assert.equal(litReduced, 0, 'no particles with reduced motion');
-ok('minska animationer: inga partiklar, stilla rutnät, markören hoppar');
+assert.equal(await litPixels(), 0, 'no particles with reduced motion');
+ok('minska animationer: ingen fosfor, svans eller partiklar, stilla rutnät, markören hoppar');
 await win.evaluate(() => { const t = window.__notera.active; t.dirty = false; t.savedDoc = window.__notera.view.state.doc; });
 await app.close();
 console.log('effects OK');

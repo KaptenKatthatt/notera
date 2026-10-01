@@ -156,18 +156,25 @@ test('effects are off unless a theme turns them on, and every parameter is check
   assert.equal(none.glow, null);
   assert.equal(none.cursor, null);
   assert.equal(none.particles, null);
+  assert.equal(none.phosphor, null);
+  assert.equal(none.trail, null);
   assert.deepEqual(none.background, { grid: null, sun: null, scanlines: 0, vignette: 0 });
   const fx = normalizeEffects({
     glow: { target: 'all', strength: 3 },
     gradient: { colors: ['#f0f', 'red; x', '#0ff'], levels: [1, 9, 2] },
     cursor: { style: 'banana', glow: -1, smooth: true },
     particles: { amount: 500 },
+    phosphor: { color: 'red; x', strength: 4 },
+    trail: { color: '#36f9f6', opacity: -2 },
     background: { grid: true, sun: { colors: ['#fff'] }, scanlines: 0.3, vignette: 'lots' }
   });
   assert.deepEqual(fx.glow, { target: 'all', strength: 1, color: null });
   assert.deepEqual(fx.gradient, { colors: ['#f0f', '#0ff'], levels: [1, 2] });
   assert.deepEqual(fx.cursor, { style: 'line', glow: 0, smooth: true });
   assert.equal(fx.particles.amount, 40);
+  assert.deepEqual(fx.phosphor, { color: null, strength: 1 });
+  assert.deepEqual(fx.trail, { color: '#36f9f6', opacity: 0 });
+  assert.deepEqual(normalizeEffects({ phosphor: true, trail: true }).trail, { color: null, opacity: 0.55 });
   assert.deepEqual(fx.background.grid, { color: null, opacity: 0.5, speed: 0.5 });
   assert.equal(fx.background.scanlines, 0.3);
   assert.equal(fx.background.vignette, 0);
@@ -195,7 +202,10 @@ test('the Neon family goes from calm to everything, and light variants keep glow
   const omg = fx('neon-omg', true);
   assert.equal(omg.e.glow.target, 'all');
   assert.equal(omg.r.glow.target, 'headings', 'Läs does not make a page of glowing body text');
-  assert.ok(omg.e.particles && omg.e.background.grid && omg.e.background.sun);
+  assert.ok(omg.e.phosphor && omg.e.trail && omg.e.background.grid && omg.e.background.sun);
+  assert.equal(omg.e.particles, null, 'sparks covered the text being typed; phosphor and the trail replace them');
+  const omgLight = fx('neon-omg', false);
+  assert.ok(omgLight.e.phosphor.color && omgLight.e.trail && !omgLight.e.particles, 'a light page flashes in a colour, not white');
   for (const id of ['neon-chill', 'neon', 'neon-omg']) {
     const light = fx(id, false);
     for (const side of [light.e, light.r]) assert.ok(!side.glow || side.glow.strength <= 0.3, `${id} light glow`);

@@ -1,11 +1,13 @@
 // effects.js: the built-in theme effects. A theme switches them on in notera.effects (see
 // THEMES.md); this turns them into classes and custom properties on <html> that styles.css
-// reads, and draws the typing particles on a canvas. Nothing here runs theme code: a theme can
+// reads, flashes newly typed letters (phosphor), and draws the typing particles and the cursor
+// trail on a canvas. Nothing here runs theme code: a theme can
 // only pick effects and set their parameters.
 //
 // Editor and preview (Läs) get separate classes (fx-e-*, fx-r-*) because split view shows both
 // at once and a theme's `read.effects` may differ from its editor effects.
-import { ViewPlugin } from '@codemirror/view';
+import { ViewPlugin, Decoration, EditorView } from '@codemirror/view';
+import { StateField, StateEffect, Prec } from '@codemirror/state';
 import { normalizeEffects, deepMerge } from '../shared/themeFormat.js';
 
 const FX_CLASS = /^fx-/;
@@ -13,6 +15,9 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 /** Current particle settings, read by the editor plugin on every keystroke; null when off. */
 let particleConfig = null;
+/** Current trail settings, read when the cursor moves; null when off. */
+let trailConfig = null;
+let phosphorOn = false;
 let isLightVariant = false;
 
 /**
@@ -27,6 +32,8 @@ export function createEffects(ctx = {}) {
     for (const c of [...root.classList]) if (FX_CLASS.test(c)) root.classList.remove(c);
     for (const p of [...root.style]) if (p.startsWith('--fx-')) root.style.removeProperty(p);
     particleConfig = null;
+    trailConfig = null;
+    phosphorOn = false;
   }
 
   /**
@@ -65,6 +72,15 @@ export function createEffects(ctx = {}) {
       if (e.cursor.smooth && motion) add('fx-cursor-smooth');
     }
     if (e.particles && motion) particleConfig = e.particles;
+    if (e.phosphor && motion) {
+      // A white flash vanishes on a light page, so there the letter flashes in its own colour
+      // with a wider halo instead.
+      phosphorOn = true;
+      add('fx-phosphor');
+      set('--fx-ph-color', e.phosphor.color || (isLightVariant ? 'currentColor' : '#ffffff'));
+      set('--fx-ph-strength', String(e.phosphor.strength * (isLightVariant ? 1.8 : 1)));
+    }
+    if (e.trail && motion) trailConfig = e.trail;
     // The background belongs to the window, so it follows the view: Läs alone uses read's.
     const bg = (next.view === 'preview' ? r : e).background;
     if (bg.grid || bg.sun) add('fx-bg');
@@ -87,7 +103,7 @@ export function createEffects(ctx = {}) {
   }
 
   reducedMotion.addEventListener('change', () => update(last));
-  return { update, get particles() { return particleConfig; } };
+  return { update, get particles() { return particleConfig; }, get trail() { return trailConfig; } };
 }
 
 // ---------- particles ----------
@@ -97,6 +113,12 @@ let canvas = null;
 let g = null;
 /** @type {Array<{ x: number, y: number, vx: number, vy: number, life: number, max: number, color: string, size: number }>} */
 const particles = [];
+/**
+ * A cursor trail: a quad from the old caret box (x0, y0, h0) to the new one (x1, y1, h1), clipped
+ * to the editor's scroller so it never crosses the toolbar.
+ * @type {Array<{ x0: number, y0: number, h0: number, x1: number, y1: number, h1: number, w: number, life: number, rgb: string, alpha: number, clip: { left: number, top: number, right: number, bottom: number } }>}
+ */
+const trails = [];
 let running = false;
 
 function ensureCanvas() {
@@ -135,13 +157,68 @@ function burst(x, y, cfg) {
     });
   }
   if (particles.length > 600) particles.splice(0, particles.length - 600);
+  run();
+}
+
+function run() {
   if (!running) { running = true; requestAnimationFrame(frame); }
+}
+
+/** "r, g, b" of a CSS colour, via the canvas's own colour parser; null if it cannot parse it. */
+function rgbOf(color) {
+  if (!g) return null;
+  g.fillStyle = '#000001';
+  g.fillStyle = color;
+  const v = String(g.fillStyle);
+  if (v === '#000001') return null;
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(v);
+  if (hex) return hex.slice(1).map((h) => parseInt(h, 16)).join(', ');
+  const rgba = /^rgba?\(([^,]+),([^,]+),([^,)]+)/.exec(v);
+  return rgba ? rgba.slice(1).map((n) => n.trim()).join(', ') : null;
+}
+
+/** Frames a trail lives: about 150 ms. */
+const TRAIL_FRAMES = 9;
+
+function addTrail(t) {
+  ensureCanvas();
+  const rgb = rgbOf(t.color);
+  if (!rgb) return;
+  trails.push({ ...t, rgb, life: 1 });
+  if (trails.length > 12) trails.shift();
+  run();
+}
+
+function drawTrails() {
+  for (let i = trails.length - 1; i >= 0; i--) {
+    const t = trails[i];
+    t.life -= 1 / TRAIL_FRAMES;
+    if (t.life <= 0) { trails.splice(i, 1); continue; }
+    const inset = t.h0 * 0.17;
+    const grad = g.createLinearGradient(t.x0, t.y0 + t.h0 / 2, t.x1, t.y1 + t.h1 / 2);
+    grad.addColorStop(0, `rgba(${t.rgb}, 0)`);
+    grad.addColorStop(1, `rgba(${t.rgb}, ${t.alpha * t.life})`);
+    g.save();
+    g.beginPath();
+    g.rect(t.clip.left, t.clip.top, t.clip.right - t.clip.left, t.clip.bottom - t.clip.top);
+    g.clip();
+    g.fillStyle = grad;
+    g.beginPath();
+    g.moveTo(t.x0, t.y0 + inset);
+    g.lineTo(t.x0 + t.w, t.y0 + t.h0 - inset);
+    g.lineTo(t.x1 + t.w, t.y1 + t.h1);
+    g.lineTo(t.x1, t.y1);
+    g.closePath();
+    g.fill();
+    g.restore();
+  }
 }
 
 function frame() {
   if (!g || !canvas) { running = false; return; }
   g.clearRect(0, 0, canvas.width, canvas.height);
   g.globalCompositeOperation = isLightVariant ? 'source-over' : 'lighter';
+  drawTrails();
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.x += p.vx; p.y += p.vy; p.vy += 0.07; p.vx *= 0.985; p.life -= 1;
@@ -157,12 +234,12 @@ function frame() {
   }
   g.globalAlpha = 1;
   g.shadowBlur = 0;
-  if (particles.length) requestAnimationFrame(frame);
+  if (particles.length || trails.length) requestAnimationFrame(frame);
   else running = false;
 }
 
-/** Editor extension: a burst of particles at the cursor on every typed or deleted character. */
-export const typingParticles = ViewPlugin.fromClass(class {
+/** A burst of particles at the cursor on every typed or deleted character. */
+const typingParticles = ViewPlugin.fromClass(class {
   update(u) {
     const cfg = particleConfig;
     if (!cfg || !u.docChanged) return;
@@ -175,3 +252,105 @@ export const typingParticles = ViewPlugin.fromClass(class {
     });
   }
 });
+
+// ---------- cursor trail ----------
+/** A fading streak from where the cursor was to where it went: faint while typing, clear on jumps. */
+const cursorTrail = ViewPlugin.fromClass(class {
+  constructor() {
+    /** @type {{ left: number, top: number, bottom: number, sl: number, st: number } | null} */
+    this.last = null;
+  }
+
+  update(u) {
+    const cfg = trailConfig;
+    if (!cfg) { this.last = null; return; }
+    if (!u.selectionSet && !u.docChanged) return;
+    const view = u.view;
+    const { head, assoc } = view.state.selection.main;
+    view.requestMeasure({
+      read: () => {
+        const c = view.coordsAtPos(head, assoc || 1);
+        if (!c) return null;
+        const cursor = view.dom.querySelector('.cm-cursor-primary');
+        const cs = getComputedStyle(document.documentElement);
+        return {
+          left: c.left, top: c.top, bottom: c.bottom, sl: view.scrollDOM.scrollLeft, st: view.scrollDOM.scrollTop,
+          w: Math.max(2, cursor ? cursor.getBoundingClientRect().width : 2),
+          clip: view.scrollDOM.getBoundingClientRect(),
+          color: cfg.color || cs.getPropertyValue('--caret').trim() || cs.getPropertyValue('--fg').trim()
+        };
+      },
+      write: (m) => {
+        const prev = this.last;
+        this.last = m && { left: m.left, top: m.top, bottom: m.bottom, sl: m.sl, st: m.st };
+        if (!m || !prev || !view.hasFocus) return;
+        // The old caret box where it is on screen now, if the editor scrolled on the way.
+        const x0 = prev.left - (m.sl - prev.sl), y0 = prev.top - (m.st - prev.st);
+        if (Math.hypot(m.left - x0, m.top - y0) < 0.5) return;
+        addTrail({
+          x0, y0, h0: prev.bottom - prev.top, x1: m.left, y1: m.top, h1: m.bottom - m.top, w: m.w,
+          color: m.color, alpha: cfg.opacity, clip: m.clip
+        });
+      }
+    });
+  }
+});
+
+// ---------- phosphor ----------
+/** How long a newly typed letter glows, in ms; matches the fx-phosphor animation in styles.css. */
+const PHOSPHOR_MS = 550;
+/** Drops phosphor marks born before the given time. */
+const expirePhosphor = /** @type {import('@codemirror/state').StateEffectType<number>} */ (StateEffect.define());
+let phosphorSeq = 0;
+
+/**
+ * The letters just typed carry an fx-ph mark while they flash. Only the newest few characters of
+ * each insertion, never whole lines, and nothing for a paste or a drop.
+ */
+const phosphorField = StateField.define({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    if (!phosphorOn) return deco.size ? Decoration.none : deco;
+    deco = deco.map(tr.changes);
+    for (const ef of tr.effects) {
+      if (ef.is(expirePhosphor)) deco = deco.update({ filter: (_f, _t, v) => v.spec.born > ef.value });
+    }
+    // Not while composing either (dead keys like ´ and ¨ on a Swedish keyboard, IMEs): changing
+    // the DOM around an active composition can cancel or garble it.
+    if (tr.docChanged && tr.isUserEvent('input') && !tr.isUserEvent('input.paste') && !tr.isUserEvent('input.drop') &&
+        !tr.isUserEvent('input.type.compose')) {
+      const born = Date.now();
+      /** @type {import('@codemirror/state').Range<Decoration>[]} */
+      const add = [];
+      tr.changes.iterChangedRanges((_fA, _tA, fromB, toB) => {
+        const from = Math.max(fromB, toB - 3);
+        // A unique attribute, so CodeMirror never joins neighbouring marks into one element and
+        // restarts the animation of a letter that is already fading.
+        if (toB > from) add.push(Decoration.mark({ class: 'fx-ph', attributes: { 'data-ph': String(++phosphorSeq) }, born }).range(from, toB));
+      });
+      if (add.length) deco = deco.update({ add, sort: true });
+    }
+    return deco;
+  },
+  provide: (f) => Prec.highest(EditorView.decorations.from(f))
+});
+
+/** Takes the marks off again once their animation is over. */
+const phosphorExpiry = ViewPlugin.fromClass(class {
+  constructor(view) { this.view = view; this.timer = 0; }
+  update(u) {
+    if (!this.timer && u.state.field(phosphorField).size) this.arm();
+  }
+  arm() {
+    this.timer = window.setTimeout(() => {
+      this.timer = 0;
+      // Wait out a composition rather than redraw the text under it.
+      if (this.view.composing) this.arm();
+      else this.view.dispatch({ effects: expirePhosphor.of(Date.now() - PHOSPHOR_MS) });
+    }, PHOSPHOR_MS + 50);
+  }
+  destroy() { clearTimeout(this.timer); }
+});
+
+/** Editor extension for the effects that follow typing: particles, phosphor, the cursor trail. */
+export const typingEffects = [typingParticles, phosphorField, phosphorExpiry, cursorTrail];

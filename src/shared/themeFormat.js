@@ -372,6 +372,8 @@ function normalizeEffects(fx) {
   const grad = obj(e.gradient);
   const cursor = obj(e.cursor);
   const parts = obj(e.particles);
+  const phosphor = obj(e.phosphor);
+  const trail = obj(e.trail);
   const bg = obj(e.background);
   const grid = obj(bg.grid);
   const sun = obj(bg.sun);
@@ -394,6 +396,8 @@ function normalizeEffects(fx) {
         colors: colorList(parts.colors), size: Math.min(8, Math.max(1, typeof parts.size === 'number' ? parts.size : 2.5))
       }
       : null,
+    phosphor: on(e.phosphor) ? { color: safeCss(phosphor.color), strength: clamp01(phosphor.strength, 1) } : null,
+    trail: on(e.trail) ? { color: safeCss(trail.color), opacity: clamp01(trail.opacity, 0.55) } : null,
     background: {
       grid: on(bg.grid) ? { color: safeCss(grid.color), opacity: clamp01(grid.opacity, 0.5), speed: clamp01(grid.speed, 0.5) } : null,
       sun: on(bg.sun) ? { colors: colorList(sun.colors), opacity: clamp01(sun.opacity, 0.5) } : null,

@@ -1,7 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/KaptenKatthatt/notera/master/theme.schema.json",
   // Neon OMG: everything on. Every letter glows, the H1 is set in neon-tube Monoton, the cursor
-  // is a glowing block, sparks fly as you type, and a synthwave sun sets over a moving grid.
+  // is a glowing block, each letter flashes as you type it and the cursor leaves a fading trail,
+  // and a synthwave sun sets over a moving grid.
   "name": "Neon OMG",
   "extends": "neon",
   "notera": {
@@ -10,7 +11,8 @@
       "glow": { "target": "all", "strength": 0.45 },
       "gradient": { "colors": ["#ff7edb", "#fede5d", "#36f9f6"], "levels": [1, 2] },
       "cursor": { "style": "block", "glow": 1, "smooth": true },
-      "particles": { "amount": 10, "colors": ["#ff7edb", "#36f9f6", "#fede5d"], "size": 2.5 },
+      "phosphor": true,
+      "trail": true,
       "background": {
         "grid": { "color": "#ff7edb", "opacity": 0.6, "speed": 0.5 },
         "sun": { "colors": ["#fede5d", "#ff7edb"], "opacity": 0.32 },
@@ -30,7 +32,8 @@
         "glow": false,
         "gradient": { "colors": ["#b30081", "#b4240d", "#006586"], "levels": [1, 2] },
         "cursor": { "style": "block", "glow": 0.5, "smooth": true },
-        "particles": { "amount": 10, "colors": ["#d6249f", "#0086a8", "#e0a100"], "size": 2.5 },
+        "phosphor": { "color": "#d6249f" },
+        "trail": true,
         "background": {
           "grid": { "color": "#d6249f", "opacity": 0.28, "speed": 0.5 },
           "sun": { "colors": ["#ffc94d", "#ff6fb5"], "opacity": 0.3 },
