@@ -417,7 +417,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const seen = new Set([inbox, ...projects, ...archive].flatMap((g) => g.notes.map((n) => n.path)));
       for (const p of noteCache.keys()) if (!seen.has(p)) noteCache.delete(p);
       return {
-        root, inboxName: idx.inbox, archiveName: idx.archive, inbox, projects, templates, templatesName: idx.templates,
+        root, inboxName: idx.inbox, archiveName: idx.archive, inbox, projects, templates, templatesName: idx.templates, templatesCollapsed: has(idx.collapsed, idx.templates),
         archive: archive.filter((g) => g.notes.length || g.wholeProject),
         archiveCount: archive.reduce((n, g) => n + g.notes.length, 0)
       };

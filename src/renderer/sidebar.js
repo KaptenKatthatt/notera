@@ -176,6 +176,7 @@ export function createSidebar(ctx) {
     const info = fromNote ? noteInfo(fromNote) : null;
     const value = info && !isUntitled(info.note) ? titleFor(info.note) : '';
     editing = { kind: 'newTemplate', from: fromNote, name: '', value, error: '' };
+    if (tree && tree.templatesCollapsed) void setCollapsed(tree.templatesName, false);
     render();
     const ed = $('#sb-edit');
     if (ed) { ed.select(); ed.scrollIntoView({ block: 'nearest' }); }
@@ -213,6 +214,7 @@ export function createSidebar(ctx) {
   async function setCollapsed(name, collapsed) {
     const g = findGroup(name);
     if (g) g.collapsed = collapsed;
+    if (tree && name === tree.templatesName) tree.templatesCollapsed = collapsed;
     render();
     await api.notes.call('setCollapsed', name, collapsed);
   }
@@ -260,7 +262,10 @@ export function createSidebar(ctx) {
   }
 
   function renderTemplates() {
-    let h = `<div class="sb-sec sb-tpl-sec"><span>${esc(t('notes.templates'))}</span><span class="spacer"></span><button type="button" class="sb-ibtn" data-act="new-template" title="${esc(t('notes.newTemplate'))}" aria-label="${esc(t('notes.newTemplate'))}">${ICONS.plus}</button></div>`;
+    const folded = tree.templatesCollapsed;
+    const n = tree.templates.length;
+    let h = `<div class="sb-sec sb-tpl-sec"><button type="button" class="sb-sec-toggle" data-act="tpl-toggle" aria-expanded="${!folded}">${ICONS.chev.replace('class="chev"', `class="chev${folded ? '' : ' open'}"`)}<span>${esc(t('notes.templates'))}</span>${folded && n ? `<span class="count">${n}</span>` : ''}</button><span class="spacer"></span><button type="button" class="sb-ibtn" data-act="new-template" title="${esc(t('notes.newTemplate'))}" aria-label="${esc(t('notes.newTemplate'))}">${ICONS.plus}</button></div>`;
+    if (folded) return h;
     h += tree.templates.map(templateRow).join('');
     if (editing && editing.kind === 'newTemplate') {
       h += `<div class="sb-row sb-note sb-tpl editing"><input class="sb-edit" id="sb-edit" placeholder="${esc(t('notes.templateName'))}" value="${esc(editing.value)}" autocomplete="off" spellcheck="false" aria-label="${esc(t('notes.templateName'))}" /></div>`;
@@ -665,6 +670,7 @@ export function createSidebar(ctx) {
       case 'arch-proj-restore': return void restoreProject(folder);
       case 'arch-proj-menu': return archivedProjectMenu(folder, actEl);
       case 'new-template': return startNewTemplate();
+      case 'tpl-toggle': return void setCollapsed(tree.templatesName, !tree.templatesCollapsed);
       case 'tpl-menu': { const tp = templateAt(row?.dataset.tpath); return tp ? templateMenu(tp, actEl) : undefined; }
       default: break;
     }

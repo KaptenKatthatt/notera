@@ -431,6 +431,15 @@ body.sb-open #sb-resizer { display: block; }
   font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-muted);
 }
 .sb-sec .spacer { flex: 1; }
+/* A foldable section header (Templates): the chevron and label are one button, like a project row. */
+.sb-sec-toggle {
+  display: flex; align-items: center; gap: 4px; height: 24px; margin-left: -6px; padding: 0 6px 0 2px; border: none; border-radius: 4px;
+  background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: default;
+}
+.sb-sec-toggle:hover { background: var(--bg-hover); color: var(--fg); }
+.sb-sec-toggle .chev { transition: transform 0.12s; flex: none; }
+.sb-sec-toggle .chev.open { transform: rotate(90deg); }
+.sb-sec-toggle .count { margin-left: 4px; font-weight: 400; letter-spacing: 0; }
 .sb-row {
   display: flex; align-items: center; gap: 6px; height: 28px; margin: 1px 6px; padding: 0 4px 0 6px;
   border-radius: 6px; position: relative; cursor: default; user-select: none;

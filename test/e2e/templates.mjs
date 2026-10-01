@@ -160,6 +160,27 @@ assert.deepEqual(ls('Mallar'), ['Sprintmall.md', 'Standup.md']);
 assert.equal((JSON.parse(read('.notera.json')).options.Enlantis || {}).template, undefined);
 console.log('ok   spara som mall, byt namn, ta bort');
 
+// 8. The templates section folds like a project: count while folded, remembered in .notera.json.
+const tplToggle = win.locator('#sb-list [data-act="tpl-toggle"]');
+assert.equal(await tplToggle.getAttribute('aria-expanded'), 'true');
+await tplToggle.click();
+await settle();
+assert.equal(await tplToggle.getAttribute('aria-expanded'), 'false');
+assert.equal(await win.locator('#sb-list .sb-tpl').count(), 0, 'folded: no template rows');
+assert.equal(await win.textContent('#sb-list .sb-tpl-sec .count'), '2');
+assert.ok(JSON.parse(read('.notera.json')).collapsed.includes('Mallar'), 'folded state saved');
+await win.evaluate(() => window.__notera.sidebar.refresh());
+assert.equal(await win.locator('#sb-list .sb-tpl').count(), 0, 'still folded after a reload of the tree');
+await shot('53-templates-folded');
+// The plus on a folded section unfolds it and opens the name field.
+await win.click('#sb-list .sb-tpl-sec [data-act="new-template"]');
+await win.waitForSelector('#sb-list .sb-tpl #sb-edit');
+await win.keyboard.press('Escape');
+await settle();
+assert.equal(await win.locator('#sb-list .sb-tpl').count(), 2);
+assert.ok(!JSON.parse(read('.notera.json')).collapsed.includes('Mallar'), 'unfolded state saved');
+console.log('ok   mallsektionen fälls ihop');
+
 assert.deepEqual(errors, []);
 await win.evaluate(() => { for (const t of window.__notera.tabs) { t.dirty = false; t.savedDoc = t.state.doc; } });
 await app.close();
