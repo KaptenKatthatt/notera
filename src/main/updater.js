@@ -1,5 +1,7 @@
 'use strict';
 // Checks GitHub Releases for a newer Notera, and downloads and installs it when the user says so.
+// One yes covers both: a download started with { install: true } ends in the 'installing' state,
+// and main.js then saves or keeps everyone's work and installs.
 // Only the installed (NSIS) Windows build updates itself: the portable exe and a source checkout
 // report why they can't.
 //
@@ -26,6 +28,9 @@ function createUpdater({ broadcast, getSettings }) {
   let state = { state: 'idle', version: null, percent: 0 };
   let timer = null;
   let checking = null;
+  // Set by a download the user asked to install. Lives here, not in a window, so it holds no matter
+  // which window or menu said yes, and survives a failed download until the retry finishes.
+  let installWhenDownloaded = false;
 
   const logFile = path.join(app.getPath('userData'), 'updater.log');
   const log = (level) => (...args) => {
@@ -56,7 +61,7 @@ function createUpdater({ broadcast, getSettings }) {
     autoUpdater.on('update-available', (info) => set({ state: 'available', version: info.version, percent: 0 }));
     autoUpdater.on('update-not-available', (info) => { if (state.state === 'checking') set({ state: 'idle', latest: info.version }); });
     autoUpdater.on('download-progress', (p) => set({ state: 'downloading', percent: Math.floor(p.percent || 0) }));
-    autoUpdater.on('update-downloaded', (info) => set({ state: 'downloaded', version: info.version, percent: 100 }));
+    autoUpdater.on('update-downloaded', (info) => set({ state: installWhenDownloaded ? 'installing' : 'downloaded', version: info.version, percent: 100 }));
     autoUpdater.on('error', (err) => {
       log('error')(err);
       if (state.state === 'downloading') set({ state: 'error', error: 'download' });
@@ -68,7 +73,7 @@ function createUpdater({ broadcast, getSettings }) {
   /** @param {{ manual?: boolean }} [opts] */
   async function check({ manual } = {}) {
     if (reason) return { status: 'unsupported', reason };
-    if (['downloading', 'downloaded'].includes(state.state)) {
+    if (['downloading', 'downloaded', 'installing'].includes(state.state)) {
       if (manual) broadcast('update:status', state);
       return { status: 'busy', version: state.version };
     }
@@ -98,14 +103,23 @@ function createUpdater({ broadcast, getSettings }) {
     return checking;
   }
 
-  async function download() {
+  /**
+   * @param {{ install?: boolean }} [opts] install: go on to install once the download is done
+   * @returns {Promise<{ ok: boolean, install?: boolean, message?: string }>}
+   */
+  async function download({ install = false } = {}) {
     if (reason) return { ok: false };
     const u = load();
     if (!['available', 'error'].includes(state.state)) return { ok: false };
+    if (install) installWhenDownloaded = true;
     set({ state: 'downloading', percent: 0, error: null });
     try {
       await u.downloadUpdate();
-      return { ok: true };
+      const go = installWhenDownloaded;
+      installWhenDownloaded = false;
+      const done = go ? 'installing' : 'downloaded';
+      if (state.state !== done) set({ state: done, percent: 100 });
+      return { ok: true, install: go };
     } catch (err) {
       log('error')('download failed', err);
       set({ state: 'error', error: 'download' });
@@ -113,8 +127,13 @@ function createUpdater({ broadcast, getSettings }) {
     }
   }
 
+  /** The install was called off (a window kept its unsaved work): offer "Restart and install" instead. */
+  function installCancelled() {
+    if (state.state === 'installing') set({ state: 'downloaded' });
+  }
+
   function install() {
-    if (!autoUpdater || state.state !== 'downloaded') return false;
+    if (!autoUpdater || !['downloaded', 'installing'].includes(state.state)) return false;
     // Tests stop here: the real installer step is the Windows NSIS one and cannot run on Linux.
     if (testFeed && process.env.NOTERA_UPDATE_DRYRUN) {
       fs.writeFileSync(process.env.NOTERA_UPDATE_DRYRUN, state.version);
@@ -138,7 +157,7 @@ function createUpdater({ broadcast, getSettings }) {
     timer.unref?.();
   }
 
-  return { check, download, install, dismiss, start, getState: () => state, reason: () => reason };
+  return { check, download, install, installCancelled, dismiss, start, getState: () => state, reason: () => reason };
 }
 
 module.exports = { createUpdater };

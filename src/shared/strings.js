@@ -72,7 +72,8 @@ const en = {
     restart: 'Restart and install', latest: 'You have the latest version of Notera ({version}).',
     unsupported: 'Updates work in the installed version of Notera. This copy is {reason}.',
     reasonDev: 'running from source', reasonPortable: 'the portable version', error: 'Could not check for updates.',
-    downloadError: 'The update could not be downloaded.', checking: 'Checking for updates…'
+    downloadError: 'The update could not be downloaded.', checking: 'Checking for updates…',
+    confirm: 'Notera {version} is available. Do you want to download and install it now?', installing: 'Installing Notera {version}…'
   },
   palette: {
     commands: 'Type a command or a setting', noMatches: 'No command matches', setting: 'Setting',
@@ -171,7 +172,8 @@ const sv = {
     restart: 'Starta om och installera', latest: 'Du har den senaste versionen av Notera ({version}).',
     unsupported: 'Uppdateringar fungerar i den installerade versionen av Notera. Den här kopian är {reason}.',
     reasonDev: 'startad från källkoden', reasonPortable: 'den portabla versionen', error: 'Det gick inte att söka efter uppdateringar.',
-    downloadError: 'Uppdateringen gick inte att ladda ner.', checking: 'Söker efter uppdateringar…'
+    downloadError: 'Uppdateringen gick inte att ladda ner.', checking: 'Söker efter uppdateringar…',
+    confirm: 'Notera {version} finns. Vill du ladda ner och installera den nu?', installing: 'Installerar Notera {version}…'
   },
   palette: {
     commands: 'Skriv ett kommando eller en inställning', noMatches: 'Inget kommando matchar', setting: 'Inställning',

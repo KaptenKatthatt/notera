@@ -374,7 +374,38 @@ async function manualUpdateCheck(win) {
   if (r.status === 'latest') await box(t('update.latest', { version: app.getVersion() }));
   else if (r.status === 'unsupported') await box(t('update.unsupported', { reason: t(r.reason === 'portable' ? 'update.reasonPortable' : 'update.reasonDev') }));
   else if (r.status === 'error') await box(t('update.error') + (r.message ? '\n\n' + r.message : ''), 'warning');
+  else if (r.status === 'available') {
+    const a = await dialog.showMessageBox(win || focusedWindow(), {
+      type: 'question', title: t('appName'), message: t('update.confirm', { version: r.version }),
+      buttons: [t('update.download'), t('update.later')], defaultId: 0, cancelId: 1, noLink: true
+    });
+    if (a.response === 0) void downloadAndInstall();
+    else updater.dismiss();
+  }
   return r;
+}
+
+// One yes, from the toast or the manual check's dialog, downloads and then installs.
+async function downloadAndInstall() {
+  const r = await updater.download({ install: true });
+  if (r.ok && r.install) return installUpdate();
+  return false;
+}
+
+// Every window saves or keeps its work first. If one refuses (the user cancels a save), the toast
+// falls back to "Restart and install"; autoInstallOnAppQuit still installs on the next quit.
+let installRunning = false;
+async function installUpdate() {
+  if (installRunning || !['downloaded', 'installing'].includes(updater.getState().state)) return false;
+  installRunning = true;
+  try {
+    const ok = await prepareAllForQuit();
+    if (!ok) { updater.installCancelled(); return false; }
+    for (const w of BrowserWindow.getAllWindows()) closeConfirmed.add(w);
+    return updater.install();
+  } finally {
+    installRunning = false;
+  }
 }
 
 // Before installing an update every window saves or keeps its work. Untitled text is kept as a
@@ -402,15 +433,9 @@ ipcMain.handle('edit:native', (e, op) => {
   if (['cut', 'copy', 'paste', 'undo', 'redo', 'selectAll', 'delete'].includes(op)) e.sender[op]();
 });
 ipcMain.handle('update:check', (e, { manual } = {}) => (manual ? manualUpdateCheck(BrowserWindow.fromWebContents(e.sender)) : updater.check()));
-ipcMain.handle('update:download', () => updater.download());
+ipcMain.handle('update:download', () => downloadAndInstall());
 ipcMain.handle('update:dismiss', () => updater.dismiss());
-ipcMain.handle('update:install', async () => {
-  if (updater.getState().state !== 'downloaded') return false;
-  const ok = await prepareAllForQuit();
-  if (!ok) return false;
-  for (const w of BrowserWindow.getAllWindows()) closeConfirmed.add(w);
-  return updater.install();
-});
+ipcMain.handle('update:install', () => installUpdate());
 ipcMain.handle('settings:get', () => settings.get());
 ipcMain.handle('themes:list', () => themeStore.list(locale));
 ipcMain.handle('themes:openFolder', () => openThemesFolder());
