@@ -169,6 +169,7 @@ for (const id of themeIds) {
     await win.evaluate(() => { const v = window.__notera.view; const i = v.state.doc.toString().indexOf('Ringa vet'); v.dispatch({ selection: { anchor: i, head: i + 9 } }); });
     await settle(120);
     await win.screenshot({ path: path.join(shots, `63-contrast-selection-${id}-${mode}.png`) });
+    await win.waitForSelector('.cm-selectionBackground');
     // The selection must be what is painted under the selected text: nothing opaque above the
     // selection layer (an effect pane on .cm-content once hid it, leaving dark text on dark).
     const selOnTop = await win.evaluate(() => {

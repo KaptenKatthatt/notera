@@ -88,11 +88,12 @@ ok('Neon OMG i Läs');
 // ---------- light ----------
 await setTheme('neon-omg', 'light');
 c = await cls();
-assert.ok(c.includes('fx-e-glow-headings') && !c.includes('fx-e-glow-all'), c.join(' '));
+// No glow on a light page: a halo in the text's colour lowers its contrast (contrast.mjs).
+assert.ok(!c.some((x) => /glow-(headings|all)/.test(x)) && c.includes('fx-sun'), c.join(' '));
 await typeAtEnd(' ljus');
 await win.waitForTimeout(60);
 await shot('62-neon-omg-light');
-ok('Neon OMG ljust: glöd bara på rubriker, dämpad bakgrund');
+ok('Neon OMG ljust: ingen glöd, dämpad bakgrund');
 
 for (const [theme, mode, name] of [['neon', 'dark', '63-neon-dark'], ['neon', 'light', '64-neon-light'], ['neon-chill', 'dark', '65-neon-chill-dark'], ['neon-chill', 'light', '66-neon-chill-light']]) {
   await setTheme(theme, mode);
@@ -106,7 +107,9 @@ assert.deepEqual(c, ['fx-cursor-glow', 'fx-cursor-line', 'fx-cursor-smooth', 'fx
 await setTheme('neon-chill', 'dark');
 c = await cls();
 assert.deepEqual(c, ['fx-cursor-glow', 'fx-cursor-line', 'fx-e-glow-headings', 'fx-r-glow-headings'].sort());
-assert.equal(await css('#preview h2', 'color'), 'rgb(54, 249, 246)', 'H2 is cyan in the preview');
+// A glowing heading is a neon tube: cyan halo, letters mixed 30 % toward white.
+assert.match(await css('#preview h2', 'textShadow'), /rgb\(54, 249, 246\)/, 'H2 glows cyan in the preview');
+assert.equal(await css('#preview h2', 'color'), 'color(srgb 0.448235 0.983529 0.975294)', 'H2 letters are the cyan core');
 ok('Neon och Neon Chill slår på färre effekter');
 
 // ---------- the switch ----------

@@ -61,8 +61,8 @@ ok('gamla inställningen theme: those-guys blir tema Those guys i läge Mörkt')
 const cases = [
   { id: 'default', mode: 'light', bg: 'rgb(255, 255, 255)', accent: '#0067c0', h1: 'rgb(34, 35, 36)', caret: 'rgb(34, 35, 36)' },
   { id: 'default', mode: 'dark', bg: 'rgb(16, 16, 16)', accent: '#4cc2ff', h1: 'rgb(238, 238, 238)', caret: 'rgb(238, 238, 238)' },
-  { id: 'those-guys', mode: 'dark', bg: 'rgb(38, 38, 36)', accent: '#d77757', h1: 'rgb(215, 119, 87)', caret: 'rgb(215, 119, 87)' },
-  { id: 'those-guys', mode: 'light', bg: 'rgb(250, 249, 245)', accent: '#c6613f', h1: 'rgb(198, 97, 63)', caret: 'rgb(198, 97, 63)' },
+  { id: 'those-guys', mode: 'dark', bg: 'rgb(38, 38, 36)', accent: '#e38a6b', h1: 'rgb(218, 122, 90)', caret: 'rgb(227, 138, 107)' },
+  { id: 'those-guys', mode: 'light', bg: 'rgb(250, 249, 245)', accent: '#a84724', h1: 'rgb(168, 71, 36)', caret: 'rgb(168, 71, 36)' },
   { id: 'other-guys', mode: 'dark', bg: 'rgb(17, 17, 17)', accent: '#ececec', h1: 'rgb(255, 255, 255)', caret: 'rgb(255, 255, 255)' },
   { id: 'other-guys', mode: 'light', bg: 'rgb(255, 255, 255)', accent: '#0d0d0d', h1: 'rgb(0, 0, 0)', caret: 'rgb(13, 13, 13)' }
 ];
@@ -92,6 +92,7 @@ for (const c of cases) {
   });
   await win.mouse.dblclick(at.x, at.y);
   assert.equal(await win.evaluate(() => { const v = window.__notera.view; const r = v.state.selection.main; return v.state.sliceDoc(r.from, r.to); }), 'Handla');
+  await win.waitForSelector('.cm-selectionBackground'); // CodeMirror draws the layer on the next frame
   assert.equal(await selectionOnTop(), true, `${c.id}/${c.mode} a double-clicked word is visibly selected`);
   ok(`${c.id} ${c.mode}: egen palett, en bock per grupp i menyn`);
 }
@@ -135,7 +136,7 @@ await win.waitForFunction(() => window.notera.listThemes().then((l) => l.some((t
 await win.evaluate(() => window.notera.setSettings({ theme: 'mitt-tema', mode: 'dark' }));
 await waitTheme('mitt-tema', 'dark');
 await win.waitForFunction(() => getComputedStyle(document.body).backgroundColor === 'rgb(32, 48, 64)');
-assert.equal(await cssVar('--accent'), '#d77757', 'inherits the accent from Those guys');
+assert.equal(await cssVar('--accent'), '#e38a6b', 'inherits the accent from Those guys');
 await win.waitForFunction(() => getComputedStyle(document.querySelector('.tab.active')).outlineColor === 'rgb(1, 2, 3)');
 assert.ok(Math.abs((await lh()) - 1.75) < 0.01, `the theme's lineHeight applies (${await lh()})`);
 ok('eget tema i temamappen ärver av Those guys, laddar sin style.css och sätter radhöjd 1,75');
