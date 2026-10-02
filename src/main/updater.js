@@ -14,6 +14,18 @@ const fs = require('fs');
 
 const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 const FIRST_CHECK_MS = 8000;
+/** A check gives up after this long rather than leave the user waiting on a dead connection. */
+const CHECK_TIMEOUT_MS = 30000;
+/** Network errors are often a blip (a connection GitHub or a proxy closed): try again, twice. */
+const RETRY_DELAYS_MS = [1500, 4000];
+const NETWORK_ERROR = /net::ERR_|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|timed out/i;
+
+/** Rejects with a timeout error if `promise` takes longer than `ms`. */
+function withTimeout(promise, ms) {
+  let timer;
+  return Promise.race([promise, new Promise((_r, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${ms / 1000} s`)), ms); })])
+    .finally(() => clearTimeout(timer));
+}
 
 function createUpdater({ broadcast, getSettings }) {
   const testFeed = process.env.NOTERA_UPDATE_FEED || null;
@@ -69,7 +81,7 @@ function createUpdater({ broadcast, getSettings }) {
     return autoUpdater;
   }
 
-  /** @returns {Promise<{ status: 'available'|'latest'|'unsupported'|'error'|'busy', version?, reason?, message? }>} */
+  /** @returns {Promise<{ status: 'available'|'latest'|'unsupported'|'error'|'busy', version?, reason?, message?, network? }>} */
   /** @param {{ manual?: boolean }} [opts] */
   async function check({ manual } = {}) {
     if (reason) return { status: 'unsupported', reason };
@@ -79,23 +91,32 @@ function createUpdater({ broadcast, getSettings }) {
     }
     if (checking) return checking;
     const u = load();
-    const prev = state.state;
-    set({ state: 'checking' });
+    // A manual check shows "Checking for updates…" until it has an answer; an automatic one is silent.
+    set({ state: 'checking', manual: !!manual });
     checking = (async () => {
       try {
-        const r = await u.checkForUpdates();
+        let r;
+        for (let attempt = 0; ; attempt++) {
+          try { r = await withTimeout(u.checkForUpdates(), CHECK_TIMEOUT_MS); break; }
+          catch (err) {
+            if (attempt >= RETRY_DELAYS_MS.length || !NETWORK_ERROR.test(String(err && err.message))) throw err;
+            log('warn')(`check failed, retrying (${attempt + 1})`, err);
+            await new Promise((resolve) => setTimeout(resolve, testFeed && process.env.NOTERA_UPDATE_FAST_RETRY ? 50 : RETRY_DELAYS_MS[attempt]));
+          }
+        }
         const available = r && r.isUpdateAvailable !== false && r.updateInfo && r.updateInfo.version !== app.getVersion();
         if (available) {
           // The update-available event already set the state; make sure a manual check re-shows it.
           set({ state: 'available', version: r.updateInfo.version });
           return { status: 'available', version: r.updateInfo.version };
         }
-        set({ state: prev === 'checking' ? 'idle' : 'idle' });
+        set({ state: 'idle' });
         return { status: 'latest', version: app.getVersion() };
       } catch (err) {
         log('error')('check failed', err);
         set({ state: 'idle' });
-        return { status: 'error', message: err && err.message };
+        const message = String(err && err.message || '');
+        return { status: 'error', network: NETWORK_ERROR.test(message), message };
       } finally {
         checking = null;
       }

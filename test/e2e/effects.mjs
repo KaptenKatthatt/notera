@@ -339,15 +339,16 @@ for (const [theme, mode] of [['neon-omg', 'dark'], ['default', 'light']]) {
     await typeAtEnd('\nGlöd');
     const peak = await peakLit(250);
     await win.keyboard.type('x', { delay: 0 });
+    // Marks first: a letter effect lives 0.3 to 0.7 s, and a screenshot on a busy machine can take longer.
+    const m = await phosphorMarks();
     await win.waitForTimeout(id === 'glitch' || id === 'focus' ? 40 : 80);
     await win.screenshot({ path: path.join(shots, `68-fx-${id}-${theme}-${mode}.png`), clip: await caretClip() });
     if (LETTER[id]) {
-      const m = await phosphorMarks();
       assert.ok(m.length >= 1, `${id}: the letter carries its mark`);
       const last = m[m.length - 1];
       assert.equal(last.anim.split(',').sort().join(','), LETTER[id].split(',').sort().join(','), `${id} animations`);
       assert.ok(last.props.split(',').every((p) => ['opacity', 'transform', 'filter'].includes(p)), `${id} animates only compositor properties: ${last.props}`);
-    } else assert.equal((await phosphorMarks()).length, 0, `${id} marks no letters`);
+    } else assert.equal(m.length, 0, `${id} marks no letters`);
     if (CANVAS.includes(id)) assert.ok(await peak() > 5, `${id} draws on the canvas (${theme} ${mode})`);
     else assert.equal(await peak(), 0, `${id} draws nothing on the canvas`);
   }

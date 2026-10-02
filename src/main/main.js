@@ -472,7 +472,7 @@ async function manualUpdateCheck(win) {
   const box = (message, type = 'info') => dialog.showMessageBox(win || focusedWindow(), { type, title: t('appName'), message, buttons: [t('dialog.ok')] });
   if (r.status === 'latest') await box(t('update.latest', { version: app.getVersion() }));
   else if (r.status === 'unsupported') await box(t('update.unsupported', { reason: t(r.reason === 'portable' ? 'update.reasonPortable' : 'update.reasonDev') }));
-  else if (r.status === 'error') await box(t('update.error') + (r.message ? '\n\n' + r.message : ''), 'warning');
+  else if (r.status === 'error') await box((r.network ? t('update.networkError') : t('update.error')) + (r.message ? '\n\n' + r.message : ''), 'warning');
   else if (r.status === 'available') {
     const a = await dialog.showMessageBox(win || focusedWindow(), {
       type: 'question', title: t('appName'), message: t('update.confirm', { version: r.version }),

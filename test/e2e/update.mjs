@@ -22,12 +22,20 @@ const sha512 = crypto.createHash('sha512').update(payload).digest('base64');
 let feedVersion = '9.9.9';
 let fileHits = 0;
 let failNext = false;
+// The feed closes this many connections to latest-linux.yml before it answers, like a dropped
+// connection to GitHub (net::ERR_CONNECTION_CLOSED); a slow feed answers after feedDelay ms.
+let dropFeed = 0;
+let feedDelay = 0;
 const yml = () => [
   `version: ${feedVersion}`, 'files:', `  - url: Notera-${feedVersion}.AppImage`, `    sha512: ${sha512}`, `    size: ${payload.length}`,
   `path: Notera-${feedVersion}.AppImage`, `sha512: ${sha512}`, "releaseDate: '2026-09-24T12:00:00.000Z'", ''
 ].join('\n');
 const server = http.createServer((req, res) => {
-  if (req.url.startsWith('/latest-linux.yml')) { res.writeHead(200, { 'Content-Type': 'text/yaml' }); res.end(yml()); return; }
+  if (req.url.startsWith('/latest-linux.yml')) {
+    if (dropFeed > 0) { dropFeed--; req.socket.destroy(); return; }
+    setTimeout(() => { res.writeHead(200, { 'Content-Type': 'text/yaml' }); res.end(yml()); }, feedDelay);
+    return;
+  }
   if (req.url.startsWith('/Notera-')) {
     fileHits++;
     if (failNext) { failNext = false; res.writeHead(500); res.end(); return; }
@@ -55,7 +63,7 @@ const launch = (files = []) => electron.launch({
   args: [root, ...files],
   env: {
     ...process.env, NOTERA_USER_DATA: userData, NOTERA_UPDATE_FEED: feed, NOTERA_UPDATE_DRYRUN: marker, APPIMAGE: fakeAppImage,
-    XDG_CACHE_HOME: path.join(tmp, `cache-${++launches}`)
+    XDG_CACHE_HOME: path.join(tmp, `cache-${++launches}`), NOTERA_UPDATE_FAST_RETRY: '1'
   }
 });
 
@@ -119,6 +127,38 @@ assert.equal(await win.evaluate(() => document.querySelector('#update-toast').hi
 assert.equal((await win.evaluate(() => window.notera.checkForUpdates(false))).status, 'latest');
 assert.equal(await win.evaluate(() => window.__notera.view.state.doc.toString()), 'Osparad anteckning före uppdateringen');
 ok('ingen nyare version: ingen ruta, "senaste"; utkastet är tillbaka');
+
+// A manual check says it is checking, and a dropped connection is tried again before it fails.
+feedDelay = 800;
+const pending = win.evaluate(() => window.notera.checkForUpdates(false).then(() => null));
+await win.waitForTimeout(200);
+assert.equal(await win.evaluate(() => document.querySelector('#update-toast').hidden), true, 'an automatic-style check stays silent');
+await pending;
+dropFeed = 2;
+const manual = win.evaluate(() => new Promise((resolve) => {
+  window.notera.checkForUpdates(true);
+  const seen = setInterval(() => {
+    if (!document.querySelector('#update-toast').hidden) { clearInterval(seen); resolve(document.querySelector('#update-text').textContent); }
+  }, 20);
+}));
+await app.evaluate(({ dialog }) => { globalThis.__boxes = []; dialog.showMessageBox = async (_w, o) => { globalThis.__boxes.push((o || _w).message); return { response: 0 }; }; });
+assert.equal(await manual, 'Söker efter uppdateringar…');
+await win.waitForFunction(() => document.querySelector('#update-toast').hidden, null, { timeout: 10000 });
+await app.evaluate(() => new Promise((r) => { const w = () => (globalThis.__boxes.length ? r() : setTimeout(w, 50)); w(); }));
+const version = await app.evaluate(({ app: a }) => a.getVersion());
+assert.deepEqual(await app.evaluate(() => globalThis.__boxes), [`Du har den senaste versionen av Notera (${version}).`], 'two dropped connections, then the answer');
+assert.equal(dropFeed, 0);
+// Every try dropped: the box says GitHub could not be reached, with the error under it.
+dropFeed = 99;
+await app.evaluate(() => { globalThis.__boxes = []; });
+const failed = await win.evaluate(() => window.notera.checkForUpdates(true));
+assert.equal(failed.status, 'error');
+assert.equal(failed.network, true);
+assert.match((await app.evaluate(() => globalThis.__boxes))[0], /^Notera nådde inte GitHub för att söka efter uppdateringar/);
+assert.ok(99 - dropFeed >= 3, `one try and two retries at least (${99 - dropFeed}; electron-updater may retry on its own too)`);
+dropFeed = 0;
+feedDelay = 0;
+ok('manuell kontroll visar "Söker efter uppdateringar…", försöker igen vid tappad anslutning, och säger tydligt när GitHub inte nås');
 await win.evaluate(() => { for (const t of window.__notera.tabs) { t.dirty = false; } });
 await app.close();
 
