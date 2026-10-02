@@ -327,8 +327,22 @@ dialog .set-check { display: flex; grid-template-columns: none; }
 .set-pane button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 /* On the Theme tab the dialog docks to the right edge, with the tabs on top, so the window behind
    it shows every change (themeTab.js). */
-dialog.settings.docked { inset: 0 0 0 auto; margin: 0; width: min(440px, 92vw); height: 100vh; max-height: 100vh; border-radius: 0; border-width: 0 0 0 1px; }
+/* A card with a gap all round, its own border and shadow, so it is plain where the panel (and the
+   window) ends. It is not modal: the app moves over (body.set-docked) so the document stays beside
+   it, and can be typed in while the theme is set up. */
+:root { --dock-w: min(440px, 92vw); --dock-gap: 8px; }
+dialog.settings.docked {
+  position: fixed; inset: var(--dock-gap) var(--dock-gap) var(--dock-gap) auto; margin: 0; width: var(--dock-w);
+  height: calc(100vh - 2 * var(--dock-gap)); max-height: none; border-radius: 10px; border: 1px solid var(--widget-border, var(--border));
+  box-shadow: var(--shadow); z-index: 54; /* above the effects canvas, below the search palette (55) and quick picks (56) */
+}
 dialog.settings.docked::backdrop { background: transparent; }
+body.set-docked #shell { margin-right: calc(var(--dock-w) + 2 * var(--dock-gap)); }
+/* The list fades out at the bottom edge: more below, and the panel ends here. */
+dialog.settings.docked .set-pane {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  padding-bottom: 36px;
+}
 dialog.settings.docked .set-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 dialog.settings.docked .set-nav { flex-direction: row; flex-wrap: wrap; align-items: center; border-right: none; border-bottom: 1px solid var(--border); padding: 10px 44px 8px 10px; }
 dialog.settings.docked .set-nav h2 { display: none; }
