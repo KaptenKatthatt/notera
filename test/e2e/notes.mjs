@@ -175,6 +175,8 @@ await win.click('#project-ok');
 await win.waitForFunction(() => document.querySelector('#sb-list .sb-proj[data-folder="Kund X"]'));
 await settle();
 assert.deepEqual(ls('Kund X'), ['2026-09-10 Visdomsatlasen.md']);
+// The header line is rewritten right after the move; wait for it rather than for a fixed time.
+for (let i = 0; i < 40 && !/Projekt: Kund X/.test(read('Kund X', '2026-09-10 Visdomsatlasen.md')); i++) await win.waitForTimeout(100);
 assert.match(read('Kund X', '2026-09-10 Visdomsatlasen.md'), /Projekt: Kund X/);
 
 // 8. Archive the open note: read-only with a banner; restore from the banner

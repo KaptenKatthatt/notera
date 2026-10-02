@@ -206,8 +206,19 @@ export function createSettingsDialog(ctx) {
     void assign(recording.id, combo, null);
   }
 
+  // The Theme tab is docked and not modal, so the document beside it can be clicked and typed in
+  // while the settings are tried out; the other tabs are modal. Switching reopens the dialog the
+  // other way. Its close event comes later, when the dialog is open again, and is ignored then.
+  function setModal(modal) {
+    document.body.classList.toggle('set-docked', !modal);
+    if (dlg.open && dlg.matches(':modal') === modal) return;
+    if (dlg.open) dlg.close();
+    if (modal) dlg.showModal(); else dlg.show();
+  }
+
   function showPane(name) {
     pane = name;
+    setModal(name !== 'theme');
     for (const b of dlg.querySelectorAll('.set-nav [data-pane]')) b.classList.toggle('active', b.dataset.pane === name);
     for (const p of dlg.querySelectorAll('.set-pane')) p.hidden = p.dataset.pane !== name;
     dlg.classList.toggle('docked', name === 'theme');
@@ -227,7 +238,19 @@ export function createSettingsDialog(ctx) {
   // wiring
   dlg.addEventListener('keydown', onRecordKey, true);
   dlg.addEventListener('cancel', (e) => { if (recording) { e.preventDefault(); recording = null; renderKeyboard(); } });
-  dlg.addEventListener('close', () => { recording = null; themeTab.reset(); ctx.onClose && ctx.onClose(); });
+  dlg.addEventListener('close', () => {
+    if (dlg.open) return; // reopened modal or not (setModal)
+    document.body.classList.remove('set-docked');
+    recording = null; themeTab.reset(); ctx.onClose && ctx.onClose();
+  });
+  // Esc closes the docked (not modal) dialog too, from anywhere but the editor, where Esc stays the
+  // editor's (it closes the search panel, drops a selection).
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !dlg.open || recording || dlg.matches(':modal')) return;
+    if (e.target instanceof Element && e.target.closest('.cm-editor, #quick-pick, #palette')) return;
+    e.preventDefault();
+    dlg.close();
+  });
   for (const b of dlg.querySelectorAll('.set-nav [data-pane]')) b.addEventListener('click', () => showPane(b.dataset.pane));
   $('#kb-search').addEventListener('input', (e) => { query = e.target.value; renderKeyboard(); });
   $('#kb-reset-all').addEventListener('click', async () => {
@@ -236,7 +259,7 @@ export function createSettingsDialog(ctx) {
   $('#set-close').addEventListener('click', () => dlg.close());
 
   return {
-    open(which = pane) { render(); if (!dlg.open) dlg.showModal(); showPane(which); },
+    open(which = pane) { render(); showPane(which); },
     refresh() { if (dlg.open) render(); },
     isOpen: () => dlg.open
   };

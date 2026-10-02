@@ -19,7 +19,8 @@ export function createKeyDispatcher({ run }) {
     if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
     // AltGr is Ctrl+Alt on Windows: it types characters like { [ @ on a Swedish keyboard.
     if (e.getModifierState && e.getModifierState('AltGraph')) return;
-    if (document.querySelector('dialog[open]')) return;
+    // A modal dialog has the keys; the docked Theme tab is not modal, so the editor keeps its shortcuts.
+    if (document.querySelector('dialog:modal')) return;
     const combo = fromEvent(e);
     if (!combo) return;
     const target = e.target instanceof Element ? e.target : document.body;

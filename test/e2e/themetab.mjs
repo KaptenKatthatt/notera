@@ -51,9 +51,15 @@ await win.waitForSelector('#dlg-settings[open]');
 assert.deepEqual(await win.locator('.set-nav [data-pane]').allTextContents(), ['Allmänt', 'Tema', 'Kortkommandon']);
 assert.equal(await win.locator('#set-general select').count(), 2, 'General keeps language and Ctrl+W only');
 await openThemeTab();
-const box = await win.evaluate(() => { const r = document.querySelector('#dlg-settings').getBoundingClientRect(); return { left: r.left, right: r.right, w: innerWidth }; });
-assert.ok(box.right >= box.w - 1 && box.left > box.w / 2, `docked to the right: ${JSON.stringify(box)}`);
-assert.equal(await win.evaluate(() => getComputedStyle(document.querySelector('#dlg-settings'), '::backdrop').backgroundColor), 'rgba(0, 0, 0, 0)', 'the window is not dimmed');
+const box = await win.evaluate(() => {
+  const r = document.querySelector('#dlg-settings').getBoundingClientRect();
+  const ed = document.querySelector('.cm-editor').getBoundingClientRect();
+  return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, w: innerWidth, h: innerHeight, editorRight: ed.right };
+});
+// A card inside the window with a gap all round, so it is plain where it ends.
+assert.ok(box.left > box.w / 2 && box.right <= box.w - 6 && box.right >= box.w - 10 && box.top >= 6 && box.bottom <= box.h - 6 && box.bottom >= box.h - 10, `docked card: ${JSON.stringify(box)}`);
+assert.ok(box.editorRight <= box.left, `the document sits beside the panel, not under it: ${JSON.stringify(box)}`);
+assert.equal(await win.evaluate(() => document.querySelector('#dlg-settings').matches(':modal')), false, 'not modal on the Theme tab');
 const appearance = await win.locator('#set-theme > .set-row > span:first-child').allTextContents();
 assert.deepEqual(appearance, ['Tema', 'Läge', 'Marköreffekt', 'Teckensnitt i editorn']);
 assert.match(await win.textContent('#set-theme .tt-hint'), /"Neon OMG \(egen\)"/);
@@ -70,6 +76,25 @@ assert.equal(await win.inputValue(`${rowSel('notera.effects.glow.strength')} inp
 assert.equal(await win.inputValue(`${rowSel('notera.effects.typing')} select`), 'phosphor');
 await shot('70-theme-tab-dark');
 ok('fliken Tema: mellan Allmänt och Kortkommandon, dockad till höger, genererad från formatet');
+
+// The document can be typed in while the Theme tab is open; its shortcuts work; other tabs are modal.
+await win.click('.cm-content');
+await win.keyboard.press('Control+End');
+await win.keyboard.type(' Prov');
+assert.ok((await win.evaluate(() => window.__notera.view.state.doc.toString())).endsWith(' Prov'), 'typed into the document');
+assert.equal(await win.evaluate(() => document.querySelector('#dlg-settings').open), true, 'the panel stays open');
+await win.keyboard.press('Control+Z');
+assert.ok(!(await win.evaluate(() => window.__notera.view.state.doc.toString())).endsWith(' Prov'), 'editor shortcuts work beside the panel');
+await win.click('.set-nav [data-pane="general"]');
+assert.equal(await win.evaluate(() => document.querySelector('#dlg-settings').matches(':modal')), true, 'General is modal');
+assert.equal(await win.evaluate(() => document.body.classList.contains('set-docked')), false);
+await openThemeTab();
+assert.equal(await win.evaluate(() => document.querySelector('#dlg-settings').matches(':modal')), false);
+await win.focus('#set-theme select');
+await win.keyboard.press('Escape');
+await win.waitForFunction(() => !document.querySelector('#dlg-settings').open && !document.body.classList.contains('set-docked'));
+await openThemeTab();
+ok('man kan skriva i dokumentet med Tema-fliken öppen; Esc i panelen stänger; övriga flikar är modala');
 
 // 2. Dragging previews without writing; letting go copies the built-in theme and writes the copy.
 const glowBefore = await cssVar('--fx-glow-e');
