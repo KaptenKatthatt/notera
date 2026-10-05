@@ -40,7 +40,7 @@ export function createUpdateToast(ctx) {
   }
 
   function onStatus(next) {
-    if (next.state !== update.state) hidden = false;
+    if (next.state !== update.state || next.reveal) hidden = false;
     update = next;
     render();
   }

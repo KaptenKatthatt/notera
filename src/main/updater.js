@@ -86,10 +86,15 @@ function createUpdater({ broadcast, getSettings }) {
   async function check({ manual } = {}) {
     if (reason) return { status: 'unsupported', reason };
     if (['downloading', 'downloaded', 'installing'].includes(state.state)) {
-      if (manual) broadcast('update:status', state);
+      // reveal: the toast shows again even if the user hid it with "Later".
+      if (manual) broadcast('update:status', { ...state, reveal: true });
       return { status: 'busy', version: state.version };
     }
-    if (checking) return checking;
+    if (checking) {
+      // A manual check during the silent automatic one joins it, and says that it is checking.
+      if (manual && !state.manual) set({ manual: true });
+      return checking;
+    }
     const u = load();
     // A manual check shows "Checking for updates…" until it has an answer; an automatic one is silent.
     set({ state: 'checking', manual: !!manual });
