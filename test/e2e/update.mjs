@@ -159,6 +159,24 @@ assert.ok(99 - dropFeed >= 3, `one try and two retries at least (${99 - dropFeed
 dropFeed = 0;
 feedDelay = 0;
 ok('manuell kontroll visar "Söker efter uppdateringar…", försöker igen vid tappad anslutning, och säger tydligt när GitHub inte nås');
+
+// A manual check while the silent automatic one is still waiting on GitHub joins it: it says that
+// it is checking, and its dialog comes when the answer does. It used to show nothing at all.
+feedDelay = 1500;
+await app.evaluate(() => { globalThis.__boxes = []; });
+const silent = win.evaluate(() => window.notera.checkForUpdates(false).then(() => null));
+await win.waitForTimeout(200);
+assert.equal(await win.evaluate(() => document.querySelector('#update-toast').hidden), true);
+const joined = win.evaluate(() => window.notera.checkForUpdates(true));
+await win.waitForSelector('#update-toast:not([hidden])', { timeout: 1000 });
+assert.equal(await win.textContent('#update-text'), 'Söker efter uppdateringar…');
+assert.equal((await joined).status, 'latest');
+await silent;
+await app.evaluate(() => new Promise((r) => { const w = () => (globalThis.__boxes.length ? r() : setTimeout(w, 50)); w(); }));
+assert.deepEqual(await app.evaluate(() => globalThis.__boxes), [`Du har den senaste versionen av Notera (${version}).`]);
+await win.waitForFunction(() => document.querySelector('#update-toast').hidden, null, { timeout: 5000 });
+feedDelay = 0;
+ok('manuell kontroll under en pågående automatisk visar "Söker…" och svarar');
 await win.evaluate(() => { for (const t of window.__notera.tabs) { t.dirty = false; } });
 await app.close();
 
@@ -241,7 +259,13 @@ assert.equal(await win.textContent('#update-go'), 'Starta om och installera');
 assert.equal(await win.evaluate(() => document.querySelector('#update-toast').hidden), false);
 assert.equal(fs.existsSync(marker), false);
 await shot('35-update-install-cancelled');
-ok('avbruten sparning: appen lever, rutan visar Starta om och installera');
+// "Senare" hides it; a manual check shows it again instead of doing nothing.
+await win.click('#update-later');
+await win.waitForSelector('#update-toast[hidden]', { state: 'attached' });
+assert.equal((await win.evaluate(() => window.notera.checkForUpdates(true))).status, 'busy');
+await win.waitForSelector('#update-toast:not([hidden])', { timeout: 2000 });
+assert.equal(await win.textContent('#update-go'), 'Starta om och installera');
+ok('avbruten sparning: appen lever, rutan visar Starta om och installera, och manuell kontroll visar den igen efter Senare');
 await answer(1); // "Spara inte"
 const closed3 = new Promise((res) => app.process().once('exit', res));
 await win.click('#update-go');
