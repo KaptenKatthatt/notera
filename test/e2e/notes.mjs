@@ -157,7 +157,7 @@ await noteRow('PBI-1234').hover();
 await noteRow('PBI-1234').locator('[data-act="note-menu"]').click();
 await shot('33-notes-menu');
 // The letters Claude Desktop uses sit on the right: R rename, A archive, D delete.
-assert.deepEqual(await win.$$eval('#sb-menu > button', (bs) => bs.map((b) => b.querySelector('.key')?.textContent ?? '')), ['', 'R', '', '', '', 'A', 'D']);
+assert.deepEqual(await win.$$eval('#sb-menu > button', (bs) => bs.map((b) => b.querySelector('.key')?.textContent ?? '')), ['', 'R', '', '', '', '', 'A', 'D']);
 await win.click('#sb-menu button:has-text("Fäst överst")');
 await settle();
 assert.equal((await titlesIn('Enlantis'))[0], 'PBI-1234 Inloggningsfel');

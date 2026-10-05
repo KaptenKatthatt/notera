@@ -160,6 +160,20 @@ assert.deepEqual(ls('Mallar'), ['Sprintmall.md', 'Standup.md']);
 assert.equal((JSON.parse(read('.notera.json')).options.Enlantis || {}).template, undefined);
 console.log('ok   spara som mall, byt namn, ta bort');
 
+// Show file from the sidebar: a note and a template open the file manager with the file selected.
+await app.evaluate(({ shell }) => { globalThis.__shown = []; shell.showItemInFolder = (p) => { globalThis.__shown.push(p); }; });
+await win.locator('#sb-list .sb-note[data-folder="Enlantis"]', { hasText: 'Sprint' }).click({ button: 'right' });
+await win.click('#sb-menu button:has-text("Visa fil")');
+await tplRow('Standup').click({ button: 'right' });
+await win.click('#sb-menu button:has-text("Visa fil")');
+await app.evaluate(() => new Promise((r) => setTimeout(r, 100)));
+const shownPaths = await app.evaluate(() => globalThis.__shown);
+assert.equal(shownPaths.length, 2, 'both menus call the shell: ' + JSON.stringify(shownPaths));
+assert.ok(shownPaths.every((p) => p.startsWith(notes)), 'paths inside the notes folder');
+assert.match(shownPaths[0], /Sprint[^\\/]*\.md$/);
+assert.match(shownPaths[1], /Mallar[\\/]Standup\.md$/);
+console.log('ok   Visa fil i sidopanelen');
+
 // 8. The templates section folds like a project: count while folded, remembered in .notera.json.
 const tplToggle = win.locator('#sb-list [data-act="tpl-toggle"]');
 assert.equal(await tplToggle.getAttribute('aria-expanded'), 'true');

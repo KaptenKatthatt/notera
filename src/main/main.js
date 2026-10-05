@@ -714,6 +714,15 @@ ipcMain.on('tab:detach', (e, p = {}) => {
   createWindow(files, draftId, src);
 });
 ipcMain.on('shell:openExternal', (_e, url) => { if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url); });
+// Opens the file manager on the folder a file lives in, with the file selected. A file deleted
+// behind Notera's back falls back to its folder, if that still exists.
+ipcMain.handle('shell:showInFolder', async (_e, p) => {
+  if (typeof p !== 'string' || !path.isAbsolute(p)) return false;
+  if (fsSync.existsSync(p)) { shell.showItemInFolder(p); return true; }
+  const dir = path.dirname(p);
+  if (!fsSync.existsSync(dir)) return false;
+  return (await shell.openPath(dir)) === '';
+});
 
 // ---------- Notes (projects in the sidebar) ----------
 // One store per notes folder, shared by every window. Mutations are broadcast so every window
