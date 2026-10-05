@@ -565,6 +565,7 @@ export function createSidebar(ctx) {
       { label: n.pinned ? t('notes.unpin') : t('notes.pin'), icon: ICONS.pin.replace('class="pin"', ''), act: () => togglePin(p, !n.pinned) },
       { label: t('notes.moveTo'), icon: ICONS.move, sub: () => moveTargets(info.folder, (f) => moveTo(p, f)) },
       { label: t('notes.saveAsTemplate'), icon: ICONS.note, act: () => startNewTemplate(p) },
+      { label: t('notes.showFile'), icon: ICONS.folder, act: () => void api.showInFolder(p) },
       { sep: true },
       { label: t('notes.archive'), icon: ICONS.archive, key: 'A', act: () => archiveNote(p) },
       { label: t('notes.delete'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteNote(p) }
@@ -603,6 +604,7 @@ export function createSidebar(ctx) {
     showMenu(anchor, [
       { label: t('notes.open'), icon: ICONS.note, act: () => ctx.openNote(tp.path) },
       { label: t('notes.rename'), icon: ICONS.edit, key: 'R', act: () => { editing = { kind: 'renameTemplate', name: tp.name, value: tp.name, error: '' }; render(); } },
+      { label: t('notes.showFile'), icon: ICONS.folder, act: () => void api.showInFolder(tp.path) },
       { sep: true },
       { label: t('notes.delete'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteTemplate(tp) }
     ], tp.name, point);
@@ -613,6 +615,7 @@ export function createSidebar(ctx) {
     showMenu(anchor, [
       { label: t('notes.open'), icon: ICONS.note, act: () => ctx.openNote(p) },
       { label: t('notes.restoreTo', { project: folderLabel(info.folder) }), icon: ICONS.restore, act: () => restoreNote(p) },
+      { label: t('notes.showFile'), icon: ICONS.folder, act: () => void api.showInFolder(p) },
       { sep: true },
       { label: t('notes.deleteForever'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteNote(p) }
     ], info.note.title, point);
