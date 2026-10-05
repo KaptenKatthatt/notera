@@ -113,6 +113,8 @@ npm run dist:win
 
 Writes `release/Notera-Setup-<version>.exe` (installer, registers `.md`, `.markdown` and `.txt`) and `release/Notera-<version>-portable.exe`.
 
+Build from a checkout with its own `node_modules` (`npm ci`), never a symlink to another checkout's: electron-builder then packs only the direct dependencies, and v0.11.0 to v0.12.1 shipped an updater that could not load. `dist:win` and `dist:dir` end with `scripts/verify-package.mjs`, which fails the build if `app.asar` cannot resolve every runtime package.
+
 To ship an update, bump `version` in `package.json`, build, and upload three files to a GitHub release tagged `v<version>`: `Notera-Setup-<version>.exe`, `Notera-Setup-<version>.exe.blockmap` and `latest.yml`. Installed copies find it through `latest.yml`. The release feed has to be readable without a login, so the repository (or at least its releases) must be public. Building the installer on Linux needs 32-bit wine (`wine32:i386`, plus a `wine` launcher on PATH) because electron-builder runs the NSIS setup once to generate its uninstaller. The `portable` and `zip` targets build without wine.
 
 ## Layout

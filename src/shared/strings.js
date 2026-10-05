@@ -71,7 +71,7 @@ const en = {
     downloading: 'Downloading Notera {version}… {percent} %', ready: 'Notera {version} is ready to install.',
     restart: 'Restart and install', latest: 'You have the latest version of Notera ({version}).',
     unsupported: 'Updates work in the installed version of Notera. This copy is {reason}.',
-    reasonDev: 'running from source', reasonPortable: 'the portable version', error: 'Could not check for updates.', networkError: 'Could not reach GitHub to check for updates, even after trying again. Check the connection and try again in a moment.',
+    reasonDev: 'running from source', reasonPortable: 'the portable version', error: 'Could not check for updates.', broken: 'The updater in this version of Notera is broken. Download the latest Notera-Setup from github.com/KaptenKatthatt/notera/releases and run it: it installs over this version and keeps your settings and notes.', networkError: 'Could not reach GitHub to check for updates, even after trying again. Check the connection and try again in a moment.',
     downloadError: 'The update could not be downloaded.', checking: 'Checking for updates…',
     confirm: 'Notera {version} is available. Do you want to download and install it now?', installing: 'Installing Notera {version}…'
   },
@@ -198,7 +198,7 @@ const sv = {
     downloading: 'Laddar ner Notera {version}… {percent} %', ready: 'Notera {version} är klar att installeras.',
     restart: 'Starta om och installera', latest: 'Du har den senaste versionen av Notera ({version}).',
     unsupported: 'Uppdateringar fungerar i den installerade versionen av Notera. Den här kopian är {reason}.',
-    reasonDev: 'startad från källkoden', reasonPortable: 'den portabla versionen', error: 'Det gick inte att söka efter uppdateringar.', networkError: 'Notera nådde inte GitHub för att söka efter uppdateringar, inte heller efter nya försök. Kontrollera anslutningen och försök igen om en stund.',
+    reasonDev: 'startad från källkoden', reasonPortable: 'den portabla versionen', error: 'Det gick inte att söka efter uppdateringar.', broken: 'Uppdateraren i den här versionen av Notera är trasig. Ladda ner senaste Notera-Setup från github.com/KaptenKatthatt/notera/releases och kör den: den installeras ovanpå den här versionen och behåller inställningar och anteckningar.', networkError: 'Notera nådde inte GitHub för att söka efter uppdateringar, inte heller efter nya försök. Kontrollera anslutningen och försök igen om en stund.',
     downloadError: 'Uppdateringen gick inte att ladda ner.', checking: 'Söker efter uppdateringar…',
     confirm: 'Notera {version} finns. Vill du ladda ner och installera den nu?', installing: 'Installerar Notera {version}…'
   },

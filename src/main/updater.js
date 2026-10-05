@@ -6,7 +6,8 @@
 // report why they can't.
 //
 // NOTERA_UPDATE_FEED points the updater at a generic feed (a local HTTP server in tests) and
-// lets it run unpackaged.
+// lets it run unpackaged. With a test feed, NOTERA_UPDATE_MODULE names the module to load instead
+// of electron-updater, so a test can make loading fail.
 
 const { app } = require('electron');
 const path = require('path');
@@ -57,7 +58,8 @@ function createUpdater({ broadcast, getSettings }) {
 
   function load() {
     if (autoUpdater || reason) return autoUpdater;
-    ({ autoUpdater } = require('electron-updater'));
+    // A build that lacks electron-updater's own dependencies throws here (v0.11.0 to v0.12.1 did).
+    ({ autoUpdater } = require((testFeed && process.env.NOTERA_UPDATE_MODULE) || 'electron-updater'));
     autoUpdater.logger = { info: log('info'), warn: log('warn'), error: log('error'), debug: () => {} };
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
@@ -81,7 +83,7 @@ function createUpdater({ broadcast, getSettings }) {
     return autoUpdater;
   }
 
-  /** @returns {Promise<{ status: 'available'|'latest'|'unsupported'|'error'|'busy', version?, reason?, message?, network? }>} */
+  /** @returns {Promise<{ status: 'available'|'latest'|'unsupported'|'error'|'busy', version?, reason?, message?, network?, broken? }>} */
   /** @param {{ manual?: boolean }} [opts] */
   async function check({ manual } = {}) {
     if (reason) return { status: 'unsupported', reason };
@@ -95,7 +97,12 @@ function createUpdater({ broadcast, getSettings }) {
       if (manual && !state.manual) set({ manual: true });
       return checking;
     }
-    const u = load();
+    let u;
+    try { u = load(); }
+    catch (err) {
+      log('error')('updater failed to load', err);
+      return { status: 'error', broken: true, message: String(err && err.message || '') };
+    }
     // A manual check shows "Checking for updates…" until it has an answer; an automatic one is silent.
     set({ state: 'checking', manual: !!manual });
     checking = (async () => {
@@ -135,7 +142,9 @@ function createUpdater({ broadcast, getSettings }) {
    */
   async function download({ install = false } = {}) {
     if (reason) return { ok: false };
-    const u = load();
+    let u;
+    try { u = load(); }
+    catch (err) { log('error')('updater failed to load', err); return { ok: false, message: err && err.message }; }
     if (!['available', 'error'].includes(state.state)) return { ok: false };
     if (install) installWhenDownloaded = true;
     set({ state: 'downloading', percent: 0, error: null });
