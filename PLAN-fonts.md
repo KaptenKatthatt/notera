@@ -1,6 +1,6 @@
 # Standard fonts plan
 
-Plan for the standard-fonts item in BACKLOG.md, written 2026-10-02 for Jonas to decide on. Nothing here is built yet. A clickable mockup of the dropdown: https://claude.ai/artifact/4BXxGcY73DphGMhKu8VLxR
+Plan for the standard-fonts item in BACKLOG.md, written 2026-10-02 for Jonas to decide on. Nothing here is built yet. Jonas answered the first round of open questions on 2026-10-05 (see "Decisions" at the end). A clickable mockup of the dropdown: https://claude.ai/artifact/4BXxGcY73DphGMhKu8VLxR
 
 ## Goal
 
@@ -32,35 +32,46 @@ Ten fonts, plus iA Writer Mono S, which Notera ships already and which stays the
 | **JetBrains Mono** | Tall x-height, straight shapes, ligatures | One Dark Pro, Tokyo Night | OFL 1.1, no reserved name. [JetBrains/JetBrainsMono](https://github.com/JetBrains/JetBrainsMono) | upright + italic, variable | 136 KB |
 | **Fira Code** | The classic ligature font | SynthWave '84 | OFL 1.1, no reserved name. [tonsky/FiraCode](https://github.com/tonsky/FiraCode) | upright, variable (no italic exists) | 98 KB |
 | **Cascadia Code** | Microsoft's, from Windows Terminal; cursive italic | (Windows default terminal font) | OFL 1.1, reserved name "Cascadia Code". [microsoft/cascadia-code](https://github.com/microsoft/cascadia-code) | upright + italic, variable | 348 KB |
-| **Iosevka** | Narrow and dense, many characters per line | Ayu (bundles it) | OFL 1.1, no reserved name. [be5invis/Iosevka](https://github.com/be5invis/Iosevka) | Regular, Bold, Italic, Bold Italic, Latin subset | 1 263 KB |
+| **Iosevka** | Narrow and dense, many characters per line | Ayu (bundles it) | OFL 1.1, no reserved name. [be5invis/Iosevka](https://github.com/be5invis/Iosevka) | Regular and Italic, Latin subset (bold is synthesised) | 632 KB |
 | **Victor Mono** | Narrow, with a handwritten italic | Neon Chill and Neon here | OFL 1.1, no reserved name. [rubjo/victor-mono](https://github.com/rubjo/victor-mono) | upright + italic, variable | 138 KB |
 | **Monaspace Neon** | GitHub's modern grotesque mono | GitHub (same maker) | OFL 1.1, reserved name "Monaspace" and its subfamilies. [githubnext/monaspace](https://github.com/githubnext/monaspace) | one variable file with weight and slant | 469 KB |
 | **Source Code Pro** | Adobe's open, airy classic | (long-time default in many editors) | OFL 1.1, reserved name "Source". [adobe-fonts/source-code-pro](https://github.com/adobe-fonts/source-code-pro) | upright + italic, variable | 151 KB |
 | **IBM Plex Mono** | A little typewriter, slab serifs on i and l | | OFL 1.1, reserved name "Plex". [IBM/plex](https://github.com/IBM/plex) | Regular, Bold, Italic, Bold Italic | 151 KB |
 | **Maple Mono** | Rounded corners, soft cursive italic | | OFL 1.1, no reserved name. [subframe7536/maple-font](https://github.com/subframe7536/maple-font) | upright + italic, variable | 251 KB |
 | **Geist Mono** | Vercel's, clean and geometric | | OFL 1.1, no reserved name. [vercel/geist-font](https://github.com/vercel/geist-font) | upright + italic, variable | 138 KB |
-| | | | | **Total** | **≈ 3.1 MB** |
+| | | | | **Total** | **≈ 2.5 MB** |
 
-Considered and left out:
+Considered and left out. All four are in the mockup under "Alternativ" so Jonas can compare them before the list is final:
 
 - **Hack** (MIT plus the Bitstream Vera licence, [source-foundry/Hack](https://github.com/source-foundry/Hack)): shippable, but close to Source Code Pro and DejaVu Sans Mono in look, and 407 KB.
 - **Commit Mono** (licensed MIT on GitHub, [eigilnikolajsen/commit-mono](https://github.com/eigilnikolajsen/commit-mono)): shippable and nice, but less known (2k stars).
-- **Recursive** (OFL, [arrowtype/recursive](https://github.com/arrowtype/recursive)): one variable file with a Casual axis, which would suit a writing app, but 2.3 MB.
+- **Recursive** (OFL, [arrowtype/recursive](https://github.com/arrowtype/recursive)): one variable file with a Casual axis, which would suit a writing app, but 692 KB as woff2 (2.3 MB as TTF).
 - **Monaspace Radon** (handwriting style): fun for a theme, 722 KB on its own. A theme can carry it.
 
 Not shippable, named so nobody asks again: **Operator Mono** (Hoefler&Co., commercial), **Dank Mono** (commercial, used in Night Owl's screenshots), **MonoLisa** (commercial), **Berkeley Mono** (commercial), **Consolas** (Microsoft, licensed with Windows only; Notera can use it from the system but not ship it). Dracula Pro's bundled fonts are sold with Dracula Pro and are not ours to ship either.
 
+## Heading and reading fonts
+
+Three fonts for the other places a font is picked: `notera.fonts.headings` and `heading1`, `read.fonts.body` and `read.fonts.headings`, and `ui`. They are also offered in the font dialog, for anyone who wants to write in a serif.
+
+| Font | Style in one line | Meant for | Licence | Files we ship | Size |
+| --- | --- | --- | --- | --- | --- |
+| **Literata** | A serif made for long reading on screens (Google Play Books) | Body text in Läs | OFL 1.1, no reserved name. [googlefonts/literata](https://github.com/googlefonts/literata) | upright + italic, variable, Latin subset | 502 KB |
+| **Fraunces** | Soft, slightly wonky display serif | Headings | OFL 1.1, no reserved name. [undercasetype/Fraunces](https://github.com/undercasetype/Fraunces) | upright + italic, variable | 413 KB |
+| **Atkinson Hyperlegible Next** | A sans designed by the Braille Institute so letters cannot be mistaken for each other | Läs and the UI | OFL 1.1, no reserved name. [googlefonts/atkinson-hyperlegible-next](https://github.com/googlefonts/atkinson-hyperlegible-next) | upright + italic, variable | 95 KB |
+| | | | | **Total** | **≈ 1.0 MB** |
+
 ## Files and licences
 
 - Every font goes in `fonts/<family>/` next to its licence file (`OFL.txt` or `LICENSE`), as `fonts/` is already in `electron-builder.yml`. iA Writer Mono S moves to `fonts/ia-writer-mono-s/` in the same PR.
-- **Ship the woff2 files each project publishes, unchanged.** The OFL forbids a modified font from keeping a reserved font name, and subsetting counts as modifying. Four of the ten have a reserved name (Cascadia Code, Monaspace, Source Code Pro, IBM Plex), so for those we must ship upstream's files as they are. Doing the same for all ten keeps the rule simple, and taking upstream's own woff2 also avoids converting anything ourselves. The sizes in the table were measured by converting upstream's TTF files to woff2 (fontTools); upstream's woff2 files should be within a few per cent.
-- **Iosevka is the exception.** Its full files are 8 MB per style as TTF and 4 MB for four styles as woff2, because it covers Greek, Cyrillic and thousands of symbols. Iosevka has no reserved name, so we may subset it: Latin, Latin Extended, punctuation, arrows, maths, box drawing, keeping all ligatures, 1.26 MB for four styles. A script `scripts/subset-iosevka.py` (fontTools) makes it reproducible, and the commit says which upstream version was cut.
-- `fonts/README.md` lists every font with its version, upstream URL, licence and, for Iosevka, the subset command. A unit test checks that every font folder has a licence file and an entry there.
-- Victor Mono moves out of `themes/neon-chill/fonts/` (Neon Chill names it instead), so the net size added is about 3.0 MB.
+- **Ship the woff2 files each project publishes, unchanged.** The OFL forbids a modified font from keeping a reserved font name, and subsetting counts as modifying. Four of the fonts have a reserved name (Cascadia Code, Monaspace, Source Code Pro, IBM Plex), so for those we must ship upstream's files as they are. Doing the same for the rest keeps the rule simple, and taking upstream's own woff2 also avoids converting anything ourselves. The sizes in the table were measured by converting upstream's TTF files to woff2 (fontTools); upstream's woff2 files should be within a few per cent.
+- **Iosevka and Literata are the exceptions.** Iosevka's full files are 8 MB per style as TTF and 1 MB per style as woff2, because it covers Greek, Cyrillic and thousands of symbols; Literata is 761 KB as woff2. Neither has a reserved name, so we may subset them: Latin, Latin Extended, punctuation, arrows, maths, box drawing, keeping all ligatures and OpenType features. That gives 632 KB for Iosevka Regular and Italic and 502 KB for Literata. Iosevka ships without Bold (decided 2026-10-05); bold text in it is synthesised by Chromium. A script `scripts/subset-fonts.py` (fontTools) makes the subsets reproducible, and the commit says which upstream version was cut.
+- `fonts/README.md` lists every font with its version, upstream URL, licence and, for Iosevka and Literata, the subset command. A unit test checks that every font folder has a licence file and an entry there.
+- Victor Mono moves out of `themes/neon-chill/fonts/` (Neon Chill names it instead), so the net size added is about 3.1 MB.
 
 ## Install size
 
-The 0.11.1 installer is 112.7 MB. woff2 is already compressed, so the ten fonts add about 3 MB to both the installer and the installed app, roughly 2.7 %. Everything is bundled; nothing is fetched at run time, and the CSP stays as it is (`font-src 'self' data: notera-theme:`).
+The 0.11.1 installer is 112.7 MB. woff2 is already compressed, so the thirteen fonts (3.5 MB, 3.1 MB net after Victor Mono leaves Neon Chill) add about 3.1 MB to both the installer and the installed app, roughly 2.8 %. Everything is bundled; nothing is fetched at run time, and the CSP stays as it is (`font-src 'self' data: notera-theme:`).
 
 ## How fonts are loaded
 
@@ -70,8 +81,8 @@ The 0.11.1 installer is 112.7 MB. woff2 is already compressed, so the ten fonts 
 
 ## Where you pick a font
 
-1. **The font dialog** (`#dlg-font`, Format > Font, and the "Change..." button in Settings). The family list gets two groups: "Ships with Notera" (the eleven) and "On this computer" (from `queryLocalFonts()` as today, with the eleven filtered out so none shows twice). The size field and the preview line stay.
-2. **The Theme tab**, for `notera.fonts.editor`, `headings`, `heading1`, `ui` and `read.fonts.body` / `headings`. Today these are free-text fields. They become the same dropdown, with a first entry "From the theme" (empty value, which inherits) and a last entry "Other..." that opens the old text field for a list such as `Victor Mono, Consolas, monospace`. A value that is a list shows its first family in the dropdown and keeps the rest of the list when saved.
+1. **The font dialog** (`#dlg-font`, Format > Font, and the "Change..." button in Settings). The family list gets three groups: "Ships with Notera" (the ten plus iA Writer Mono S), "Headings and reading" (the three) and "On this computer" (every installed font from `queryLocalFonts()`, as today, with the bundled ones filtered out so none shows twice). The installed fonts are listed in full, not hidden behind "More fonts..." (decided 2026-10-05). The size field and the preview line stay.
+2. **The Theme tab**, for `notera.fonts.editor`, `headings`, `heading1`, `ui` and `read.fonts.body` / `headings`. Today these are free-text fields. They become the same dropdown, with the same three groups (for the heading and `read` fields "Headings and reading" comes first), and with a first entry "From the theme" (empty value, which inherits) and a last entry "Other..." that opens the old text field for a list such as `Victor Mono, Consolas, monospace`. A value that is a list shows its first family in the dropdown and keeps the rest of the list when saved.
 3. **The command palette** already has the font command (`font` in `src/shared/commands.js`), which opens the same dialog. Nothing to add.
 
 ## How the dropdown is built
@@ -99,6 +110,10 @@ By family name, exactly as for a system font, with no `fonts` entry needed:
 - Neon Chill and Neon drop their Victor Mono files and name the standard Victor Mono.
 - THEMES.md, section Fonts: a table of the standard fonts and a sentence saying a theme can use them by name.
 
+## Ligatures
+
+A new setting `fontLigatures`, on by default (decided 2026-10-05). Off sets `font-variant-ligatures: none` on the editor and the preview, so `->` and `!=` are drawn as two characters. It sits as a checkbox in the font dialog under the size (the preview line follows it at once, as in the mockup), in Settings next to the font, and in the command palette as "Ligatures on/off". It applies to every font; for fonts without ligatures it changes nothing.
+
 ## Settings
 
 `fontFamily` stays a plain family name, as today. A standard font is stored by its name (`"JetBrains Mono"`), so picking one needs no new setting and old settings keep working. If a user had installed, say, JetBrains Mono on Windows, the bundled one now wins over the installed one with the same name; that is fine, and the dialog does not list it twice.
@@ -113,17 +128,23 @@ By family name, exactly as for a system font, with no `fonts` entry needed:
 ## Tests
 
 - Unit: every entry in `standardFonts.js` has existing files and a licence file; family names are unique; no file is larger than 1.5 MB (catches an unsubset Iosevka).
-- E2E (Playwright, like `test/e2e/settings.mjs`): open the font dialog; the list has the "Ships with Notera" group with eleven options; each option's computed `font-family` starts with its own name, and `document.fonts.check('16px "JetBrains Mono"')` is true once the list is open (proves the bundled file loaded and not a fallback); arrow down changes the preview, Esc restores it, Enter saves `fontFamily`; the editor's `--editor-font` follows.
+- E2E (Playwright, like `test/e2e/settings.mjs`): open the font dialog; the list has the "Ships with Notera" group with eleven options and "Headings and reading" with three; each option's computed `font-family` starts with its own name, and `document.fonts.check('16px "JetBrains Mono"')` is true once the list is open (proves the bundled file loaded and not a fallback); arrow down changes the preview, Esc restores it, Enter saves `fontFamily`; the editor's `--editor-font` follows.
 - E2E, themes: a theme naming `"Fira Code"` without a `fonts` entry gets Fira Code in the editor; Neon Chill still gets Victor Mono after its files are removed.
 - E2E, Theme tab: the editor-font dropdown writes the name to the theme's `theme.json`, "From the theme" removes the key, "Other..." keeps a typed list.
+- E2E, ligatures: unticking the checkbox sets `font-variant-ligatures: none` on `.cm-content` and the preview, and saves `fontLigatures: false`.
 - Screenshot of the open list in `test/e2e/shots/` for review.
 - No network: the e2e run blocks all http(s) requests and checks that every font still loads.
 
+## Decisions (Jonas, 2026-10-05)
+
+1. The ten stand for now. The four alternatives (Hack, Commit Mono, Recursive Mono Casual, Monaspace Radon) are added to the mockup for comparison.
+2. Iosevka ships Regular and Italic only.
+3. Two or three fonts for headings and Läs join the set: Literata, Fraunces and Atkinson Hyperlegible Next are the proposal.
+4. iA Writer Mono S stays the default.
+5. A ligatures setting, on by default.
+6. Installed fonts are listed in full under the bundled ones.
+
 ## Open questions for Jonas
 
-1. **The ten:** is this the list? Candidates to swap in are Hack, Commit Mono or Recursive (Casual), and Monaspace could come as two faces (Neon plus the handwritten Radon).
-2. **Iosevka at 1.3 MB**, as much as four other fonts together. Keep it, ship only Regular and Italic (about 630 KB), or drop it?
-3. **Only monospace?** The backlog item spoke of "heading and monospace faces". Should the standard set also have two or three heading or reading faces (for `headings` and `read.fonts.body`), or do themes keep carrying those?
-4. **Default font:** iA Writer Mono S stays the default for new users. Agreed?
-5. **Ligatures:** Fira Code, JetBrains Mono, Cascadia Code and others draw `->` and `!=` as one sign. In prose that is rare, but should there be a setting "Ligatures on/off" (CSS `font-variant-ligatures`), on by default?
-6. **The system fonts group:** keep listing every installed font under the standard ones, or hide it behind "More fonts..." so the list stays short?
+1. Having seen the alternatives in the mockup: swap any of them in for one of the ten?
+2. Are Literata, Fraunces and Atkinson Hyperlegible Next the right three for headings and Läs?
