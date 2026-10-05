@@ -67,6 +67,24 @@ assert.equal(await win.evaluate(() => window.__notera.active.name), 'A2.md', 'th
 assert.equal(fs.readFileSync(files[3], 'utf8'), '# A4.md\n', 'not saved');
 console.log('ok   Stäng till höger');
 
+// Show file: the file manager opens on the file's folder with the file selected.
+await app.evaluate(({ shell }) => {
+  globalThis.__shown = [];
+  shell.showItemInFolder = (p) => { globalThis.__shown.push(['item', p]); };
+  shell.openPath = async (p) => { globalThis.__shown.push(['folder', p]); return ''; };
+});
+const shown = () => app.evaluate(() => globalThis.__shown);
+await menuFor('A1.md');
+await pick('Show file');
+await win.waitForFunction(() => !document.querySelector('#sb-menu:not([hidden])'));
+await app.evaluate(() => new Promise((r) => setTimeout(r, 100)));
+assert.deepEqual(await shown(), [['item', files[0]]]);
+// A file deleted behind Notera's back: its folder opens instead.
+assert.equal(await win.evaluate((p) => window.notera.showInFolder(p), path.join(tmp, 'gone.md')), true);
+assert.deepEqual((await shown())[1], ['folder', tmp]);
+assert.equal(await win.evaluate(() => window.notera.showInFolder('relative.md')), false, 'relative paths are refused');
+console.log('ok   Visa fil');
+
 await menuFor('A1.md');
 await pick('Close others');
 await win.waitForFunction(() => window.__notera.tabs.length === 1);
@@ -77,6 +95,11 @@ await menuFor('A1.md');
 const one = await disabled();
 assert.equal(one['Close others'], true, 'nothing else to close'); assert.equal(one['Close to the right'], true); assert.equal(one['Close all'], false);
 await pick('Close all');
+await win.waitForFunction(() => window.__notera.tabs.length === 1 && !window.__notera.tabs[0].path);
+await win.locator('.tab').first().click({ button: 'right' });
+await win.waitForSelector('#sb-menu:not([hidden])');
+assert.equal(await win.locator('#sb-menu button:has-text("Show file")').count(), 0, 'an unsaved tab has no file to show');
+await win.keyboard.press('Escape');
 await win.waitForFunction(() => window.__notera.tabs.length === 1 && !window.__notera.tabs[0].path);
 assert.equal(app.windows().length, 1, 'the window stays open');
 assert.equal(await win.evaluate(() => window.__notera.view.state.doc.length), 0, 'one empty tab');

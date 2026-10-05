@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld('notera', {
   detachTab: (args) => ipcRenderer.send('tab:detach', args),
   print: () => ipcRenderer.invoke('window:print'),
   openExternal: (url) => ipcRenderer.send('shell:openExternal', url),
+  showInFolder: (p) => ipcRenderer.invoke('shell:showInFolder', p),
   setMenuState: (state) => ipcRenderer.send('menu:state', state),
   pathForFile: (file) => webUtils.getPathForFile(file),
   onMenu: (cb) => on('menu:action', cb),

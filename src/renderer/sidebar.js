@@ -625,7 +625,7 @@ export function createSidebar(ctx) {
     ], folderLabel(name), point);
   }
 
-  /** Right-click menu of a tab: move it into a project, show it, archive it. */
+  /** Right-click menu of a tab: move it into a project, show it on disk or in the sidebar, archive it. */
   function showTabMenu(tab, point) {
     const settings = ctx.settings();
     const info = tab.path ? noteInfo(tab.path) : null;
@@ -638,6 +638,7 @@ export function createSidebar(ctx) {
         sub: () => moveTargets(info ? info.folder : null, (f) => (info ? moveTo(tab.path, f) : ctx.moveTabToProject(tab, f)))
       });
     }
+    if (tab.path) items.push({ label: t('notes.showFile'), icon: ICONS.folder, act: () => void api.showInFolder(tab.path) });
     if (info) {
       items.push({ label: t('notes.showInSidebar'), icon: ICONS.sidebar, act: () => reveal(tab.path) });
       if (info.archived) items.push({ label: t('notes.restore'), icon: ICONS.restore, act: () => restoreNote(tab.path) });
