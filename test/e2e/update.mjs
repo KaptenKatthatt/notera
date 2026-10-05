@@ -307,6 +307,22 @@ ok('avstängd automatisk kontroll visar ingenting');
 await win.evaluate(() => { for (const t of window.__notera.tabs) { t.dirty = false; } });
 await app.close();
 
+// A build whose updater cannot load (v0.11.0 to v0.12.1 lacked its dependencies) says so in the
+// manual check's dialog and in updater.log, instead of doing nothing.
+const brokenData = path.join(tmp, 'ud-broken');
+app = await electron.launch({ args: [root], env: { ...process.env, NOTERA_USER_DATA: brokenData, NOTERA_UPDATE_FEED: feed, NOTERA_UPDATE_MODULE: 'notera-no-such-module' } });
+win = await app.firstWindow();
+await win.waitForFunction(() => window.__notera && window.__notera.tabs.length > 0);
+await win.evaluate(() => window.notera.setSettings({ language: 'sv' }));
+await app.evaluate(({ dialog }) => { globalThis.__boxes = []; dialog.showMessageBox = async (_w, o) => { globalThis.__boxes.push((o || _w).message); return { response: 0 }; }; });
+const broken = await win.evaluate(() => window.notera.checkForUpdates(true));
+assert.equal(broken.status, 'error');
+assert.equal(broken.broken, true);
+assert.match((await app.evaluate(() => globalThis.__boxes))[0], /^Uppdateraren i den här versionen av Notera är trasig\.[\s\S]*notera-no-such-module/);
+assert.match(fs.readFileSync(path.join(brokenData, 'updater.log'), 'utf8'), /updater failed to load .*notera-no-such-module/);
+ok('en uppdaterare som inte går att ladda säger det, i dialogen och i loggen');
+await app.close();
+
 // A source checkout without a feed says why it can't update.
 app = await electron.launch({ args: [root], env: { ...process.env, NOTERA_USER_DATA: path.join(tmp, 'ud2') } });
 win = await app.firstWindow();

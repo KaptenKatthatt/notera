@@ -17,8 +17,8 @@
     "check": "npm run lint && npm run typecheck && npm test",
     "e2e": "node scripts/build.mjs && node test/e2e/smoke.mjs && node test/e2e/tabs.mjs && node test/e2e/tabclose.mjs && node test/e2e/writing.mjs && node test/e2e/abc.mjs && node test/e2e/lines.mjs && node test/e2e/settings.mjs && node test/e2e/spellcheck.mjs && node test/e2e/update.mjs && node test/e2e/notes.mjs && node test/e2e/templates.mjs && node test/e2e/themes.mjs && node test/e2e/contrast.mjs && node test/e2e/effects.mjs && node test/e2e/themetab.mjs && node test/e2e/palette.mjs && node test/e2e/vscode.mjs",
     "icon": "electron scripts/make-icon.js",
-    "dist:win": "node scripts/build.mjs --prod && electron-builder --win --x64 --publish never",
-    "dist:dir": "node scripts/build.mjs --prod && electron-builder --dir --publish never"
+    "dist:win": "node scripts/build.mjs --prod && electron-builder --win --x64 --publish never && node scripts/verify-package.mjs",
+    "dist:dir": "node scripts/build.mjs --prod && electron-builder --dir --publish never && node scripts/verify-package.mjs"
   },
   "devDependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -28,6 +28,7 @@
     "@codemirror/search": "^6.7.2",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.13",
+    "@electron/asar": "^3.4.1",
     "@eslint/js": "^10.0.1",
     "@lezer/highlight": "^1.2.4",
     "@types/node": "^22.20.4",
