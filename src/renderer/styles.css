@@ -13,8 +13,8 @@
   --active-line: #f6f8fa;
   --code-bg: #f8f8f8;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-  --plain-ui-font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --ui-font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --plain-ui-font: "Segoe UI Variable", "Segoe UI", Selawik, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --ui-font: "Segoe UI Variable", "Segoe UI", Selawik, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --editor-font: "iA Writer Mono S", Consolas, "Cascadia Mono", "Courier New", monospace;
   --editor-size: 15px;
   --zoom-base: 1;
@@ -33,6 +33,11 @@
 @font-face { font-family: "iA Writer Mono S"; src: url("../../fonts/iAWriterMonoS-Bold.ttf"); font-weight: 700; font-style: normal; }
 @font-face { font-family: "iA Writer Mono S"; src: url("../../fonts/iAWriterMonoS-Italic.ttf"); font-weight: 400; font-style: italic; }
 @font-face { font-family: "iA Writer Mono S"; src: url("../../fonts/iAWriterMonoS-BoldItalic.ttf"); font-weight: 700; font-style: italic; }
+/* Selawik is Microsoft's open (OFL) stand-in for Segoe UI, with the same metrics. Windows has Segoe UI and
+   never reaches it; on macOS and Linux the chrome then looks like it does on Windows. */
+@font-face { font-family: "Selawik"; src: url("../../fonts/Selawik-Regular.woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Selawik"; src: url("../../fonts/Selawik-Semibold.woff2"); font-weight: 600; font-style: normal; }
+@font-face { font-family: "Selawik"; src: url("../../fonts/Selawik-Bold.woff2"); font-weight: 700; font-style: normal; }
 html { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
 
