@@ -138,8 +138,8 @@ src/renderer/   UI: tabs, CodeMirror 6 editor, formatting, preview, status bar
 src/shared/themeFormat.js  theme.json parsing, extends, VS Code colour keys -> CSS variables (unit tested)
 src/shared/commands.js  every command with its default keys; key names are matched on the Windows virtual key
 src/main/updater.js     update checks and install via electron-updater
-themes/         built-in themes (Default, Those guys, The Other guys, Neon Chill/Neon/Neon OMG with OFL fonts); format in THEMES.md
-fonts/          iA Writer Mono S (SIL Open Font License, see fonts/OFL.txt)
+themes/         built-in themes (Default, Those guys with Cascadia Mono, The Other guys, Neon Chill/Neon/Neon OMG with OFL fonts); format and how to send one in in THEMES.md
+fonts/          iA Writer Mono S (SIL Open Font License, see fonts/OFL.txt) and Selawik, the stand-in for Segoe UI off Windows (OFL, fonts/OFL-Selawik.txt)
 src/shared/     English + Swedish strings used by both processes
 scripts/        esbuild bundle + icon generator
 test/           node:test unit tests, Playwright smoke test

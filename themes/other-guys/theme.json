@@ -5,7 +5,7 @@
   "name": "The Other guys",
   "style": "style.css",
   "notera": {
-    "fonts": { "ui": ["Segoe UI Variable", "Segoe UI", "system-ui", "-apple-system", "Helvetica Neue", "Arial", "sans-serif"] }
+    "fonts": { "ui": ["Segoe UI Variable", "Segoe UI", "Selawik", "system-ui", "-apple-system", "Helvetica Neue", "Arial", "sans-serif"] }
   },
   "dark": {
     "colors": {

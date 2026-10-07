@@ -99,7 +99,7 @@ for (const c of cases) {
 assert.equal(await css('.preview', 'fontFamily').then((f) => f.split(',')[0]), '"Segoe UI Variable"');
 await win.evaluate(() => window.notera.setSettings({ theme: 'those-guys' }));
 await waitTheme('those-guys', 'light');
-await win.waitForFunction(() => getComputedStyle(document.querySelector('.preview')).fontFamily.startsWith('"Tiempos Text"'));
+await win.waitForFunction(() => getComputedStyle(document.querySelector('.preview')).fontFamily.startsWith('Georgia'));
 await win.waitForFunction(() => getComputedStyle(document.querySelector('.tab.active')).boxShadow.includes('inset'));
 ok('Those guys läser med serif och har sin flikmarkering (style.css via notera-theme://)');
 const lh = () => win.evaluate(() => { const cs = getComputedStyle(document.querySelector('.cm-scroller')); return parseFloat(cs.lineHeight) / parseFloat(cs.fontSize); });

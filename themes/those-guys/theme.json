@@ -5,11 +5,17 @@
   // chrome and a serif for reading.
   "name": "Those guys",
   "style": "style.css",
+  // Cascadia Mono ships with Windows 11 but not with Windows 10 or macOS, so the theme brings it.
+  "fonts": [
+    { "family": "Cascadia Mono", "src": "fonts/CascadiaMono.woff2", "weight": "200 700" },
+    { "family": "Cascadia Mono", "src": "fonts/CascadiaMonoItalic.woff2", "weight": "200 700", "style": "italic" }
+  ],
   "notera": {
     "fonts": { "ui": ["Cascadia Mono", "Consolas", "iA Writer Mono S", "monospace"] }
   },
   "read": {
-    "fonts": { "body": ["Tiempos Text", "Charter", "Georgia", "Cambria", "serif"] }
+    // Georgia first: it ships with both Windows and macOS, so Läs looks the same on both.
+    "fonts": { "body": ["Georgia", "Tiempos Text", "Charter", "Cambria", "serif"] }
   },
   "dark": {
     "colors": {

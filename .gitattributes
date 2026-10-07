@@ -1,0 +1,14 @@
+# Text is stored with LF, whatever the editor or OS, so diffs from Windows and macOS match.
+* text=auto eol=lf
+
+# Binary files: never converted or diffed as text.
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.ico binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.webp binary
+*.vsix binary

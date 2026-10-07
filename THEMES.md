@@ -1,6 +1,6 @@
 # Making a Notera theme
 
-A theme is a folder with a `theme.json` in it. Put the folder in Notera's themes folder (View > Theme > Open themes folder, which is `%APPDATA%\Notera\themes` on Windows) and it shows up in the Theme menu. Notera watches that folder: save `theme.json` or `style.css` and the window repaints at once.
+A theme is a folder with a `theme.json` in it. Put the folder in Notera's themes folder (View > Theme > Open themes folder, which is `%APPDATA%\Notera\themes` on Windows and `~/Library/Application Support/Notera/themes` on macOS) and it shows up in the Theme menu. Notera watches that folder: save `theme.json` or `style.css` and the window repaints at once.
 
 ```
 themes/
@@ -127,7 +127,12 @@ A theme brings its own font files. List them in `fonts` and use the family names
 
 Line height is set the same way: `"notera": { "lineHeight": 1.75 }` for the editor (Notera's own is 1.4, close to VS Code) and `"read": { "lineHeight": 1.8 }` for Läs (default 1.6). Anything from 1 to 3 works.
 
-Check that a font's licence lets you share it before you put it in a theme you give away. Fonts under the SIL Open Font License are fine; include their `OFL.txt`.
+A font the theme does not bring is used only where it is installed, so the same theme can look different on another machine. Fonts that come with Windows (Segoe UI, Consolas, Cambria, Calibri) are missing on macOS and Linux, and fonts that come with macOS (Charter, SF Pro, Menlo) are missing on Windows. Neither kind may be copied into a theme. Two ways to keep a theme looking the same everywhere:
+
+- Bring the font. Fonts under the SIL Open Font License can be shared; put the files in the theme's `fonts/` folder with their licence (`OFL-<Family>.txt`). `.woff2` is the smallest format and works as well as `.ttf`.
+- Put a free look-alike right after a system font. Notera itself bundles `Selawik`, Microsoft's open stand-in for Segoe UI with the same metrics, and `iA Writer Mono S`, so those two names work in any theme without a `fonts` entry. `["Segoe UI", "Selawik", "sans-serif"]` gives Segoe UI on Windows and Selawik everywhere else.
+
+Georgia, Arial, Verdana, Courier New and Times New Roman ship with both Windows and macOS.
 
 ## Effects
 
@@ -194,6 +199,18 @@ Settings > Theme changes the active theme without writing JSON: every property a
 ## Extending
 
 `"extends": "<id>"` starts from another theme, built-in or your own. Objects merge key by key and your values win; lists such as `tokenColors` replace the parent's. Fonts and style sheets from the whole chain are loaded, parent first. A chain may be several themes long, but must not loop.
+
+## Sending a theme in
+
+Themes can be made on Windows, macOS or Linux; only the Windows installer has to be built on Windows. To add a theme to Notera itself:
+
+1. Fork the repository (or, with access, make a branch) and run `npm install` and `npm start`. Node 22 is all it needs.
+2. Make the theme in your themes folder first, where it repaints as you save. When it is done, copy the folder to `themes/<id>/` in the repository and add its id to `BUILTIN_ORDER` in `src/main/themes.js`, where it decides the theme's place in the menu.
+3. Bring every font the theme names before its generic fallback, or follow it with a font Notera bundles (see Fonts). Then the theme looks the same on Windows as on your machine.
+4. Run `npm run check`, `node scripts/build.mjs`, `node test/e2e/themes.mjs` and `node test/e2e/contrast.mjs`. The contrast test checks every built-in theme, light and dark, against WCAG AA; `--report` prints every measurement. On Linux put `xvfb-run -a` in front of the e2e tests.
+5. Open a pull request with a screenshot of each mode.
+
+The repository stores text files with LF line endings (`.gitattributes`), so a pull request from a Mac and one from Windows give the same diff.
 
 ## When something is wrong
 
