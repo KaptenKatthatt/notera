@@ -14,7 +14,8 @@
     "fonts": { "ui": ["Cascadia Mono", "Consolas", "iA Writer Mono S", "monospace"] }
   },
   "read": {
-    "fonts": { "body": ["Tiempos Text", "Charter", "Georgia", "Cambria", "serif"] }
+    // Georgia first: it ships with both Windows and macOS, so Läs looks the same on both.
+    "fonts": { "body": ["Georgia", "Tiempos Text", "Charter", "Cambria", "serif"] }
   },
   "dark": {
     "colors": {
