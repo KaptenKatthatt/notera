@@ -309,6 +309,23 @@ await win.waitForFunction(() => /Kund Y[\\/]\d{4}-\d{2}-\d{2} lösa tankar\.md$/
 assert.equal(await win.evaluate(() => document.querySelector('#dlg-project').open), false);
 assert.deepEqual(ls('Kund Y').length, 1);
 
+// 13c. A new note with unsaved text moved from the tab menu takes the text along. With autosave
+// off the file on disk held only the heading and header line, and that is what got moved.
+await win.evaluate(() => window.notera.setSettings({ autosave: false }));
+await win.waitForFunction(() => window.__notera.settings.autosave === false);
+await win.keyboard.press('Control+T');
+await win.waitForFunction(() => /Osorterat[\\/]/.test(window.__notera.active.path || ''));
+await app.evaluate(({ clipboard }) => clipboard.writeText('Inklistrat\nAndra raden\nTredje raden\n'));
+await win.keyboard.press('Control+V');
+await win.waitForFunction(() => window.__notera.active.dirty);
+await win.click('.tab.active', { button: 'right' });
+await win.hover('#sb-menu button:has-text("Flytta till projekt")');
+await win.click('#sb-menu .sb-submenu button:has-text("Notera")');
+await win.waitForFunction(() => /Notera[\\/]\d{4}-\d{2}-\d{2} Inklistrat\.md$/.test(window.__notera.active.path));
+assert.match(read('Notera', `${today} Inklistrat.md`), /^# Inklistrat\r?\n.*Andra raden\r?\nTredje raden/s, 'the moved file holds the pasted text');
+assert.equal(await win.evaluate(() => window.__notera.active.dirty), false);
+await win.evaluate(() => window.notera.setSettings({ autosave: true }));
+
 // 14. Dark theme
 await win.evaluate(() => window.notera.setSettings({ mode: 'dark' }));
 await win.waitForFunction(() => document.documentElement.dataset.theme === 'dark');

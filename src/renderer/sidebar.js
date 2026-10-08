@@ -106,6 +106,7 @@ export function createSidebar(ctx) {
   }
 
   async function moveTo(p, folder, opts) {
+    if (!(await ctx.saveBeforeMove(p))) return null;
     const r = await call('moveNote', p, folder, opts || {});
     if (r && r.undoId) undoToast(r, t('notes.toastMoved', { project: folderLabel(folder) }));
     return r;
