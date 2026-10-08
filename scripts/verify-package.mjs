@@ -67,7 +67,8 @@ function newestAsar() {
 
 const file = newestAsar();
 const listed = new Set(asar.listPackage(file, { isPack: false }).map((p) => p.split(path.sep).join('/').replace(/^\//, '')));
-const versionIn = (rel) => JSON.parse(asar.extractFile(file, rel).toString('utf8')).version;
+// extractFile splits on path.sep, so on Windows a '/' path is never found.
+const versionIn = (rel) => JSON.parse(asar.extractFile(file, rel.split('/').join(path.sep)).toString('utf8')).version;
 /** Node's lookup inside the archive: <from>/node_modules/<name>, then each parent folder's. */
 function resolveInAsar(name, from) {
   for (let dir = from; ; dir = dir.includes('/') ? dir.slice(0, dir.lastIndexOf('/')) : '') {
