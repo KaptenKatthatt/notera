@@ -689,11 +689,21 @@ async function openNote(p) {
   if (tab) activateTab(tab); else await openPaths([p]);
 }
 
+/**
+ * Before a file moves: write the text its tab holds, so the moved file carries it. Without this a
+ * note with unsaved text (autosave off, or a write still pending) moved as it was on disk, and a
+ * new note kept only its heading and header line. False when the write failed: the file stays.
+ */
+async function saveBeforeMove(p) {
+  const tab = findTab(p);
+  if (!tab) return true;
+  if (tab.dirty && !(await writeTab(tab))) return false;
+  return flushPending(tab);
+}
+
 /** Move an untitled draft or a file from outside the notes folder into a project. */
 async function moveTabToProject(tab, folder) {
   if (tab.path) {
-    if (tab.dirty && !(await writeTab(tab))) return;
-    await flushPending(tab);
     await sidebar.moveTo(tab.path, folder);
     return;
   }
@@ -1167,7 +1177,7 @@ async function boot() {
     api, t: () => t, settings: () => settings, pathKey,
     liveTitle: (p) => { const tab = findTab(p); return tab ? lineTitle(tab) : null; },
     activePath: () => (active ? active.path : null),
-    flush: flushAll, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
+    flush: flushAll, saveBeforeMove, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
     promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab), retitleTab,
     tabsToClose, closeTabs,
     focusEditor: () => view.focus(),
