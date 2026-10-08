@@ -322,7 +322,11 @@ await win.click('.tab.active', { button: 'right' });
 await win.hover('#sb-menu button:has-text("Flytta till projekt")');
 await win.click('#sb-menu .sb-submenu button:has-text("Notera")');
 await win.waitForFunction(() => /Notera[\\/]\d{4}-\d{2}-\d{2} Inklistrat\.md$/.test(window.__notera.active.path));
-assert.match(read('Notera', `${today} Inklistrat.md`), /^# Inklistrat\r?\n.*Andra raden\r?\nTredje raden/s, 'the moved file holds the pasted text');
+// Pasted on the heading line, the first line became the heading and the rest went under the
+// header line, so the move rewrote that header instead of adding a second one.
+const pasted = read('Notera', `${today} Inklistrat.md`).replace(/\r\n/g, '\n');
+assert.match(pasted, /^# Inklistrat\nProjekt: Notera · Skapad: .+\n\nAndra raden\nTredje raden\n$/, 'the moved file holds the pasted text under one header');
+assert.equal(pasted.match(/^Projekt: /gm).length, 1);
 assert.equal(await win.evaluate(() => window.__notera.active.dirty), false);
 await win.evaluate(() => window.notera.setSettings({ autosave: true }));
 

@@ -74,6 +74,49 @@ function setProject(text, project, { locale = 'en', created, fallbackTitle = '' 
   return [heading, meta, '', ...lines].join('\n');
 }
 
+/**
+ * Several lines pasted on a note's heading line. Pasted as they come, they would push the header
+ * line down, and a later move would no longer find it and add a second one. Instead the first
+ * line goes into the heading and the rest into the body under the header, the way Enter on the
+ * heading line jumps past it. Returns the changes to make in place of the paste (positions in
+ * doc) and where the cursor goes, or null when the paste is not of that kind.
+ * @param {string} doc @param {number} from @param {number} to @param {string} text
+ * @returns {{ changes: Array<{ from: number, to?: number, insert: string }>, cursor: number } | null}
+ */
+function pasteOnTitle(doc, from, to, text) {
+  const nl = text.indexOf('\n');
+  if (nl < 0) return null;
+  const lines = doc.split('\n');
+  const title = lines[0];
+  if (lines.length < 2 || !/^#\s/.test(title) || !META_RE.test(lines[1]) || from < 2 || to > title.length) return null;
+  let first = text.slice(0, nl).replace(/\r$/, '');
+  // A Markdown text with its own heading, pasted into an empty one, keeps a single "#".
+  if (/^#\s*$/.test(title.slice(0, from) + title.slice(to))) first = first.replace(/^#{1,6}\s+/, '');
+  const rest = text.slice(nl + 1).replace(/^(?:[ \t]*\n)+/, '');
+  /** @type {Array<{ from: number, to?: number, insert: string }>} */
+  const changes = [{ from, to, insert: first }];
+  const shift = first.length - (to - from);
+  if (!rest) return { changes, cursor: from + first.length };
+  const metaEnd = title.length + 1 + lines[1].length;
+  let at; let insert; let cursorIn;
+  if (lines.length >= 3 && lines[2] === '') {
+    // Header, blank line: the body starts on line 4, or the text ends after the blank line.
+    if (lines.length === 3) { at = doc.length; insert = '\n' + rest; cursorIn = insert.length; }
+    else {
+      at = metaEnd + 2;
+      const more = !(lines.length === 4 && lines[3] === '');
+      insert = more && !rest.endsWith('\n') ? rest + '\n' : rest;
+      cursorIn = rest.length;
+    }
+  } else {
+    // Header line last, or followed directly by text: open a blank line under it.
+    const body = lines.length === 2 ? rest : rest.replace(/\n$/, '');
+    at = metaEnd; insert = '\n\n' + body; cursorIn = insert.length;
+  }
+  changes.push({ from: at, insert });
+  return { changes, cursor: at + shift + cursorIn };
+}
+
 /** Set the heading on the first line to title; a text whose first line is no heading gets one on top. */
 function setTitle(text, title) {
   const lines = String(text).split('\n');
@@ -141,6 +184,6 @@ function projectNameError(name, { taken = [], reserved = [] } = {}) {
 }
 
 module.exports = {
-  LABELS, META_RE, formatDate, formatDateTime, metaLine, newNoteText, parseMeta, titleOf, setProject, setTitle,
+  LABELS, META_RE, formatDate, formatDateTime, metaLine, newNoteText, parseMeta, titleOf, setProject, setTitle, pasteOnTitle,
   sanitizeFileName, baseName, sortDateOf, datePrefixFor, projectNameError
 };
