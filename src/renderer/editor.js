@@ -14,7 +14,7 @@ import { languages } from '@codemirror/language-data';
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { syntaxHighlighting, HighlightStyle, indentUnit } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
-import { META_RE } from '../shared/noteHeader.js';
+import { META_RE, pasteOnTitle } from '../shared/noteHeader.js';
 
 export const compartments = {
   language: new Compartment(),
@@ -72,6 +72,18 @@ function enterPastHeader(view) {
 }
 const noteKeys = Prec.high(keymap.of([{ key: 'Enter', run: enterPastHeader }]));
 
+/** Several lines pasted on a note's title line: the first becomes the heading, the rest goes under the header line. */
+const pasteKeepsHeader = EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged || !(tr.isUserEvent('input.paste') || tr.isUserEvent('input.drop'))) return tr;
+  /** @type {Array<{ from: number, to: number, text: string }>} */
+  const parts = [];
+  tr.changes.iterChanges((from, to, _fromB, _toB, inserted) => { parts.push({ from, to, text: inserted.toString() }); });
+  if (parts.length !== 1) return tr;
+  const r = pasteOnTitle(tr.startState.doc.toString(), parts[0].from, parts[0].to, parts[0].text);
+  if (!r) return tr;
+  return { changes: r.changes, selection: { anchor: r.cursor }, scrollIntoView: true, userEvent: 'input.paste' };
+});
+
 const mdHighlight = HighlightStyle.define([
   { tag: [t.heading1, t.heading2, t.heading3, t.heading4, t.heading5, t.heading6], fontWeight: '700', color: 'var(--h-text, var(--h-color, var(--md-h)))' },
   { tag: t.strong, fontWeight: '700' },
@@ -123,6 +135,7 @@ export function baseExtensions(opts) {
     compartments.spellcheck.of(spellcheckExt(opts.spellcheck)),
     noteMeta,
     noteKeys,
+    pasteKeepsHeader,
     searchCount,
     history(),
     closeBrackets(),
