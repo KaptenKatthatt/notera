@@ -125,7 +125,7 @@ Following the multi-agent rules: one agent per PR, models chosen by me per PR, e
 
 1. **HTTPS name for the PWA.** Which domain gets `notera.…` pointing at the devserver's tailnet IP? Or wait for Tailscale DNS on Android and use the ts.net name?
 2. **Hub on the devserver (Contabo)?** It is always on and backed up by restic. The HP box is the alternative.
-3. **OneDrive.** Keep the notes folder in OneDrive as an extra backup (works, but two sync tools on one folder can race on the work computer), or move it out once Notera sync runs?
+3. **OneDrive and the Google Drive copy.** The notes folder is copied to Google Drive ("Anteckningar", nightly-ish). Keep that, or OneDrive, as an extra backup beside Notera sync (works, but two tools syncing one folder both ways can race), or let the hub's git history and restic be the backup?
 4. **Play Store: just for you, or for others?** Decides whether PR 7 is a wrapper or the start of a hosted service.
 5. **Phone editor default**: open notes in Write, or in Read with a tap to edit?
-6. **Version history** from PR #50: keep it per device (proposed), or sync `.notera-history/` too?
+6. **Version history** from PR #50: you put it inside the notes folder so it follows the backups. Keep it per device and let the hub's git history cover the phone (proposed, less churn), or sync `.notera-history/` too?
