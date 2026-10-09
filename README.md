@@ -26,6 +26,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Inline Markdown markers (`**`, `*`, `~~`, backticks, the `[]()` of a link) are hidden except on the line you are editing. View > Hide Markdown markers turns that off.
 - Enter continues a list or quote, an empty item ends it. Pasting a URL over selected text makes a link, and Ctrl+K uses a URL from the clipboard directly.
 - Writing mode (Ctrl+Shift+W), full screen (F11), and a shortcut reference (Ctrl+?).
+- Version history (File > Version history…, also in the tab menu and a note's ⋯ menu): earlier texts of every file you save, so a slip never costs what you wrote. Before a save replaces the text on disk, the old text is kept if the last version is five minutes old, and at once when the save removes more than half of it; leaving or closing a note keeps one too, and so does deleting it. Kept: everything from the last day, one per hour for a week, one per day for 30 days. The dialog shows each version and restores it; the text it replaces becomes a version first, and Ctrl+Z takes the restore back. Versions are plain text files under `.notera-history` in the notes folder (mirroring each note's path, so they are backed up and synced with the notes and follow a moved note), or under `%APPDATA%\Notera\history` for files outside it.
 - Settings (File > Settings, Ctrl+,): theme, language, font, autosave, markers, word wrap, line numbers, update checks, and every keyboard shortcut in the app. Settings > General also chooses whether Ctrl+W closes the tab or the whole window. Each command can have several keys; a key already in use asks before moving it, and plain letters are refused so typing keeps working. Changes show up in the menu and the shortcut reference immediately, and "Reset" puts a command (or all of them) back to its defaults.
 - Automatic updates in the installed version: shortly after start and every six hours Notera checks GitHub Releases. When a newer version exists it offers to download and install it, shows the download progress, and restarts into the new version. Named files are saved first (or you are asked, when autosave is off) and untitled text comes back as a draft. The portable exe and source checkouts don't update themselves. Turn the check off in Settings; Help > Check for updates checks right away.
 - VS Code line editing with VS Code's keys, also under Edit > Line: move, copy, select and delete whole lines, cut or copy the current line when nothing is selected, open a line above or below, add the next occurrence to the selection, and add cursors above or below.
@@ -102,6 +103,8 @@ node test/e2e/lines.mjs     # VS Code line editing, driven with real key presses
 node test/e2e/settings.mjs  # Settings: rebinding, conflicts, persistence, menu labels, Ctrl+T/Ctrl+N/Alt+digit
 node test/e2e/update.mjs    # update flow against a local feed (NOTERA_UPDATE_FEED), up to the installer step
 node test/e2e/notes.mjs     # projects in the sidebar: create, rename, drag, move, archive, undo, search, first run
+node test/e2e/history.mjs   # version history: kept on save, wipe, leave, delete; the dialog; moves
+node test/e2e/nowipe.mjs    # clicking the tab or note already open never loses text
 npm run icon       # regenerate build/icon.png + icon.ico from the SVG in scripts/make-icon.js
 ```
 
@@ -123,6 +126,7 @@ To ship an update, bump `version` in `package.json`, build, and upload three fil
 src/main/       Electron main process: window, native menu, dialogs, file IO
   files.js      encoding detection/encoding + line endings (unit tested)
   settings.js   settings.json in %APPDATA%\Notera
+  history.js    version history: keeps, prunes and moves earlier texts of every saved file
   themes.js     loads built-in and user themes, serves their files over notera-theme://, reloads on save
   vscodeImport.js  finds VS Code themes (installed or .vsix), pairs light and dark, converts them
 src/renderer/   UI: tabs, CodeMirror 6 editor, formatting, preview, status bar
