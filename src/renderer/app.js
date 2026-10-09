@@ -85,7 +85,7 @@ function runFormat(action, v = view) {
 }
 
 function suggestedName(tab) {
-  const firstLine = tab.state.doc.toString().split('\n').find((l) => l.trim().length > 0) || '';
+  const firstLine = docFor(tab).toString().split('\n').find((l) => l.trim().length > 0) || '';
   const cleaned = firstLine.replace(/^[#>\-*\s\d.]+/, '').replace(/[\\/:*?"<>|]+/g, '').trim().slice(0, 40).trim();
   return cleaned || t('untitled');
 }
@@ -146,12 +146,20 @@ function makeTab(init = {}) {
 }
 
 function activateTab(tab) {
-  if (active && active !== tab) { active.state = view.state; void flushPending(active); void maybeRenameNote(active); }
+  // The view holds the newest text of the active tab; tab.state is only a snapshot from when it was
+  // last activated. Activating the tab already shown (clicking its tab or sidebar row, a search
+  // hit, Close others) must keep the view: loading the snapshot put back old text, and the next
+  // keystroke autosaved that over the file.
+  const switching = active !== tab;
+  if (active) active.state = view.state;
+  if (active && switching) { void flushPending(active); void maybeRenameNote(active); }
   if (sidebar && tab.path) syncReadOnly(tab);
   active = tab;
-  view.setState(tab.state);
-  // A fresh state may have stale compartment config if settings changed while inactive.
-  view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) });
+  if (switching) {
+    view.setState(tab.state);
+    // A fresh state may have stale compartment config if settings changed while inactive.
+    view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) });
+  }
   renderTabs();
   applyKindUi();
   updateStatus();
@@ -351,7 +359,7 @@ async function openPaths(paths) {
     const r = await api.readFile(p);
     if (!r.ok) { await api.showError({ kind: 'read', name: r.name, detail: r.error }); continue; }
     // Replace a pristine untitled tab, like Notepad does.
-    if (active && !active.path && !active.dirty && active.state.doc.length === 0 && tabs.length === 1) {
+    if (active && !active.path && !active.dirty && docFor(active).length === 0 && tabs.length === 1) {
       tabs = [];
     }
     newTab({ path: r.path, name: r.name, kind: r.kind, encoding: r.encoding, eol: r.eol, text: r.text, mtimeMs: r.mtimeMs });
