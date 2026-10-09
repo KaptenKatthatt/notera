@@ -15,11 +15,14 @@ export function createHistoryDialog(ctx) {
   const t = (k, v) => ctx.t()(k, v);
   const num = (n) => new Intl.NumberFormat(ctx.locale()).format(n);
 
-  /** "Today 14:32", "Yesterday 09:10", "3 Oct 18:00" (with the year when it is not this one). */
-  function when(time) {
+  /**
+   * "Today 14:32", "Yesterday 09:10", "3 Oct 18:00" (with the year when it is not this one);
+   * with seconds when another version falls in the same minute.
+   */
+  function when(time, seconds = false) {
     const d = new Date(time);
     const loc = ctx.locale() === 'sv' ? 'sv-SE' : 'en-GB';
-    const hm = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+    const hm = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', ...(seconds ? { second: '2-digit' } : {}) });
     const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
     const diff = Math.round((day(new Date()) - day(d)) / 86400000);
     if (diff === 0) return t('history.today', { time: hm });
@@ -35,6 +38,9 @@ export function createHistoryDialog(ctx) {
     return d > 0 ? t('history.more', { n: num(d) }) : t('history.fewer', { n: num(-d) });
   }
 
+  const minute = (v) => Math.floor(v.time / 60000);
+  const sharesMinute = (list, i) => list.some((x, j) => j !== i && minute(x) === minute(list[i]));
+
   function renderList() {
     listEl.innerHTML = '';
     state.versions.forEach((v, i) => {
@@ -44,7 +50,7 @@ export function createHistoryDialog(ctx) {
       b.setAttribute('role', 'option');
       b.setAttribute('aria-selected', String(i === state.sel));
       b.dataset.i = String(i);
-      const w = document.createElement('span'); w.className = 'when'; w.textContent = when(v.time);
+      const w = document.createElement('span'); w.className = 'when'; w.textContent = when(v.time, sharesMinute(state.versions, i));
       const c = document.createElement('span'); c.className = 'delta'; c.textContent = delta(v.chars);
       b.append(w, c);
       listEl.appendChild(b);
@@ -107,7 +113,7 @@ export function createHistoryDialog(ctx) {
     const s = state;
     state = null;
     if (answer !== 'restore' || !s || s.text === null || s.readOnly) return null;
-    return { text: s.text, time: when(s.versions[s.sel].time) };
+    return { text: s.text, time: when(s.versions[s.sel].time, sharesMinute(s.versions, s.sel)) };
   }
 
   return { open, isOpen: () => dlg.open };
