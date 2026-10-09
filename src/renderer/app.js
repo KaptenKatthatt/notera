@@ -15,6 +15,7 @@ import { countWords } from './markdown.js';
 import { createSidebar, ICONS } from './sidebar.js';
 import { createPreview } from './preview.js';
 import { createDialogs } from './dialogs.js';
+import { createHistoryDialog } from './historyDialog.js';
 import { createPopups } from './popups.js';
 import { createUpdateToast } from './updateToast.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
@@ -152,7 +153,7 @@ function activateTab(tab) {
   // keystroke autosaved that over the file.
   const switching = active !== tab;
   if (active) active.state = view.state;
-  if (active && switching) { void flushPending(active); void maybeRenameNote(active); }
+  if (active && switching) { void leaveTab(active); void maybeRenameNote(active); }
   if (sidebar && tab.path) syncReadOnly(tab);
   active = tab;
   if (switching) {
@@ -265,6 +266,34 @@ const dialogs = createDialogs({
   settingsDialogOpen: () => !!settingsDialog && settingsDialog.isOpen()
 });
 
+const historyDialog = createHistoryDialog({ api, t: () => t, locale: () => locale });
+
+/** A tab left (another one activated, or closed): write what is pending, then keep the text as a version. */
+async function leaveTab(tab) {
+  if (!(await flushPending(tab))) return;
+  if (!tab.path || tab.discarded || (tab.pristine && docFor(tab).toString() === tab.pristine)) return;
+  await api.history.snapshot(tab.path);
+}
+
+/**
+ * File > Version history: pick an earlier version of the tab's file. Restoring keeps the text it
+ * replaces as a version first, and is an ordinary edit, so Ctrl+Z takes it back too.
+ */
+async function showHistory(tab = active) {
+  if (!tab || historyDialog.isOpen()) return;
+  if (!tab.path) { if (sidebar) sidebar.toast(t('history.noFile')); return; }
+  if (tab !== active) activateTab(tab);
+  await flushPending(tab);
+  const picked = await historyDialog.open({ path: tab.path, name: tabTitle(tab), current: docFor(tab).toString(), readOnly: tab.readOnly });
+  if (!picked || !tabs.includes(tab) || tab.readOnly) { view.focus(); return; }
+  await api.history.snapshot(tab.path, docFor(tab).toString());
+  if (tab !== active) activateTab(tab);
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: picked.text }, selection: { anchor: 0 }, scrollIntoView: true });
+  if (settings.autosave !== false) await writeTab(tab);
+  if (sidebar) sidebar.toast(t('history.restored', { time: picked.time }));
+  view.focus();
+}
+
 function newTab(init) {
   const tab = makeTab(init);
   activateTab(tab);
@@ -292,7 +321,7 @@ async function closeTab(tab, { asked = false } = {}) {
   if (tab.pristine && tab.path && docFor(tab).toString() === tab.pristine) {
     tab.discarded = true;
     await api.notes.call('discardEmpty', tab.path, tab.pristine);
-  }
+  } else if (tab.path) void leaveTab(tab);
   const idx = tabs.indexOf(tab);
   if (idx < 0) return true;
   tabs.splice(idx, 1);
@@ -883,6 +912,7 @@ async function handleAction(action, payload) {
       else if (settings.sidebarOpen && !settings.writingMode) sidebar.startNewProject();
       else await dialogs.projectName();
       break;
+    case 'versionHistory': await showHistory(active); break;
     case 'archiveNote': { const info = noteInfo(active); if (info && !info.archived) await sidebar.archiveNote(active.path); break; }
     case 'chooseNotesFolder': await chooseNotesRoot(); break;
     case 'toggleSidebar': await api.setSettings({ sidebarOpen: !settings.sidebarOpen }); break;
@@ -1187,6 +1217,7 @@ async function boot() {
     activePath: () => (active ? active.path : null),
     flush: flushAll, saveBeforeMove, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
     promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab), retitleTab,
+    showHistory: (tab) => showHistory(tab), showNoteHistory: async (p) => { await openNote(p); await showHistory(findTab(p)); },
     tabsToClose, closeTabs,
     focusEditor: () => view.focus(),
     sidebarVisible: () => !!settings.sidebarOpen && !settings.writingMode,

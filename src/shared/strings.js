@@ -265,6 +265,25 @@ for (let n = 1; n <= 9; n++) {
 en.templates = { standupTitle: 'Standup', doneLast: 'Done since last', blockers: 'Blockers', nextUp: 'To do for next meeting' };
 sv.templates = { standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 'Blockers', nextUp: 'Göra till nästa möte' };
 
+Object.assign(en.menu, { versionHistory: 'Version history…' });
+Object.assign(sv.menu, { versionHistory: 'Versionshistorik…' });
+
+en.history = {
+  title: 'Version history', of: 'Earlier versions of {name}', restore: 'Restore this version', showFolder: 'Show folder',
+  empty: 'No earlier versions yet. Notera keeps one every five minutes while you write, when you leave the note, and at once when a save removes much of the text.',
+  same: 'Same as now', chars: '{n} characters', more: '{n} more characters', fewer: '{n} fewer characters', sameLength: 'same length',
+  today: 'Today {time}', yesterday: 'Yesterday {time}',
+  noFile: 'Save the text to a file first: versions are kept of files.', archived: 'Archived: restore the note to restore a version.',
+  restored: 'Restored the version from {time}. The text before it is a version too.'
+};
+sv.history = {
+  title: 'Versionshistorik', of: 'Tidigare versioner av {name}', restore: 'Återställ den här versionen', showFolder: 'Visa mapp',
+  empty: 'Inga tidigare versioner än. Notera sparar en var femte minut medan du skriver, när du lämnar anteckningen och direkt när en sparning tar bort mycket text.',
+  same: 'Samma som nu', chars: '{n} tecken', more: '{n} tecken fler', fewer: '{n} tecken färre', sameLength: 'lika lång',
+  today: 'I dag {time}', yesterday: 'I går {time}',
+  noFile: 'Spara texten till en fil först: versioner sparas av filer.', archived: 'Arkiverad: återställ anteckningen för att återställa en version.',
+  restored: 'Versionen från {time} är återställd. Texten innan finns också som version.'
+};
 Object.assign(en.menu, {
   newNote: 'New note', newNoteInProject: 'New note in project', newProject: 'New project…', toggleSidebar: 'Sidebar',
   searchNotes: 'Search notes', archiveNote: 'Archive note', chooseNotesFolder: 'Notes folder…'
@@ -344,6 +363,9 @@ sv.notes = {
   deleteEmptyProject: 'Projektet är tomt. Mappen tas bort.', archiveInstead: 'Arkivera i stället', deleteProjectButton: 'Ta bort projektet',
   opFailed: 'Det gick inte: {error}', settingsSection: 'Anteckningar', settingsFolder: 'Anteckningsmapp', notChosen: 'Inte vald', change: 'Byt…', confirmDeleteSetting: 'Fråga innan en anteckning tas bort'
 };
+
+en.notes.versionHistory = 'Version history…';
+sv.notes.versionHistory = 'Versionshistorik…';
 
 const LOCALES = { en, sv };
 

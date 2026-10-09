@@ -24,6 +24,7 @@ const COMMANDS = [
   { id: 'save', cat: 'file', label: 'menu.save', keys: ['Ctrl+S'], global: true },
   { id: 'saveAs', cat: 'file', label: 'menu.saveAs', keys: ['Ctrl+Shift+S'], global: true },
   { id: 'saveAll', cat: 'file', label: 'menu.saveAll', keys: ['Ctrl+Alt+S'], global: true },
+  { id: 'versionHistory', cat: 'file', label: 'menu.versionHistory', keys: [], global: true },
   { id: 'closeTab', cat: 'file', label: 'menu.closeTab', keys: ['Ctrl+W', 'Ctrl+F4'], global: true },
   { id: 'closeWindow', cat: 'file', label: 'menu.closeWindow', keys: [], global: true },
   { id: 'nextTab', cat: 'file', label: 'menu.nextTab', keys: ['Ctrl+Tab', 'Ctrl+PageDown'], global: true },
