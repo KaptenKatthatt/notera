@@ -168,6 +168,24 @@
     </form>
   </dialog>
 
+  <dialog id="dlg-history" class="history" aria-labelledby="hist-title">
+    <form method="dialog">
+      <h2 id="hist-title" data-i18n="history.title">Version history</h2>
+      <p id="hist-of" class="hist-of"></p>
+      <div id="hist-body" class="hist-body">
+        <div id="hist-list" class="hist-list" role="listbox" tabindex="0"></div>
+        <pre id="hist-preview" class="hist-preview" tabindex="-1"></pre>
+      </div>
+      <p id="hist-empty" class="hist-empty" data-i18n="history.empty" hidden>No earlier versions yet.</p>
+      <p id="hist-note" class="hist-note" hidden></p>
+      <div class="dlg-actions">
+        <button type="button" id="hist-folder" class="hist-folder" data-i18n="history.showFolder">Show folder</button>
+        <button type="button" data-close="cancel" data-i18n="ui.close">Close</button>
+        <button value="restore" class="primary" id="hist-restore" data-i18n="history.restore">Restore this version</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="dlg-keys">
     <form method="dialog">
       <h2 data-i18n="ui.shortcutsTitle">Keyboard shortcuts</h2>

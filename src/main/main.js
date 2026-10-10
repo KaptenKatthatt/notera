@@ -15,6 +15,7 @@ const fsSync = require('fs');
 const { createThemeStore, describeError, SCHEME } = require('./themes');
 const vscode = require('./vscodeImport');
 const { createNotesStore } = require('./notes');
+const { createHistory } = require('./history');
 
 const isDev = !app.isPackaged;
 // Tests point this at a scratch directory so they never touch real settings.
@@ -31,6 +32,7 @@ const closeConfirmed = new WeakSet(); // windows whose renderer has settled unsa
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
 let updater;
 let notesStore = null;
+let history = null; // version history of every file written from the editor (history.js)
 let themeStore = null;
 /** The active theme as the window paints it, and the last load error if any. */
 let themeState = { payload: null, error: null };
@@ -597,10 +599,12 @@ ipcMain.handle('file:stat', async (_e, p) => {
 
 ipcMain.handle('file:write', async (_e, { path: p, text, encoding, eol }) => {
   try {
+    const isSettings = samePath(p, settings.file);
+    // The text being replaced may become a version first. History never stops a save.
+    if (!isSettings) await history.beforeWrite(p, files.normalizeEol(String(text))).catch(() => {});
     await writeFileAtomic(p, files.writeBuffer(text, encoding, eol));
     // settings.json saved by hand is applied, not added to recent files: addRecent would write the
     // settings still in memory straight over the file that was just saved.
-    const isSettings = samePath(p, settings.file);
     const settingsReload = isSettings ? reloadSettingsFile() : null;
     if (!isSettings) settings.addRecent(p);
     buildMenu();
@@ -724,6 +728,21 @@ ipcMain.handle('shell:showInFolder', async (_e, p) => {
   return (await shell.openPath(dir)) === '';
 });
 
+// ---------- Version history ----------
+/** A note or project going to the Recycle Bin leaves its last text in the history first. */
+async function trashKeepingHistory(p) {
+  await history.snapshotTree(p).catch(() => {});
+  return shell.trashItem(p);
+}
+ipcMain.handle('history:list', (_e, p) => history.list(p).catch(() => []));
+ipcMain.handle('history:read', (_e, p, id) => history.read(p, id).catch(() => null));
+ipcMain.handle('history:snapshot', (_e, p, text) => history.snapshot(p, typeof text === 'string' ? text : undefined).catch(() => false));
+ipcMain.handle('history:showFolder', async (_e, p) => {
+  const dir = history.dirFor(p);
+  if (!dir) return false;
+  try { await fs.access(dir); shell.showItemInFolder(dir); return true; } catch { return false; }
+});
+
 // ---------- Notes (projects in the sidebar) ----------
 // One store per notes folder, shared by every window. Mutations are broadcast so every window
 // moves its open tabs along with the files and redraws its sidebar.
@@ -734,7 +753,7 @@ function getNotesStore() {
     notesStore = createNotesStore({
       root,
       getLocale: () => locale,
-      trash: (p) => shell.trashItem(p),
+      trash: (p) => trashKeepingHistory(p),
       untitled: () => t('notes.untitledNote'),
       eol: process.platform === 'win32' ? 'CRLF' : 'LF',
       seed: true
@@ -766,6 +785,8 @@ ipcMain.handle('notes:call', async (_e, method, ...args) => {
   if (!store) return { error: 'noRoot' };
   try {
     const r = await store[method](...args);
+    // Moved notes and projects take their version history along.
+    for (const m of (r && r.moved) || []) await history.follow(m.from, m.to).catch(() => {});
     if (NOTES_WRITES.has(method)) broadcast('notes:changed', { moved: (r && r.moved) || [], deleted: (r && r.deleted) || [] });
     // A tree read also notices templates added or removed in Explorer.
     if (NOTES_WRITES.has(method) || method === 'tree') void refreshTemplates();
@@ -786,7 +807,7 @@ async function chooseNotesRoot(win) {
 }
 async function setNotesRoot(root) {
   const store = createNotesStore({
-    root, getLocale: () => locale, trash: (p) => shell.trashItem(p), untitled: () => t('notes.untitledNote'),
+    root, getLocale: () => locale, trash: (p) => trashKeepingHistory(p), untitled: () => t('notes.untitledNote'),
     eol: process.platform === 'win32' ? 'CRLF' : 'LF', seed: true
   });
   const idx = await store.ensure();
@@ -882,6 +903,7 @@ function buildMenu() {
         cmd('save'),
         cmd('saveAs'),
         cmd('saveAll'),
+        cmd('versionHistory'),
         { type: 'separator' },
         cmd('print'),
         { type: 'separator' },
@@ -1037,6 +1059,8 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     settings = new Settings(path.join(app.getPath('userData'), 'settings.json'));
+    history = createHistory({ getRoot: () => settings.get('notesRoot'), userDataDir: app.getPath('userData') });
+    setTimeout(() => void history.pruneAll().catch(() => {}), 30 * 1000);
     refreshLocale();
     themeStore = createThemeStore({ builtinDir: path.join(__dirname, '../../themes'), userDir: path.join(app.getPath('userData'), 'themes') });
     protocol.handle(SCHEME, (req) => themeStore.serve(req));

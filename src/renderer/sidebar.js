@@ -567,6 +567,7 @@ export function createSidebar(ctx) {
       { label: t('notes.moveTo'), icon: ICONS.move, sub: () => moveTargets(info.folder, (f) => moveTo(p, f)) },
       { label: t('notes.saveAsTemplate'), icon: ICONS.note, act: () => startNewTemplate(p) },
       { label: t('notes.showFile'), icon: ICONS.folder, act: () => void api.showInFolder(p) },
+      { label: t('notes.versionHistory'), icon: ICONS.restore, act: () => void ctx.showNoteHistory(p) },
       { sep: true },
       { label: t('notes.archive'), icon: ICONS.archive, key: 'A', act: () => archiveNote(p) },
       { label: t('notes.delete'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteNote(p) }
@@ -617,6 +618,7 @@ export function createSidebar(ctx) {
       { label: t('notes.open'), icon: ICONS.note, act: () => ctx.openNote(p) },
       { label: t('notes.restoreTo', { project: folderLabel(info.folder) }), icon: ICONS.restore, act: () => restoreNote(p) },
       { label: t('notes.showFile'), icon: ICONS.folder, act: () => void api.showInFolder(p) },
+      { label: t('notes.versionHistory'), icon: ICONS.restore, act: () => void ctx.showNoteHistory(p) },
       { sep: true },
       { label: t('notes.deleteForever'), icon: ICONS.trash, danger: true, key: 'D', act: () => deleteNote(p) }
     ], info.note.title, point);
@@ -642,7 +644,10 @@ export function createSidebar(ctx) {
         sub: () => moveTargets(info ? info.folder : null, (f) => (info ? moveTo(tab.path, f) : ctx.moveTabToProject(tab, f)))
       });
     }
-    if (tab.path) items.push({ label: t('notes.showFile'), icon: ICONS.folder, act: () => void api.showInFolder(tab.path) });
+    if (tab.path) {
+      items.push({ label: t('notes.showFile'), icon: ICONS.folder, act: () => void api.showInFolder(tab.path) });
+      items.push({ label: t('notes.versionHistory'), icon: ICONS.restore, act: () => void ctx.showHistory(tab) });
+    }
     if (info) {
       items.push({ label: t('notes.showInSidebar'), icon: ICONS.sidebar, act: () => reveal(tab.path) });
       if (info.archived) items.push({ label: t('notes.restore'), icon: ICONS.restore, act: () => restoreNote(tab.path) });
