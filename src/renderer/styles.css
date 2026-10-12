@@ -178,7 +178,7 @@ body.no-formatting-bar #toolbar { display: none; }
 .cm-content { padding: 12px 0; caret-color: var(--caret, var(--fg)); }
 .cm-editor .cm-cursorLayer .cm-cursor { border-left-color: var(--caret, var(--fg)); }
 .cm-line { padding: 0 16px; }
-/* A wrapped indented line continues under its own start (editor.js, wrapIndent). --line-pad is the
+/* A wrapped indented line or list item continues under its text (editor.js, wrapIndent). --line-pad is the
    padding a plain line has, measured, since CodeMirror's base theme decides it. */
 .cm-editor .cm-line.cm-wrap-indent { padding-left: calc(var(--line-pad, 6px) + var(--wi) * var(--space-w, 0.5em)); text-indent: calc(var(--wi) * var(--space-w, 0.5em) * -1); }
 .cm-placeholder { color: var(--md-meta); }

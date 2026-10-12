@@ -1,4 +1,4 @@
-import { EditorState, Compartment, Prec, RangeSetBuilder } from '@codemirror/state';
+import { EditorState, Compartment, Prec, RangeSetBuilder, StateEffect } from '@codemirror/state';
 import {
   EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, dropCursor,
   rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder, ViewPlugin, Decoration, scrollPastEnd
@@ -183,11 +183,13 @@ const selectedText = ViewPlugin.fromClass(class {
   }
 }, { decorations: (p) => p.decorations });
 
-// With word wrap on, the continuation of a wrapped indented line starts under the line's own start,
-// not at the left edge, like VS Code's wrappingIndent "same". Each indented line gets padding equal
-// to its leading whitespace and the same negative text-indent, so its first visual line stays put.
-// The width comes from the space width of the editor font (proportional fonts too); a tab counts
-// as tabSize spaces. Leading whitespace only: a list item's continuation goes under its "-".
+// With word wrap on, the continuation of a wrapped indented line starts under the line's own text,
+// not at the left edge, like VS Code's wrappingIndent "same". A list item ("- ", "* ", "1. ",
+// "- [ ] ") continues under its text, not under the marker. Each such line gets padding equal to
+// its prefix and the same negative text-indent, so its first visual line stays put. The prefix
+// width is counted in space widths of the editor font: a tab counts to the next tab stop, a marker
+// character by its own measured width (proportional fonts too).
+const LIST_MARK = /^(?:[-*+]|\d{1,9}[.)])(?: +|\t)(?:\[[ xX]\](?: +|\t))?/;
 const indentDecos = new Map(); // columns -> line decoration
 function indentDeco(cols) {
   let d = indentDecos.get(cols);
@@ -195,12 +197,15 @@ function indentDeco(cols) {
   return d;
 }
 const measureCtx = document.createElement('canvas').getContext('2d');
+const remeasured = StateEffect.define();
 const wrapIndent = ViewPlugin.fromClass(class {
   /** @param {EditorView} view */
   constructor(view) {
     this.font = '';
     this.w = 0;
     this.pad = '';
+    /** @type {Map<string, number>} a character's width in space widths, for the measured font */
+    this.charCols = new Map();
     this.decorations = this.build(view);
     this.measure(view);
     // The font changes from outside the editor (Settings, a theme's CSS variables or style.css, a
@@ -218,7 +223,7 @@ const wrapIndent = ViewPlugin.fromClass(class {
   }
   /** @param {import('@codemirror/view').ViewUpdate} u */
   update(u) {
-    if (u.docChanged || u.viewportChanged) this.decorations = this.build(u.view);
+    if (u.docChanged || u.viewportChanged || u.transactions.some((tr) => tr.effects.some((e) => e.is(remeasured)))) this.decorations = this.build(u.view);
     if (u.geometryChanged) this.measure(u.view);
   }
   /** @param {EditorView} view */
@@ -238,13 +243,34 @@ const wrapIndent = ViewPlugin.fromClass(class {
       },
       write: (m) => {
         if (!m) return;
+        const fontChanged = m.font !== this.font || m.w !== this.w;
         this.font = m.font;
         this.w = m.w;
         this.pad = m.pad;
-        view.contentDOM.style.setProperty('--space-w', `${m.w}px`);
-        if (m.pad) view.contentDOM.style.setProperty('--line-pad', m.pad);
+        // On the scroller, not the content: CodeMirror owns .cm-content's style attribute and
+        // rewrites it (with its tab-size), which dropped these and put the continuation too far left.
+        view.scrollDOM.style.setProperty('--space-w', `${m.w}px`);
+        if (m.pad) view.scrollDOM.style.setProperty('--line-pad', m.pad);
+        if (fontChanged) {
+          this.charCols.clear();
+          // A marker's width in space widths depends on the font: rebuild once this measure is done.
+          setTimeout(() => { if (view.dom.isConnected) view.dispatch({ effects: remeasured.of(null) }); });
+        }
       }
     });
+  }
+  /** @param {string} ch */
+  colsOf(ch) {
+    let c = this.charCols.get(ch);
+    if (c === undefined) {
+      c = 1;
+      if (this.w) {
+        measureCtx.font = this.font;
+        c = Math.round(measureCtx.measureText(ch).width / this.w * 1000) / 1000;
+      }
+      this.charCols.set(ch, c);
+    }
+    return c;
   }
   /** @param {EditorView} view */
   build(view) {
@@ -254,14 +280,20 @@ const wrapIndent = ViewPlugin.fromClass(class {
     for (const { from, to } of view.visibleRanges) {
       for (let pos = from; pos <= to;) {
         const line = doc.lineAt(pos);
-        let cols = 0, i = 0;
-        for (; i < line.length; i++) {
-          const c = line.text.charCodeAt(i);
-          if (c === 32) cols++;
-          else if (c === 9) cols += tabSize - (cols % tabSize);
-          else break;
+        let i = 0;
+        while (i < line.length && (line.text.charCodeAt(i) === 32 || line.text.charCodeAt(i) === 9)) i++;
+        const mark = LIST_MARK.exec(line.text.slice(i, i + 24));
+        const end = i + (mark ? mark[0].length : 0);
+        if (end && end < line.length) {
+          let cols = 0;
+          for (let j = 0; j < end; j++) {
+            const c = line.text.charCodeAt(j);
+            if (c === 32) cols++;
+            else if (c === 9) cols += tabSize - (Math.floor(cols) % tabSize);
+            else cols += this.colsOf(line.text[j]);
+          }
+          b.add(line.from, line.from, indentDeco(Math.round(cols * 1000) / 1000));
         }
-        if (cols && i < line.length) b.add(line.from, line.from, indentDeco(cols));
         pos = line.to + 1;
       }
     }

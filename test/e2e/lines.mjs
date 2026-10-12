@@ -137,37 +137,55 @@ await win.keyboard.press('Alt+ArrowUp');
 await check('Alt+Up i en textfil', 'två\nett');
 
 // Word wrap keeps a wrapped line's indentation (VS Code's wrappingIndent "same"): the second
-// visual line starts under the first non-blank character, for spaces, a tab and a proportional font.
+// visual line starts under the line's text, for spaces, a tab and a proportional font. A list item
+// continues under its text, not under the "-".
 await win.keyboard.press('Control+T');
 await win.waitForFunction(() => window.__notera.active.kind === 'md');
 const long = 'Hitta varför exporten tappar kolumner när filen har fler än tjugo fält och semikolon som avgränsare. Fixade.';
-await reset(`Inledning\n  - ${long}\n\t${long}\n${long}`, 1);
-const wrapOffsets = () => win.evaluate(() => {
+await reset(`Inledning\n  - ${long}\n\t${long}\n${long}\n- ${long}\n- [ ] ${long}\n12. ${long}`, 1);
+// [line, characters before the text the continuation goes under]
+const WRAP_LINES = [[2, 4], [3, 1], [4, 0], [5, 2], [6, 6], [7, 4]];
+const wrapOffsets = () => win.evaluate((lines) => {
   const v = window.__notera.view;
-  return [2, 3, 4].map((n) => {
+  return lines.map(([n, pre]) => {
     const line = v.state.doc.line(n);
     const ws = /^[ \t]*/.exec(line.text)[0].length;
     const first = v.coordsAtPos(line.from + ws);
-    for (let p = line.from + ws + 1; p < line.to; p++) {
+    const text = v.coordsAtPos(line.from + pre);
+    for (let p = line.from + pre + 1; p < line.to; p++) {
       const c = v.coordsAtPos(p, 1);
-      if (c.top > first.top + 2) return { start: Math.round(first.left), wrapped: Math.round(c.left), left: Math.round(v.coordsAtPos(v.state.doc.line(1).from).left) };
+      if (c.top > first.top + 2) return { start: Math.round(first.left), text: Math.round(text.left), wrapped: Math.round(c.left), left: Math.round(v.coordsAtPos(v.state.doc.line(1).from).left) };
     }
     return null;
   });
-});
+}, WRAP_LINES);
 for (const font of [null, 'DejaVu Sans']) {
   if (font) await win.evaluate((f) => window.notera.setSettings({ fontFamily: f }), font);
   await win.waitForTimeout(300);
   if (font) assert.match(await win.evaluate(() => getComputedStyle(window.__notera.view.contentDOM).fontFamily), /DejaVu Sans/);
-  const [sp, tab, flat] = await wrapOffsets();
-  assert.ok(sp && tab && flat, 'all three lines wrap');
-  assert.ok(Math.abs(sp.wrapped - sp.start) <= 1, `spaces: continuation under the "-" (${JSON.stringify(sp)}, ${font || 'default font'})`);
-  assert.ok(Math.abs(tab.wrapped - tab.start) <= 1, `tab: continuation under the text (${JSON.stringify(tab)}, ${font || 'default font'})`);
+  const [sp, tab, flat, item, task, num] = await wrapOffsets();
+  assert.ok(sp && tab && flat && item && task && num, 'all lines wrap');
+  const f = font || 'default font';
+  assert.ok(Math.abs(sp.wrapped - sp.text) <= 1, `indented list item: continuation under the text, not the "-" (${JSON.stringify(sp)}, ${f})`);
+  assert.ok(Math.abs(tab.wrapped - tab.text) <= 1, `tab: continuation under the text (${JSON.stringify(tab)}, ${f})`);
+  assert.ok(Math.abs(item.wrapped - item.text) <= 1, `list item: continuation under the text (${JSON.stringify(item)}, ${f})`);
+  assert.ok(Math.abs(task.wrapped - task.text) <= 1, `task: continuation under the text after [ ] (${JSON.stringify(task)}, ${f})`);
+  assert.ok(Math.abs(num.wrapped - num.text) <= 1, `numbered item: continuation under the text (${JSON.stringify(num)}, ${f})`);
   assert.ok(sp.start > sp.left + 5, 'the indented line itself still starts indented');
+  assert.equal(item.start, item.left, 'a list item\'s first line still starts at the left edge');
   // The first visual line stays where it was: the "-" sits where two spaces after the left edge put it.
   const twoSpaces = await win.evaluate(() => { const v = window.__notera.view; const l = v.state.doc.line(2); return Math.round(v.coordsAtPos(l.from + 2).left - v.coordsAtPos(l.from).left); });
   assert.ok(Math.abs(sp.start - sp.left - twoSpaces) <= 1, `first line not shifted (${JSON.stringify(sp)}, two spaces ${twoSpaces})`);
   assert.equal(flat.wrapped, flat.left, 'an unindented line wraps to the left edge');
+}
+// A theme switch rewrites .cm-content's style attribute; the measured space width must survive it
+// (it lived there until 0.13.1, and a list item's continuation fell left of its "-").
+await win.evaluate(() => window.notera.setSettings({ fontFamily: 'iA Writer Mono S' }));
+for (const theme of ['neon', 'other-guys', 'those-guys', 'default']) {
+  await win.evaluate((id) => window.notera.setSettings({ theme: id }), theme);
+  await win.waitForTimeout(500);
+  const [sp, , , item] = await wrapOffsets();
+  assert.ok(Math.abs(sp.wrapped - sp.text) <= 1 && Math.abs(item.wrapped - item.text) <= 1, `after switching to theme ${theme}: continuation under the text (${JSON.stringify([sp, item])})`);
 }
 await win.screenshot({ path: path.join(root, 'test/e2e/shots/lines-wrap-indent.png') });
 console.log('ok   radbrytning behåller radens indrag');
