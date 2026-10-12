@@ -316,6 +316,7 @@ async function resolveUnsaved(tab) {
 async function closeTab(tab, { asked = false } = {}) {
   if (!asked && tab.dirty && !(await resolveUnsaved(tab))) return false;
   clearTimeout(tab.autosaveTimer);
+  const snap = tabSnapshot(tab);
   await dropDraft(tab);
   // A new note closed before anything was written leaves no empty file behind.
   if (tab.pristine && tab.path && docFor(tab).toString() === tab.pristine) {
@@ -324,12 +325,75 @@ async function closeTab(tab, { asked = false } = {}) {
   } else if (tab.path) void leaveTab(tab);
   const idx = tabs.indexOf(tab);
   if (idx < 0) return true;
+  if (snap && !tab.discarded) {
+    closedTabs.push({ ...snap, draftId: null, index: idx }); // its draft is gone: a reopened tab writes a new one
+    if (closedTabs.length > MAX_CLOSED_TABS) closedTabs.shift();
+  }
   tabs.splice(idx, 1);
   if (tabs.length === 0) newTab();
   else if (tab === active) activateTab(tabs[Math.min(idx, tabs.length - 1)]);
   else renderTabs();
   if (sidebar) sidebar.render();
   return true;
+}
+
+// ---------- reopen closed tabs and windows ----------
+// Tabs closed in this window, newest last, for Ctrl+Shift+T (like Chrome): a file by its path,
+// untitled text by its text, with its place in the tab strip and its cursor. A closed window's
+// tabs go to main the same way, for Ctrl+Shift+N.
+/** @type {{ path?: string, text?: string, kind?: string, draftId?: string | null, anchor: number, head: number, index?: number }[]} */
+const closedTabs = [];
+const MAX_CLOSED_TABS = 25;
+
+/** What a tab needs to come back; null for an untitled tab with nothing written. */
+function tabSnapshot(tab) {
+  const state = tab === active ? view.state : tab.state;
+  const { anchor, head } = state.selection.main;
+  if (tab.path) return { path: tab.path, anchor, head };
+  const text = state.doc.toString();
+  return text.trim() ? { text, kind: tab.kind, draftId: tab.draftId, anchor, head } : null;
+}
+
+/** Open a snapshot as a tab (a file from disk, text as an unsaved untitled tab). Null when the file can't be read. */
+async function restoreTab(c) {
+  let tab, place = typeof c.index === 'number';
+  if (c.path) {
+    tab = findTab(c.path);
+    if (tab) place = false; // already open again: leave it where it is
+    else { await openPaths([c.path]); tab = findTab(c.path); }
+    if (!tab) return null;
+  } else {
+    // Replace a pristine untitled tab, as opening a file does.
+    if (active && !active.path && !active.dirty && docFor(active).length === 0 && tabs.length === 1) tabs = [];
+    tab = makeTab({ text: c.text, kind: c.kind || 'md', draftId: c.draftId || null });
+    tab.savedDoc = tab.state.doc.slice(0, 0); // never saved: stays dirty
+    tab.dirty = true;
+    void writeDraft(tab);
+  }
+  if (place) {
+    tabs.splice(tabs.indexOf(tab), 1);
+    tabs.splice(Math.min(c.index, tabs.length), 0, tab);
+  }
+  activateTab(tab);
+  const len = view.state.doc.length;
+  view.dispatch({ selection: { anchor: Math.min(c.anchor || 0, len), head: Math.min(c.head || 0, len) }, scrollIntoView: true });
+  renderTabs();
+  return tab;
+}
+
+async function reopenClosedTab() {
+  const c = closedTabs.pop();
+  if (!c) return;
+  await restoreTab(c);
+  view.focus();
+}
+
+/** A reopened window: its tabs as they were, the one that was active in front. */
+async function restoreWindow(w) {
+  const back = [];
+  for (const c of w.tabs || []) back.push(await restoreTab(c));
+  const front = back[w.active] || back.find(Boolean);
+  if (front) activateTab(front); else if (!tabs.length) newTab();
 }
 
 /** The tabs Close others / Close all / Close to the right would close, from the tab right-clicked. */
@@ -549,9 +613,13 @@ async function checkExternalChange() {
 }
 
 async function requestClose() {
+  const front = active; // the unsaved-changes questions bring each tab they ask about to the front
   for (const tab of [...tabs]) await flushPending(tab);
   for (const tab of [...tabs]) if (tab.dirty && !(await resolveUnsaved(tab))) return;
-  api.closeConfirmed();
+  // What Reopen closed window brings back.
+  const snaps = tabs.map(tabSnapshot);
+  const list = snaps.filter(Boolean);
+  api.closeConfirmed({ tabs: list, active: Math.max(0, list.indexOf(snaps[tabs.indexOf(front)])) });
 }
 
 // ---------- notes: tabs follow their files ----------
@@ -982,6 +1050,8 @@ async function handleAction(action, payload) {
       ensureEditorVisible(); lineCommands[action](view); view.focus(); break;
     case 'prevTab': cycleTab(-1); break;
     case 'newWindow': api.newWindow(); break;
+    case 'reopenClosedTab': await reopenClosedTab(); break;
+    case 'reopenClosedWindow': api.reopenClosedWindow(); break;
     case 'closeWindow': await api.closeWindow(); break;
     case 'goToTab1': case 'goToTab2': case 'goToTab3': case 'goToTab4': case 'goToTab5':
     case 'goToTab6': case 'goToTab7': case 'goToTab8': case 'goToTab9': {
@@ -1237,6 +1307,7 @@ async function boot() {
     if (d && d.text && d.text.trim()) newTab({ text: d.text, kind: d.kind || 'md', draftId: d.id });
     else newTab();
   }
+  else if (b.reopen) await restoreWindow(b.reopen);
   else if (restored) activateTab(tabs[0]);
   else newTab();
   await sidebar.refresh();

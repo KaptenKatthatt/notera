@@ -11,7 +11,7 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 - Opens and saves `.md` and `.txt` files. The file extension decides the mode; the status bar button switches it by hand.
 - Save as opens in the current file's folder. A new file opens in the folder you last used.
 - Remembers encoding (UTF-8, UTF-8 with BOM, UTF-16 LE/BE, ANSI) and line endings (CRLF or LF) per file and writes them back unchanged. The encoding can be changed from the status bar.
-- Tabs with unsaved-change dots, a save prompt on close, and reload prompts when a file changed on disk. The mouse wheel scrolls the tab strip when the tabs do not fit. A tab's right-click menu closes the others, the ones to the right, or all of them; unsaved tabs are asked about first, and closing all leaves one empty tab.
+- Tabs with unsaved-change dots, a save prompt on close, and reload prompts when a file changed on disk. The mouse wheel scrolls the tab strip when the tabs do not fit. A tab's right-click menu closes the others, the ones to the right, or all of them; unsaved tabs are asked about first, and closing all leaves one empty tab. File > Reopen closed tab (Ctrl+Shift+T) brings back the tabs closed in the window, newest first, at their place and cursor; untitled text closed without saving comes back unsaved. File > Reopen closed window (Ctrl+Shift+N) brings back a closed window with its tabs, while Notera runs.
 - Markdown formatting: bold, italic, strikethrough, headings, bullet/numbered/task lists, quote, inline code, code block, link, horizontal rule, table. Each toggles on and off.
 - Three views for Markdown: Write (Skriv), Split (Delad) and Read (Läs, the rendered preview). Preview links open in the browser.
 - A command palette (Ctrl+Shift+P, as in VS Code) with every command and setting, a theme picker that previews each theme as you move through the list, and Open settings (JSON) for editing settings.json by hand.
@@ -55,7 +55,8 @@ Notera can keep your notes in one folder, sorted into projects. Choose the folde
 
 | Action | Keys |
 | --- | --- |
-| New tab (a note in Unsorted once a notes folder is chosen) / new window | Ctrl+T / Ctrl+N (also Ctrl+Shift+N) |
+| New tab (a note in Unsorted once a notes folder is chosen) / new window | Ctrl+T / Ctrl+N |
+| Reopen closed tab / reopen closed window (like Chrome) | Ctrl+Shift+T / Ctrl+Shift+N |
 | New note in the current project | Ctrl+Alt+N |
 | Sidebar / search notes | Ctrl+Shift+B / Ctrl+Shift+F |
 | Close tab (or the window, see Settings) | Ctrl+W |
@@ -105,6 +106,7 @@ node test/e2e/update.mjs    # update flow against a local feed (NOTERA_UPDATE_FE
 node test/e2e/notes.mjs     # projects in the sidebar: create, rename, drag, move, archive, undo, search, first run
 node test/e2e/history.mjs   # version history: kept on save, wipe, leave, delete; the dialog; moves
 node test/e2e/nowipe.mjs    # clicking the tab or note already open never loses text
+node test/e2e/reopen.mjs    # Ctrl+Shift+T / Ctrl+Shift+N reopen closed tabs and windows
 npm run icon       # regenerate build/icon.png + icon.ico from the SVG in scripts/make-icon.js
 ```
 
