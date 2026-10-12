@@ -19,7 +19,10 @@ const COMMANDS = [
   { id: 'newProject', cat: 'file', label: 'menu.newProject', keys: [], global: true },
   { id: 'archiveNote', cat: 'file', label: 'menu.archiveNote', keys: [], global: true },
   { id: 'chooseNotesFolder', cat: 'file', label: 'menu.chooseNotesFolder', keys: [], global: true },
-  { id: 'newWindow', cat: 'file', label: 'menu.newWindow', keys: ['Ctrl+N', 'Ctrl+Shift+N'], global: true },
+  { id: 'newWindow', cat: 'file', label: 'menu.newWindow', keys: ['Ctrl+N'], global: true },
+  // Like Chrome's Ctrl+Shift+T; Ctrl+Shift+N was a second key for New window until 0.14.
+  { id: 'reopenClosedTab', cat: 'file', label: 'menu.reopenClosedTab', keys: ['Ctrl+Shift+T'], global: true },
+  { id: 'reopenClosedWindow', cat: 'file', label: 'menu.reopenClosedWindow', keys: ['Ctrl+Shift+N'], global: true },
   { id: 'open', cat: 'file', label: 'menu.open', keys: ['Ctrl+O'], global: true },
   { id: 'save', cat: 'file', label: 'menu.save', keys: ['Ctrl+S'], global: true },
   { id: 'saveAs', cat: 'file', label: 'menu.saveAs', keys: ['Ctrl+Shift+S'], global: true },

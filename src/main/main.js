@@ -28,6 +28,7 @@ let locale;
 app.setAppUserModelId('se.jonasolson.notera');
 const pendingFiles = new Map(); // webContents.id -> string[]
 const pendingTabs = new Map(); // webContents.id -> draftId (flik lossad till nytt fönster)
+const pendingSessions = new Map(); // webContents.id -> a closed window's tabs (Reopen closed window)
 const closeConfirmed = new WeakSet(); // windows whose renderer has settled unsaved work, so close() may go ahead
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
 let updater;
@@ -386,11 +387,23 @@ function applyMenuBar(win, writing) {
 
 function draftsDir() { return path.join(app.getPath('userData'), 'drafts'); }
 
-function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null) {
+// Windows closed in this run, newest last, for File > Reopen closed window (Ctrl+Shift+N). Each
+// holds the tabs it had: files by path, untitled text as text (with its draft, if one is on disk).
+/** @type {{ tabs: any[], active: number, bounds: any }[]} */
+const closedWindows = [];
+const MAX_CLOSED_WINDOWS = 10;
+
+function reopenClosedWindow() {
+  const w = closedWindows.pop();
+  if (w) createWindow([], null, null, w);
+}
+
+function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null, reopen = null) {
   const srcBounds = sourceWin && !sourceWin.isDestroyed() ? sourceWin.getNormalBounds() : null;
-  const bounds = srcBounds
-    ? { x: srcBounds.x + 32, y: srcBounds.y + 32, width: srcBounds.width, height: srcBounds.height }
-    : (settings.get('windowBounds') || {});
+  const bounds = reopen && reopen.bounds ? reopen.bounds
+    : srcBounds
+      ? { x: srcBounds.x + 32, y: srcBounds.y + 32, width: srcBounds.width, height: srcBounds.height }
+      : (settings.get('windowBounds') || {});
   const win = new BrowserWindow({
     width: bounds.width || 1000,
     height: bounds.height || 700,
@@ -414,6 +427,7 @@ function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null)
   applyMenuBar(win, settings.get('writingMode'));
   pendingFiles.set(win.webContents.id, filesToOpen);
   if (pendingDraftId) pendingTabs.set(win.webContents.id, pendingDraftId);
+  if (reopen) pendingSessions.set(win.webContents.id, reopen);
 
   win.webContents.on('context-menu', (_e, p) => showEditContextMenu(win, p));
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -453,10 +467,12 @@ ipcMain.handle('app:bootstrap', (e) => {
   pendingFiles.delete(e.sender.id);
   const pendingTab = pendingTabs.get(e.sender.id) || null;
   pendingTabs.delete(e.sender.id);
+  const reopen = pendingSessions.get(e.sender.id) || null;
+  pendingSessions.delete(e.sender.id);
   const restoreDrafts = !draftsClaimed;
   draftsClaimed = true;
   return {
-    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, pendingTab, platform: process.platform, isDev,
+    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, pendingTab, reopen, platform: process.platform, isDev,
     dark: nativeTheme.shouldUseDarkColors, theme: themeMessage(), restoreDrafts, update: updater ? { ...updater.getState(), reason: updater.reason() } : null
   };
 });
@@ -706,11 +722,22 @@ ipcMain.handle('draft:delete', async (_e, id) => {
 });
 
 ipcMain.on('window:setTitle', (e, title) => { const w = BrowserWindow.fromWebContents(e.sender); if (w) w.setTitle(title); });
-ipcMain.on('window:closeConfirmed', (e) => {
+ipcMain.on('window:closeConfirmed', (e, session) => {
   const w = BrowserWindow.fromWebContents(e.sender);
-  if (w) { closeConfirmed.add(w); w.close(); }
+  if (!w) return;
+  const tabs = session && Array.isArray(session.tabs)
+    ? session.tabs.filter((x) => x && (typeof x.path === 'string' ? x.path : typeof x.text === 'string' && x.text.trim()))
+    : [];
+  if (tabs.length) {
+    const b = w.getNormalBounds();
+    closedWindows.push({ tabs, active: Math.max(0, Math.min(tabs.length - 1, Number(session.active) || 0)), bounds: { ...b, maximized: w.isMaximized() } });
+    if (closedWindows.length > MAX_CLOSED_WINDOWS) closedWindows.shift();
+  }
+  closeConfirmed.add(w);
+  w.close();
 });
 ipcMain.on('window:new', () => createWindow());
+ipcMain.on('window:reopenClosed', () => reopenClosedWindow());
 ipcMain.on('tab:detach', (e, p = {}) => {
   const src = BrowserWindow.fromWebContents(e.sender);
   const files = typeof p.path === 'string' && p.path ? [p.path] : [];
@@ -890,6 +917,8 @@ function buildMenu() {
         cmd('newNoteInProject', { enabled: !!s.notesRoot }),
         cmd('newProject', { enabled: !!s.notesRoot }),
         cmd('newWindow', { click: () => createWindow() }),
+        cmd('reopenClosedTab'),
+        cmd('reopenClosedWindow', { click: () => reopenClosedWindow() }),
         cmd('open'),
         { label: t('menu.newFromTemplate'), submenu: templateItems('newFromTemplate') },
         { label: t('menu.applyTemplate'), submenu: templateItems('applyTemplate') },
