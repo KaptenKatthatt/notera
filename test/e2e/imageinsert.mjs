@@ -138,6 +138,8 @@ await win2.click('.cm-content');
 await win2.keyboard.press('Control+V');
 await win2.waitForFunction(() => { const el = document.querySelector('#notes-toast'); return el && !el.hidden && el.textContent.includes('Spara texten till en fil först'); });
 assert.equal(await win2.evaluate(() => window.__notera.view.state.doc.toString()), 'Bara text.\n');
+// The draft tab is unsaved: closing would ask in a native dialog and never return, so drop dirtiness first.
+await win2.evaluate(() => { for (const t of window.__notera.tabs) { t.dirty = false; t.savedDoc = (t === window.__notera.active ? window.__notera.view.state : t.state).doc; } });
 await app2.close();
 console.log('ok   utan anteckningsmapp: inget händer, en toast förklarar');
 console.log('imageinsert OK; screenshots in ' + shots);
