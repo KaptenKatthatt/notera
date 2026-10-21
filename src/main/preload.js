@@ -67,6 +67,10 @@ contextBridge.exposeInMainWorld('notera', {
     preview: (key) => ipcRenderer.invoke('vscode:preview', key),
     importTheme: (key) => ipcRenderer.invoke('vscode:import', key)
   },
+  images: {
+    save: (args) => ipcRenderer.invoke('images:save', args),
+    pick: () => ipcRenderer.invoke('images:pick')
+  },
   history: {
     list: (p) => ipcRenderer.invoke('history:list', p),
     read: (p, id) => ipcRenderer.invoke('history:read', p, id),

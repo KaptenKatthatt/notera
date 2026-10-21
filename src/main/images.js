@@ -7,6 +7,7 @@
 const path = require('path');
 const fsp = require('fs/promises');
 const { IMAGE_EXT_RE, pathFromUrl } = require('../shared/imageLinks');
+const { writeFileAtomic } = require('./atomicWrite');
 
 const MIME = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
@@ -68,4 +69,32 @@ function createImageServer({ roots }) {
   return { serve, allow, fileFor };
 }
 
-module.exports = { createImageServer, isInside, MIME };
+const lower = (s) => String(s).toLowerCase();
+/** The first free `<slug>-<n>.<ext>` in a folder, counting from 1. */
+async function uniqueImageName(dir, slug, ext) {
+  let taken = [];
+  try { taken = (await fsp.readdir(dir)).map(lower); } catch { /* new folder */ }
+  for (let n = 1; ; n++) {
+    const name = `${slug}-${n}.${ext}`;
+    if (!taken.includes(lower(name))) return name;
+  }
+}
+
+const SAVE_EXT = new Set(['jpg', 'gif', 'svg', 'png', 'webp']);
+/**
+ * Write an image into a note's images folder under a name made from the note's title. The window
+ * has already converted what should be JPEG; main only names and writes.
+ * @param {{ dir: string, slug: string, ext: string, bytes: Uint8Array | Buffer }} opts
+ * @returns {Promise<string>} the file's name
+ */
+async function saveImage({ dir, slug, ext, bytes }) {
+  const e = lower(ext).replace(/^\./, '').replace(/^jpeg$/, 'jpg');
+  if (!SAVE_EXT.has(e)) throw new Error(`Not an image type Notera writes: ${ext}`);
+  if (!(bytes instanceof Uint8Array) || !bytes.length) throw new Error('Empty image');
+  await fsp.mkdir(dir, { recursive: true });
+  const name = await uniqueImageName(dir, slug, e);
+  await writeFileAtomic(path.join(dir, name), Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+  return name;
+}
+
+module.exports = { createImageServer, isInside, MIME, uniqueImageName, saveImage };

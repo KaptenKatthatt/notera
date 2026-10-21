@@ -489,3 +489,28 @@ test('datumsortering: datumet i rubriken, nyast först, fästa överst', async (
   await store.setProjectOptions('Standupanteckningar', { sort: 'manual' });
   assert.equal((await store.tree()).projects[0].sort, 'manual');
 });
+
+test('images folder: named once in the UI language, kept in the index, reserved as a project name', async () => {
+  const { store, root, read } = setup('sv');
+  await store.tree();
+  fs.mkdirSync(path.join(root, 'Enlantis'));
+  const note = path.join(root, 'Enlantis', '2026-10-21 Login error.md');
+  fs.writeFileSync(note, '# Login error\n');
+  assert.equal(await store.imagesDir(path.join(root, 'elsewhere.md')), null, 'not a note');
+  assert.equal(await store.imagesDir(path.join(os.tmpdir(), 'x.md')), null, 'outside the notes folder');
+  const r = await store.imagesDir(note);
+  assert.deepEqual(r, { dir: path.join(root, 'Enlantis', 'bilder'), name: 'bilder' });
+  assert.equal(JSON.parse(read('.notera.json')).images, 'bilder');
+  assert.deepEqual(await store.createProject('bilder'), { error: 'notes.nameReserved' });
+  // An archived note's images live under the archive's copy of the project.
+  const a = await store.archiveNote(note);
+  assert.deepEqual(await store.imagesDir(a.path), { dir: path.join(root, 'Arkiv', 'Enlantis', 'bilder'), name: 'bilder' });
+  // A project already called bilder when the name is first needed keeps it; the images folder gets another name.
+  const en = setup('en');
+  await en.store.tree();
+  fs.mkdirSync(path.join(en.root, 'images'));
+  fs.mkdirSync(path.join(en.root, 'P'));
+  const n2 = path.join(en.root, 'P', 'x.md');
+  fs.writeFileSync(n2, '# x\n');
+  assert.equal((await en.store.imagesDir(n2)).name, 'Notera images');
+});

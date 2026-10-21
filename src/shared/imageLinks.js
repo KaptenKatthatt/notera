@@ -93,4 +93,52 @@ function imageLine(lineText) {
   return m ? { alt: m[1], href: m[2], target: hrefTarget(m[2]) } : null;
 }
 
-module.exports = { IMAGE_SCHEME, IMAGE_EXT_RE, IMAGE_LINE_RE, hasScheme, hrefTarget, dirOf, baseOf, resolveImagePath, imageUrl, pathFromUrl, imageLinks, imageLine };
+/**
+ * A file name stem from a note's title: letters (åäö too) and digits kept, lower-cased, everything
+ * else a single dash. Empty when the title has nothing to keep.
+ */
+function slugOf(title) {
+  return String(title || '').normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+}
+
+const META_LINE_RE = /^(?:Projekt|Project): .* · (?:Skapad|Created): /;
+
+/**
+ * Where an image line goes when the cursor is at `pos` in `doc`: on a line of its own, with a blank
+ * line before and after when the neighbours are not blank, never inside a note's header, and the
+ * cursor on the blank line after it. Returns the change and the cursor position after it.
+ * @param {string} doc @param {number} pos @param {string} text the `![alt](link)` line
+ */
+function insertImageText(doc, pos, text) {
+  const lines = doc.split('\n');
+  const starts = [];
+  for (let i = 0, p = 0; i < lines.length; i++) { starts.push(p); p += lines[i].length + 1; }
+  let p = Math.max(0, Math.min(pos, doc.length));
+  let ln = starts.findIndex((s, i) => i === starts.length - 1 || starts[i + 1] > p);
+  // The heading and the header line stay first: an image pasted there goes under the header.
+  if (ln <= 1 && lines.length >= 2 && /^#\s/.test(lines[0]) && META_LINE_RE.test(lines[1])) { ln = 1; p = starts[1] + lines[1].length; }
+  const line = lines[ln];
+  const lineStart = starts[ln];
+  const lineEnd = lineStart + line.length;
+  const last = ln === lines.length - 1;
+  const prevBlank = ln === 0 || lines[ln - 1].trim() === '';
+  const nextBlank = !last && lines[ln + 1].trim() === '';
+  const before = prevBlank ? '' : '\n';
+  if (line.trim() === '') {
+    // On a blank line: the image takes the line; a blank line follows (the next one, or a new one).
+    const insert = before + text + (nextBlank ? '' : '\n');
+    return { from: lineStart, to: lineEnd, insert, cursor: lineStart + insert.length + (nextBlank ? 1 : 0) };
+  }
+  if (p === lineEnd) {
+    const insert = '\n\n' + text + (nextBlank ? '' : '\n');
+    return { from: p, to: p, insert, cursor: p + insert.length + (nextBlank ? 1 : 0) };
+  }
+  if (p === lineStart) {
+    const insert = before + text + '\n\n';
+    return { from: p, to: p, insert, cursor: p + insert.length - 1 };
+  }
+  const insert = '\n\n' + text + '\n\n';
+  return { from: p, to: p, insert, cursor: p + insert.length - 1 };
+}
+
+module.exports = { IMAGE_SCHEME, slugOf, insertImageText, IMAGE_EXT_RE, IMAGE_LINE_RE, hasScheme, hrefTarget, dirOf, baseOf, resolveImagePath, imageUrl, pathFromUrl, imageLinks, imageLine };

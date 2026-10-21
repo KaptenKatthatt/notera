@@ -267,8 +267,18 @@ for (let n = 1; n <= 9; n++) {
 en.templates = { standupTitle: 'Standup', doneLast: 'Done since last', blockers: 'Blockers', nextUp: 'To do for next meeting' };
 sv.templates = { standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 'Blockers', nextUp: 'Göra till nästa möte' };
 
-Object.assign(en.menu, { versionHistory: 'Version history…' });
-Object.assign(sv.menu, { versionHistory: 'Versionshistorik…' });
+Object.assign(en.menu, { versionHistory: 'Version history…', insertImage: 'Insert image…' });
+Object.assign(sv.menu, { versionHistory: 'Versionshistorik…', insertImage: 'Infoga bild…' });
+Object.assign(en.dialog, { imageFiles: 'Images', insertImageTitle: 'Insert image' });
+Object.assign(sv.dialog, { imageFiles: 'Bilder', insertImageTitle: 'Infoga bild' });
+Object.assign(en.ui, {
+  imageAlt: 'Image {n}', imageSaveFirst: 'Save the text to a file first: images are kept next to files.',
+  imageUnsupported: '{name} is not an image Notera can read.', imageFailed: 'Could not add the image: {error}'
+});
+Object.assign(sv.ui, {
+  imageAlt: 'Bild {n}', imageSaveFirst: 'Spara texten till en fil först: bilder sparas bredvid filer.',
+  imageUnsupported: '{name} är ingen bild Notera kan läsa.', imageFailed: 'Bilden kunde inte läggas till: {error}'
+});
 
 en.history = {
   title: 'Version history', of: 'Earlier versions of {name}', restore: 'Restore this version', showFolder: 'Show folder',

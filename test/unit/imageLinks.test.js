@@ -43,3 +43,39 @@ test('image links: the links in a text and a line that is one image', () => {
   assert.equal(L.hasScheme('c:\\x'), false, 'a drive letter is not a scheme');
   assert.equal(L.hasScheme('https://x'), true);
 });
+
+test('image links: a file name stem from the title', () => {
+  assert.equal(L.slugOf('Login error'), 'login-error');
+  assert.equal(L.slugOf('  PBI-1234: Skärmdump åäö/ÅÄÖ!  '), 'pbi-1234-skärmdump-åäö-åäö');
+  assert.equal(L.slugOf('???'), '');
+  assert.equal(L.slugOf(''), '');
+  assert.equal(L.slugOf('a'.repeat(60)).length, 40);
+  assert.equal(L.slugOf('2026-10-21 Standup'), '2026-10-21-standup');
+});
+
+test('image links: where the image line goes', () => {
+  const img = '![Bild 1](bilder/a.jpg)';
+  const apply = (doc, pos) => { const r = L.insertImageText(doc, pos, img); const out = doc.slice(0, r.from) + r.insert + doc.slice(r.to); return { out, cursor: r.cursor, at: out.slice(0, r.cursor) + '|' + out.slice(r.cursor) }; };
+  // On a blank line between paragraphs: takes the line, the next blank line follows.
+  assert.equal(apply('a\n\nb', 2).at, `a\n\n${img}\n|\nb`);
+  // On a blank line with a blank line after it: no extra blank line, cursor on the next (blank) line.
+  assert.equal(apply('a\n\n\nb', 2).at, `a\n\n${img}\n|\nb`);
+  // On the empty last line.
+  assert.equal(apply('a\n', 2).at, `a\n\n${img}\n|`);
+  // Empty document.
+  assert.equal(apply('', 0).at, `${img}\n|`);
+  // At the end of a text line: a blank line, the image, a blank line.
+  assert.equal(apply('abc\ndef', 3).at, `abc\n\n${img}\n|\ndef`);
+  assert.equal(apply('abc', 3).at, `abc\n\n${img}\n|`);
+  // At the start of a text line.
+  assert.equal(apply('abc\ndef', 4).at, `abc\n\n${img}\n|\ndef`);
+  assert.equal(apply('abc', 0).at, `${img}\n|\nabc`);
+  // In the middle: the line is split.
+  assert.equal(apply('abcdef', 3).at, `abc\n\n${img}\n|\ndef`);
+  // On the heading or header line of a note: under the header.
+  const note = '# T\nProjekt: P · Skapad: 2026-01-01 10:00\n\ntext';
+  assert.equal(apply(note, 1).at, `# T\nProjekt: P · Skapad: 2026-01-01 10:00\n\n${img}\n|\ntext`);
+  assert.equal(apply(note, 10).at, apply(note, 1).at);
+  // A new note (header, then one empty line): the image under the header, the empty line stays after the cursor.
+  assert.equal(apply('# T\nProjekt: P · Skapad: 2026-01-01 10:00\n\n', 1).at, `# T\nProjekt: P · Skapad: 2026-01-01 10:00\n\n${img}\n|\n`);
+});

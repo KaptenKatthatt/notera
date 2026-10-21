@@ -11,7 +11,10 @@
 //     Enlantis/2026-09-18 PBI-1234 Login error.md
 //     Arkiv/Enlantis/2026-06-02 Old deploy list.md
 //     Mallar/Standup.md
+//     Enlantis/bilder/login-error-1.jpg
 //
+// bilder (images) inside a project (or the inbox, or an archived project) holds the images its notes
+// link to; its name is fixed the first time it is needed and kept in the index (see images.js).
 // Mallar (Templates) holds the templates: one .md file per template, named after it. It is not a
 // project. Every notes folder is set up once (the index remembers it): the templates folder with
 // Standup.md in it and the project Standupanteckningar, which uses that template and sorts its notes
@@ -32,8 +35,8 @@ const { makeT } = require('../shared/strings');
 const INDEX_FILE = '.notera.json';
 const NOTE_EXT = /\.(md|markdown|txt)$/i;
 const FOLDER_NAMES = {
-  sv: { inbox: 'Osorterat', archive: 'Arkiv', templates: 'Mallar', standup: 'Standupanteckningar' },
-  en: { inbox: 'Unsorted', archive: 'Archive', templates: 'Templates', standup: 'Standup notes' }
+  sv: { inbox: 'Osorterat', archive: 'Arkiv', templates: 'Mallar', standup: 'Standupanteckningar', images: 'bilder' },
+  en: { inbox: 'Unsorted', archive: 'Archive', templates: 'Templates', standup: 'Standup notes', images: 'images' }
 };
 const STANDUP_TEMPLATE = 'Standup';
 const MAX_UNDO = 30;
@@ -109,6 +112,8 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       archivedProjects: arr(raw.archivedProjects),
       // null until the folder is set up: a folder of that name is then still an ordinary project.
       templates: isSegment(raw.templates) ? raw.templates : null,
+      // null until an image is added: the name is then chosen in the UI language and kept.
+      images: isSegment(raw.images) ? raw.images : null,
       options,
       seeded: raw.seeded === true
     };
@@ -136,6 +141,16 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     idx.templates = has(taken, names.templates) ? `Notera ${names.templates}` : names.templates;
     await fsp.mkdir(path.join(root, idx.templates), { recursive: true });
     return idx.templates;
+  }
+
+  /** The images folder's name, chosen the first time an image is added; a project of that name keeps it. */
+  async function claimImagesFolder(idx) {
+    if (idx.images) return idx.images;
+    const names = FOLDER_NAMES[getLocale()] || FOLDER_NAMES.en;
+    const taken = await projectDirs(idx);
+    idx.images = has(taken, names.images) ? `Notera ${names.images}` : names.images;
+    await saveIndex(idx);
+    return idx.images;
   }
 
   /**
@@ -703,7 +718,8 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   // ---------- projects ----------
   async function nameCheck(idx, name, except = null) {
     const taken = (await projectDirs(idx)).filter((n) => !except || lower(n) !== lower(except));
-    return H.projectNameError(name, { taken, reserved: [idx.inbox, idx.archive] });
+    const names = FOLDER_NAMES[getLocale()] || FOLDER_NAMES.en;
+    return H.projectNameError(name, { taken, reserved: [idx.inbox, idx.archive, idx.images || names.images] });
   }
 
   async function createProject(name) {
@@ -945,6 +961,19 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     });
   }
 
+  /**
+   * The images folder of a note (active or archived): its path and the folder name a link uses,
+   * `{ dir, name }`. Null for a path that is no note in this notes folder.
+   */
+  async function imagesDir(p) {
+    return run(async () => {
+      const idx = await loadIndex();
+      if (!locate(idx, p)) return null;
+      const name = await claimImagesFolder(idx);
+      return { dir: path.join(path.dirname(p), name), name };
+    });
+  }
+
   async function countNotes(name, { archived = false } = {}) {
     const idx = await loadIndex();
     return (await listNotes(archived ? archiveDirOf(idx, name) : dirOf(name))).length;
@@ -953,7 +982,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
   return {
     root, ensure, tree, search, createNote, renameForTitle, renameNote, moveNote, reorderNote, setPinned, archiveNote, restoreNote,
     deleteNote, discardEmpty, createProject, renameProject, reorderProject, setCollapsed, archiveProject, restoreProject,
-    deleteProject, countNotes, undo, locate: async (p) => locate(await loadIndex(), p),
+    deleteProject, countNotes, undo, locate: async (p) => locate(await loadIndex(), p), imagesDir,
     setProjectOptions, templates, readTemplate, createTemplate, saveAsTemplate, renameTemplate, deleteTemplate,
     templateOf: async (p) => templateOf(await loadIndex(), p)
   };
