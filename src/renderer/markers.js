@@ -1,4 +1,4 @@
-// Omawrite-style marker hiding: inline Markdown syntax (** * ~~ ` and the [ ]( url ) of links)
+// Omawrite-style marker hiding: inline Markdown syntax (** * ~~ ` and the [ ]( url ) of links and images)
 // collapses to zero width on every line except the one the cursor is on, so the text reads
 // like prose while it stays plain Markdown underneath.
 import { ViewPlugin, Decoration } from '@codemirror/view';
@@ -21,7 +21,7 @@ function build(view) {
       to,
       enter: (n) => {
         if (!HIDDEN_NODES.has(n.name) || n.from === n.to || n.from < last) return;
-        if ((n.name === 'LinkMark' || n.name === 'URL') && n.node.parent?.name !== 'Link') return;
+        if ((n.name === 'LinkMark' || n.name === 'URL') && n.node.parent?.name !== 'Link' && n.node.parent?.name !== 'Image') return;
         if (n.name === 'CodeMark' && n.node.parent?.name !== 'InlineCode') return; // keep ``` fences visible
         if (onCursorLine(n.from, n.to)) return;
         builder.add(n.from, n.to, hidden);

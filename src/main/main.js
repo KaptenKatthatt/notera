@@ -16,6 +16,8 @@ const { createThemeStore, describeError, SCHEME } = require('./themes');
 const vscode = require('./vscodeImport');
 const { createNotesStore } = require('./notes');
 const { createHistory } = require('./history');
+const { createImageServer } = require('./images');
+const { IMAGE_SCHEME } = require('../shared/imageLinks');
 
 const isDev = !app.isPackaged;
 // Tests point this at a scratch directory so they never touch real settings.
@@ -35,12 +37,17 @@ let updater;
 let notesStore = null;
 let history = null; // version history of every file written from the editor (history.js)
 let themeStore = null;
+let images = null; // serves the images notes link to (images.js)
 /** The active theme as the window paints it, and the last load error if any. */
 let themeState = { payload: null, error: null };
 
-// Theme files (fonts, images, style.css) reach the window over notera-theme://<id>/<path>.
-// Registered before the app is ready, as Electron requires for privileged schemes.
-protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
+// Theme files (fonts, images, style.css) reach the window over notera-theme://<id>/<path>, and the
+// images notes link to over notera-file://img/<path>. Registered before the app is ready, as
+// Electron requires for privileged schemes.
+protocol.registerSchemesAsPrivileged([
+  { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
+  { scheme: IMAGE_SCHEME, privileges: { standard: true, secure: true } }
+]);
 
 function parseFileArgs(argv, cwd) {
   const args = process.defaultApp ? argv.slice(2) : argv.slice(1);
@@ -602,6 +609,7 @@ ipcMain.handle('file:read', async (_e, p) => {
     const platformDefault = process.platform === 'win32' ? 'CRLF' : 'LF';
     const r = files.readBuffer(buf, platformDefault);
     settings.addRecent(p);
+    images.allow(p);
     buildMenu();
     return { ok: true, path: p, name: path.basename(p), kind: files.kindForPath(p), mtimeMs: st.mtimeMs, ...r };
   } catch (err) {
@@ -622,7 +630,7 @@ ipcMain.handle('file:write', async (_e, { path: p, text, encoding, eol }) => {
     // settings.json saved by hand is applied, not added to recent files: addRecent would write the
     // settings still in memory straight over the file that was just saved.
     const settingsReload = isSettings ? reloadSettingsFile() : null;
-    if (!isSettings) settings.addRecent(p);
+    if (!isSettings) { settings.addRecent(p); images.allow(p); }
     buildMenu();
     return { ok: true, path: p, name: path.basename(p), kind: files.kindForPath(p), mtimeMs: (await fs.stat(p)).mtimeMs, settingsReload };
   } catch (err) {
@@ -1093,6 +1101,8 @@ if (!gotLock) {
     refreshLocale();
     themeStore = createThemeStore({ builtinDir: path.join(__dirname, '../../themes'), userDir: path.join(app.getPath('userData'), 'themes') });
     protocol.handle(SCHEME, (req) => themeStore.serve(req));
+    images = createImageServer({ roots: () => [settings.get('notesRoot')] });
+    protocol.handle(IMAGE_SCHEME, (req) => images.serve(req));
     loadActiveTheme();
     nativeTheme.themeSource = MODES.includes(settings.get('mode')) ? settings.get('mode') : 'system';
     nativeTheme.on('updated', () => broadcastTheme());

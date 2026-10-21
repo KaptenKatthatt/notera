@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' notera-theme:; img-src 'self' data: https: notera-theme:; font-src 'self' data: notera-theme:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' notera-theme:; img-src 'self' data: https: notera-theme: notera-file:; font-src 'self' data: notera-theme:;" />
   <title>Notera</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -234,6 +234,10 @@
 
   <div id="fx-overlay" aria-hidden="true"></div>
 
+  <div id="lightbox" role="dialog" aria-modal="true" hidden>
+    <button type="button" id="lightbox-close" data-i18n-title="ui.close" title="Close" aria-label="Close">×</button>
+    <div class="lb-scroll"><img id="lightbox-img" alt="" draggable="false" /></div>
+  </div>
   <div id="drop-overlay" hidden><span data-i18n="ui.dropHint">Drop files to open them</span></div>
   <div id="print-area" aria-hidden="true"></div>
 
