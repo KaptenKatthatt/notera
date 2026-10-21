@@ -4,6 +4,7 @@ import {
   rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder, ViewPlugin, Decoration, scrollPastEnd
 } from '@codemirror/view';
 import { hideMarkers } from './markers.js';
+import { imagePreviews } from './images.js';
 import { headings } from './headings.js';
 import { typingEffects } from './effects.js';
 import { searchCount } from './searchCount.js';
@@ -26,7 +27,8 @@ export const compartments = {
   markers: new Compartment(),
   placeholder: new Compartment(),
   readOnly: new Compartment(),
-  spellcheck: new Compartment()
+  spellcheck: new Compartment(),
+  images: new Compartment()
 };
 
 // ---------- project notes: the "Projekt: X · Skapad: …" header line ----------
@@ -130,6 +132,7 @@ export function baseExtensions(opts) {
     compartments.phrases.of(EditorState.phrases.of(opts.phrases || {})),
     compartments.extraKeys.of(keymap.of(opts.extraKeys || [])),
     compartments.markers.of(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
+    compartments.images.of(imagesExt(opts)),
     compartments.placeholder.of(placeholder(opts.placeholder || '')),
     compartments.readOnly.of(readOnlyExt(opts.readOnly)),
     compartments.spellcheck.of(spellcheckExt(opts.spellcheck)),
@@ -302,6 +305,9 @@ const wrapIndent = ViewPlugin.fromClass(class {
 }, { decorations: (v) => v.decorations });
 const wrapExt = [EditorView.lineWrapping, wrapIndent];
 
+// The image under its line (images.js) goes with the hidden markers: both show the text as it reads.
+function imagesExt(opts) { return opts.kind === 'md' && opts.hideMarkers ? imagePreviews(opts.imageBase || null) : []; }
+
 function spellcheckExt(on) { return EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false' }); }
 
 function readOnlyExt(on) { return on ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []; }
@@ -324,6 +330,7 @@ export function reconfigureEffects(opts) {
     compartments.phrases.reconfigure(EditorState.phrases.of(opts.phrases || {})),
     compartments.extraKeys.reconfigure(keymap.of(opts.extraKeys || [])),
     compartments.markers.reconfigure(opts.kind === 'md' && opts.hideMarkers ? hideMarkers : []),
+    compartments.images.reconfigure(imagesExt(opts)),
     compartments.placeholder.reconfigure(placeholder(opts.placeholder || '')),
     compartments.readOnly.reconfigure(readOnlyExt(opts.readOnly)),
     compartments.spellcheck.reconfigure(spellcheckExt(opts.spellcheck))

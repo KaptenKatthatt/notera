@@ -18,6 +18,8 @@ import { createDialogs } from './dialogs.js';
 import { createHistoryDialog } from './historyDialog.js';
 import { createPopups } from './popups.js';
 import { createUpdateToast } from './updateToast.js';
+import { initLightbox } from './lightbox.js';
+import { dirOf } from '../shared/imageLinks.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
 import { openSearchPanel, findNext, findPrevious, gotoLine } from '@codemirror/search';
 
@@ -55,8 +57,15 @@ function editorOpts(tab) {
     hideMarkers: settings.hideMarkers !== false,
     placeholder: tab.kind === 'md' ? t('ui.startWriting') : '',
     readOnly: !!tab.readOnly,
-    spellcheck: !!settings.spellcheck
+    spellcheck: !!settings.spellcheck,
+    imageBase: tab.path ? dirOf(tab.path) : null
   };
+}
+
+/** Apply a tab's current options to its editor state (its path, kind or a setting changed). */
+function reconfigureTab(tab) {
+  if (tab === active) view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) });
+  else tab.state = tab.state.update({ effects: reconfigureEffects(editorOpts(tab)) }).state;
 }
 
 
@@ -258,7 +267,7 @@ attachTabDrag($('#tabbar'), {
   onDetach: (tabId) => void detachTabToWindow(tabs.find((tb) => String(tb.id) === String(tabId)))
 });
 
-const preview = createPreview({ getView: () => view, getActive: () => active, t: () => t });
+const preview = createPreview({ getView: () => view, getActive: () => active, getBaseDir: () => (active && active.path ? dirOf(active.path) : null), t: () => t });
 const popups = createPopups({ focusEditor: () => { if (view) view.focus(); } });
 const updates = createUpdateToast({ api, t: () => t });
 const dialogs = createDialogs({
@@ -519,10 +528,8 @@ async function saveTabAsNow(tab, target) {
   tab.lastSavedAt = Date.now();
   await deleteDraftNow(tab);
   afterWrite(r);
-  if (kindChanged) {
-    if (tab === active) { view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) }); applyKindUi(); }
-    else tab.state = tab.state.update({ effects: reconfigureEffects(editorOpts(tab)) }).state;
-  }
+  reconfigureTab(tab); // the folder its images resolve against changed, and maybe the kind
+  if (kindChanged && tab === active) applyKindUi();
   renderTabs(); updateTitle(); updateStatus();
   return true;
 }
@@ -648,6 +655,7 @@ async function followMove(from, to) {
     if (!next) continue;
     tab.path = next;
     tab.name = baseName(next);
+    reconfigureTab(tab); // relative image links now resolve against the new folder
     // The header line may have been rewritten (new project): take the text from disk.
     const r = await api.readFile(next);
     if (!r.ok) continue;
@@ -710,8 +718,7 @@ function syncReadOnly(tab) {
   const ro = !!(info && info.archived);
   if (ro === tab.readOnly) return false;
   tab.readOnly = ro;
-  if (tab === active) view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) });
-  else tab.state = tab.state.update({ effects: reconfigureEffects(editorOpts(tab)) }).state;
+  reconfigureTab(tab);
   return true;
 }
 
@@ -816,6 +823,7 @@ async function moveTabToProject(tab, folder) {
   if (!r || r.error) { sidebar.toast(t('notes.opFailed', { error: (r && (r.message || r.error)) || '?' })); return; }
   replaceDoc(tab, r.text);
   tab.path = r.path; tab.name = baseName(r.path); tab.kind = 'md';
+  reconfigureTab(tab);
   tab.savedDoc = docFor(tab); tab.dirty = false; tab.recovered = false;
   tab.lastTitle = headingOf(r.text) || '';
   const st = await api.statFile(r.path);
@@ -938,12 +946,7 @@ function applySettings(next, prev = {}) {
   }
 }
 
-function reconfigureAll() {
-  for (const tab of tabs) {
-    if (tab === active) view.dispatch({ effects: reconfigureEffects(editorOpts(tab)) });
-    else tab.state = tab.state.update({ effects: reconfigureEffects(editorOpts(tab)) }).state;
-  }
-}
+function reconfigureAll() { for (const tab of tabs) reconfigureTab(tab); }
 
 function applyI18n() {
   document.documentElement.lang = locale;
@@ -1140,6 +1143,8 @@ function bindUi() {
     e.preventDefault();
     void openPaths(files.map((f) => api.pathForFile(f)).filter(Boolean));
   });
+
+  initLightbox({ focusEditor: () => view.focus() });
 
   // Links in the preview open in the system browser.
   $('#preview').addEventListener('click', (e) => {

@@ -182,6 +182,11 @@ body.no-formatting-bar #toolbar { display: none; }
    padding a plain line has, measured, since CodeMirror's base theme decides it. */
 .cm-editor .cm-line.cm-wrap-indent { padding-left: calc(var(--line-pad, 6px) + var(--wi) * var(--space-w, 0.5em)); text-indent: calc(var(--wi) * var(--space-w, 0.5em) * -1); }
 .cm-placeholder { color: var(--md-meta); }
+/* The image under its line in the Write view (images.js): the same side padding as a line, scaled to the column. */
+.cm-image { padding: 2px 2px 6px var(--line-pad, 6px); }
+.cm-image img { display: block; max-width: 100%; height: auto; border-radius: 4px; cursor: zoom-in; }
+/* The alt text above a shown image is a caption, not a link. */
+.cm-editor .cm-image-line > span:not(.cm-selectedText) { color: var(--fg-muted); text-decoration: none; }
 .cm-editor .cm-gutters { background: var(--bg); color: var(--md-meta); border-right: 1px solid var(--border); }
 .cm-editor .cm-activeLineGutter { background: var(--active-line); color: var(--fg-muted); } /* outranks CodeMirror's light/dark base theme */
 .cm-activeLine { background: var(--active-line); }
@@ -230,7 +235,13 @@ body.no-formatting-bar #toolbar { display: none; }
 .preview th, .preview td { border: 1px solid var(--border); padding: 5px 10px; }
 .preview th { background: var(--bg-chrome); }
 .preview hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
-.preview img { max-width: 100%; }
+.preview img { max-width: 100%; height: auto; cursor: zoom-in; }
+.preview a img { cursor: pointer; }
+/* An image that could not be loaded (preview and editor): its alt text and file name. */
+.img-missing {
+  display: inline-block; max-width: 100%; padding: 6px 10px; border: 1px dashed var(--fg-muted); border-radius: 4px;
+  color: var(--fg-muted); font-family: var(--ui-font); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .preview ul, .preview ol { padding-left: 1.6em; }
 .preview li { padding-left: 0.2em; }
 .preview li > p, .preview li > span { text-indent: 0; }
@@ -441,6 +452,17 @@ body.writing #update-toast { bottom: 44px; }
 .ut-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
 
 /* ---------- Drop overlay ---------- */
+/* ---------- Image at full size (lightbox.js) ---------- */
+#lightbox { position: fixed; inset: 0; z-index: 70; background: rgba(0, 0, 0, 0.85); }
+#lightbox .lb-scroll { position: absolute; inset: 0; overflow: auto; display: grid; place-items: center; }
+#lightbox img { display: block; max-width: none; cursor: zoom-out; }
+#lightbox-close {
+  position: absolute; top: 10px; right: 14px; z-index: 1; width: 36px; height: 36px; border: none; border-radius: 18px;
+  background: rgba(0, 0, 0, 0.5); color: #fff; font-size: 22px; line-height: 1; cursor: default;
+}
+#lightbox-close:hover { background: rgba(255, 255, 255, 0.2); }
+#lightbox-close:focus-visible { outline: 2px solid #fff; }
+
 #drop-overlay {
   position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
   background: rgba(0, 103, 192, 0.12); border: 3px dashed var(--accent); font-size: 18px; color: var(--accent); pointer-events: none;
