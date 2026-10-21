@@ -83,6 +83,7 @@ const COMMANDS = [
   { id: 'code', cat: 'format', label: 'menu.code', keys: ['Ctrl+E'] },
   { id: 'codeBlock', cat: 'format', label: 'menu.codeBlock', keys: ['Ctrl+Shift+E'] },
   { id: 'link', cat: 'format', label: 'menu.link', keys: ['Ctrl+K'] },
+  { id: 'insertImage', cat: 'format', label: 'menu.insertImage', keys: ['Ctrl+Shift+I'] },
   { id: 'horizontalRule', cat: 'format', label: 'menu.horizontalRule', keys: [] },
   { id: 'table', cat: 'format', label: 'menu.table', keys: [] },
   // View

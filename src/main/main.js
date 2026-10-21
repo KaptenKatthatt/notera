@@ -14,10 +14,10 @@ const { setJsonc } = require('../shared/jsoncEdit');
 const fsSync = require('fs');
 const { createThemeStore, describeError, SCHEME } = require('./themes');
 const vscode = require('./vscodeImport');
-const { createNotesStore } = require('./notes');
+const { createNotesStore, FOLDER_NAMES } = require('./notes');
 const { createHistory } = require('./history');
-const { createImageServer } = require('./images');
-const { IMAGE_SCHEME } = require('../shared/imageLinks');
+const { createImageServer, saveImage } = require('./images');
+const { IMAGE_SCHEME, slugOf } = require('../shared/imageLinks');
 
 const isDev = !app.isPackaged;
 // Tests point this at a scratch directory so they never touch real settings.
@@ -288,7 +288,7 @@ async function importVsCodeTheme(key) {
 
 // Settings Notera keeps up to date by itself; an open settings.json tab holds them as they were
 // when it was opened, so saving it must not roll them back.
-const APP_MANAGED = new Set(['recentFiles', 'lastDir', 'windowBounds', 'sidebarWidth']);
+const APP_MANAGED = new Set(['recentFiles', 'lastDir', 'lastImageDir', 'windowBounds', 'sidebarWidth']);
 
 /**
  * Re-read settings.json after it was edited by hand and apply what changed. A file that does not
@@ -763,6 +763,50 @@ ipcMain.handle('shell:showInFolder', async (_e, p) => {
   return (await shell.openPath(dir)) === '';
 });
 
+// ---------- Images ----------
+const IMAGE_PICK_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg'];
+/** The images folder of a file: the notes folder's (named in the index) for a note, `bilder` next to any other file. */
+async function imagesFolderFor(file) {
+  const store = getNotesStore();
+  const r = store ? await store.imagesDir(file).catch(() => null) : null;
+  if (r) return r;
+  const name = (FOLDER_NAMES[locale] || FOLDER_NAMES.en).images;
+  return { dir: path.join(path.dirname(file), name), name };
+}
+/**
+ * Write an image (already converted by the window) into the images folder of the note at
+ * notePath, named after the note's title. Returns the link to put in the text.
+ */
+ipcMain.handle('images:save', async (_e, { notePath, bytes, ext, title } = {}) => {
+  try {
+    if (typeof notePath !== 'string' || !path.isAbsolute(notePath)) throw new Error('No file');
+    const { dir, name: folder } = await imagesFolderFor(notePath);
+    const slug = slugOf(title) || (locale === 'sv' ? 'bild' : 'image');
+    const name = await saveImage({ dir, slug, ext: String(ext || ''), bytes });
+    images.allow(notePath);
+    return { ok: true, path: path.join(dir, name), link: `${folder}/${name}` };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+/** Insert image…: pick files and hand their bytes to the window, which converts and inserts them. */
+ipcMain.handle('images:pick', async (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  const r = await dialog.showOpenDialog(win, {
+    title: t('dialog.insertImageTitle'),
+    defaultPath: settings.get('lastImageDir') || app.getPath('pictures'),
+    filters: [{ name: t('dialog.imageFiles'), extensions: IMAGE_PICK_EXT }, { name: t('dialog.allFiles'), extensions: ['*'] }],
+    properties: ['openFile', 'multiSelections']
+  });
+  if (r.canceled || !r.filePaths.length) return [];
+  settings.set({ lastImageDir: path.dirname(r.filePaths[0]) });
+  const out = [];
+  for (const p of r.filePaths) {
+    try { out.push({ name: path.basename(p), bytes: await fs.readFile(p) }); } catch { /* unreadable: skipped */ }
+  }
+  return out;
+});
+
 // ---------- Version history ----------
 /** A note or project going to the Recycle Bin leaves its last text in the history first. */
 async function trashKeepingHistory(p) {
@@ -994,7 +1038,7 @@ function buildMenu() {
         { type: 'separator' },
         cmd('bulletList'), cmd('numberedList'), cmd('checkList'), cmd('quote'),
         { type: 'separator' },
-        cmd('code'), cmd('codeBlock'), cmd('link'), cmd('horizontalRule'), cmd('table')
+        cmd('code'), cmd('codeBlock'), cmd('link'), cmd('insertImage'), cmd('horizontalRule'), cmd('table')
       ]
     },
     {

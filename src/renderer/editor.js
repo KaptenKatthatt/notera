@@ -306,7 +306,22 @@ const wrapIndent = ViewPlugin.fromClass(class {
 const wrapExt = [EditorView.lineWrapping, wrapIndent];
 
 // The image under its line (images.js) goes with the hidden markers: both show the text as it reads.
-function imagesExt(opts) { return opts.kind === 'md' && opts.hideMarkers ? imagePreviews(opts.imageBase || null) : []; }
+// An image on the clipboard pasted into a Markdown tab goes to opts.onImageFiles (imageInsert.js)
+// instead of being dropped by CodeMirror; when both text and an image are there, the image wins.
+function imagesExt(opts) {
+  return [
+    opts.kind === 'md' && opts.hideMarkers ? imagePreviews(opts.imageBase || null) : [],
+    opts.kind === 'md' && opts.onImageFiles ? EditorView.domEventHandlers({
+      paste(e) {
+        const files = Array.from((e.clipboardData && e.clipboardData.files) || []).filter((f) => /^image\//.test(f.type));
+        if (!files.length) return false;
+        e.preventDefault();
+        void opts.onImageFiles(files);
+        return true;
+      }
+    }) : []
+  ];
+}
 
 function spellcheckExt(on) { return EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false' }); }
 

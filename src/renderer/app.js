@@ -19,6 +19,7 @@ import { createHistoryDialog } from './historyDialog.js';
 import { createPopups } from './popups.js';
 import { createUpdateToast } from './updateToast.js';
 import { initLightbox } from './lightbox.js';
+import { createImageInserter, isImageFile } from './imageInsert.js';
 import { dirOf } from '../shared/imageLinks.js';
 import { undo, redo, selectAll, deleteCharForward } from '@codemirror/commands';
 import { openSearchPanel, findNext, findPrevious, gotoLine } from '@codemirror/search';
@@ -58,7 +59,8 @@ function editorOpts(tab) {
     placeholder: tab.kind === 'md' ? t('ui.startWriting') : '',
     readOnly: !!tab.readOnly,
     spellcheck: !!settings.spellcheck,
-    imageBase: tab.path ? dirOf(tab.path) : null
+    imageBase: tab.path ? dirOf(tab.path) : null,
+    onImageFiles: (files) => imageInserter.addFiles(files)
   };
 }
 
@@ -90,6 +92,7 @@ function runFormat(action, v = view) {
     case 'horizontalRule': fmt.insertBlock(v, '---'); return true;
     case 'table': fmt.insertBlock(v, fmt.TABLE_TEMPLATE); return true;
     case 'link': void dialogs.insertLinkSmart(); return true;
+    case 'insertImage': void imageInserter.pick(); return true;
     default: return false;
   }
 }
@@ -276,6 +279,14 @@ const dialogs = createDialogs({
 });
 
 const historyDialog = createHistoryDialog({ api, t: () => t, locale: () => locale });
+const imageInserter = createImageInserter({
+  api, t: () => t, getView: () => view, getActive: () => active,
+  titleOf: (tab) => lineTitle(tab) || (tab.name || '').replace(/\.(md|markdown|txt)$/i, ''),
+  // An untitled tab gets a file first: a note in Unsorted when there is a notes folder, else nothing.
+  ensureFile: async (tab) => { if (!settings.notesRoot) return false; await moveTabToProject(tab, await inboxFolder()); return !!tab.path; },
+  toast: (msg) => { if (sidebar) sidebar.toast(msg); },
+  afterInsert: () => preview.schedule(0)
+});
 
 /** A tab left (another one activated, or closed): write what is pending, then keep the text as a version. */
 async function leaveTab(tab) {
@@ -1141,7 +1152,11 @@ function bindUi() {
     const files = Array.from(e.dataTransfer?.files || []);
     if (!files.length) return;
     e.preventDefault();
-    void openPaths(files.map((f) => api.pathForFile(f)).filter(Boolean));
+    // Images dropped with a Markdown tab active go into the note; other files open as tabs.
+    const images = active && active.kind === 'md' && !active.readOnly ? files.filter(isImageFile) : [];
+    if (images.length) void imageInserter.addFiles(images);
+    const rest = files.filter((f) => !images.includes(f)).map((f) => api.pathForFile(f)).filter(Boolean);
+    if (rest.length) void openPaths(rest);
   });
 
   initLightbox({ focusEditor: () => view.focus() });
