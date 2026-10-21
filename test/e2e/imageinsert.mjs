@@ -49,7 +49,6 @@ const drop = async (files) => {
   }, files.map((p) => ({ name: path.basename(p), type: /\.jpe?g$/i.test(p) ? 'image/jpeg' : 'image/png', b64: fs.readFileSync(p).toString('base64') })));
   await win.dispatchEvent('.cm-content', 'drop', { dataTransfer: dt });
 };
-const toastText = () => win.evaluate(() => { const el = document.querySelector('#notes-toast'); return el && !el.hidden ? el.textContent : ''; });
 
 // 1. Ctrl+V with an image on the clipboard: a JPEG in Enlantis/bilder, named after the note, and the line at the cursor.
 await app.evaluate(async (_e, b64) => { const { clipboard, ClipboardItem } = process.mainModule.require('electron'); await clipboard.write([new ClipboardItem({ 'image/png': new Blob([Buffer.from(b64, 'base64')], { type: 'image/png' }) })]); }, png(640, 400, [200, 60, 60]).toString('base64'));
