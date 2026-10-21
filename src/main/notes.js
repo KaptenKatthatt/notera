@@ -25,12 +25,14 @@
 // it can be undone, records a journal: file moves, rewritten files, created and removed folders
 // and the index as it was. undo(id) replays that journal backwards.
 const fsp = require('fs/promises');
+const fsSync = require('fs');
 const path = require('path');
 const files = require('./files');
 const { writeFileAtomic } = require('./atomicWrite');
 const H = require('../shared/noteHeader');
 const T = require('../shared/templates');
 const { makeT } = require('../shared/strings');
+const { imageLinks } = require('../shared/imageLinks');
 
 const INDEX_FILE = '.notera.json';
 const NOTE_EXT = /\.(md|markdown|txt)$/i;
@@ -315,10 +317,27 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       }
     }
   }
-  async function jMove(j, from, to) {
+  /** quiet: an image moved along with its note, not a note: tabs and history need not hear of it. */
+  async function jMove(j, from, to, { quiet = false } = {}) {
     await moveFile(from, to);
-    j.entries.push({ t: 'move', from, to });
-    j.moved.push({ from, to });
+    j.entries.push({ t: 'move', from, to, quiet });
+    if (!quiet) j.moved.push({ from, to });
+  }
+  /** The same image already sits where it is going (copied there before): one is enough. */
+  async function jMerge(j, from, to) {
+    await fsp.unlink(from);
+    j.entries.push({ t: 'merge', from, to });
+  }
+  async function sameContent(a, b) {
+    const [sa, sb] = await Promise.all([fsp.stat(a), fsp.stat(b)]);
+    if (sa.size !== sb.size) return false;
+    const [ba, bb] = await Promise.all([fsp.readFile(a), fsp.readFile(b)]);
+    return ba.equals(bb);
+  }
+  async function jCopy(j, from, to) {
+    await fsp.mkdir(path.dirname(to), { recursive: true });
+    await fsp.copyFile(from, to, fsSync.constants.COPYFILE_EXCL);
+    j.entries.push({ t: 'copy', from, to });
   }
   async function jMkdir(j, dir) {
     if (await exists(dir)) return;
@@ -344,6 +363,109 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     j.entries.push({ t: 'write', path: p, before: r.buf, after, oldProject: old ? old.project : null });
   }
 
+  // ---------- a note's images ----------
+  // The images a note links to in its own images folder (`bilder/name.jpg` next to it) go with it
+  // when it moves, is archived, restored or deleted. Links are relative, so the text never changes,
+  // except when a name is taken where the note lands: then the file gets a free number and the link
+  // follows. An image another note in the same folder links too is copied, not moved, and stays
+  // when the note is deleted.
+  function imagesFolderName(idx) { return idx.images || (FOLDER_NAMES[getLocale()] || FOLDER_NAMES.en).images; }
+
+  /** The image file names a text links inside the folder `name` directly under the note's folder. */
+  function ownImages(text, folderName) {
+    const out = [];
+    for (const l of imageLinks(text)) {
+      const m = /^([^\\/]+)[\\/]([^\\/]+)$/.exec(l.target);
+      if (!m || lower(m[1]) !== lower(folderName) || m[2] === '.' || m[2] === '..') continue;
+      if (!out.some((x) => lower(x.name) === lower(m[2]))) out.push({ name: m[2], target: l.target });
+    }
+    return out;
+  }
+
+  /** The image names every other note in a folder links (so a move copies them and a delete keeps them). */
+  async function imagesUsedByOthers(dir, exceptFile, folderName) {
+    const used = new Set();
+    for (const f of await listNotes(dir)) {
+      if (lower(f) === lower(exceptFile)) continue;
+      const r = await readText(path.join(dir, f)).catch(() => null);
+      if (r) for (const im of ownImages(r.text, folderName)) used.add(lower(im.name));
+    }
+    return used;
+  }
+
+  /** A free name in dir for an image called `name`: the same stem with the next number. */
+  async function freeImageName(dir, name) {
+    let taken = [];
+    try { taken = (await fsp.readdir(dir)).map(lower); } catch { /* new folder */ }
+    if (!taken.includes(lower(name))) return name;
+    const m = /^(.*?)(?:-(\d+))?(\.[^.]+)$/.exec(name) || [name, name, undefined, ''];
+    for (let n = Number(m[2] || 1) + 1; ; n++) {
+      const cand = `${m[1]}-${n}${m[3]}`;
+      if (!taken.includes(lower(cand))) return cand;
+    }
+  }
+
+  /**
+   * After a note moved from `from` to `to` (both file paths): bring its images along, into the
+   * images folder next to its new place. Journaled, so undo brings them back.
+   */
+  async function moveImages(j, idx, from, to) {
+    const text = (await readText(to).catch(() => null))?.text;
+    if (!text) return;
+    const folder = imagesFolderName(idx);
+    const own = ownImages(text, folder);
+    if (!own.length) return;
+    const srcDir = path.join(path.dirname(from), folder);
+    const destDir = path.join(path.dirname(to), folder);
+    if (lower(srcDir) === lower(destDir)) return;
+    const shared = await imagesUsedByOthers(path.dirname(from), path.basename(from), folder);
+    const renames = [];
+    for (const im of own) {
+      const src = path.join(srcDir, im.name);
+      if (!(await exists(src))) continue;
+      await jMkdir(j, destDir);
+      const same = path.join(destDir, im.name);
+      if ((await exists(same)) && (await sameContent(src, same))) {
+        // Already there with the same bytes (copied on the way out): the link fits as it is.
+        if (!shared.has(lower(im.name))) await jMerge(j, src, same);
+        continue;
+      }
+      const name = await freeImageName(destDir, im.name);
+      const dest = path.join(destDir, name);
+      if (shared.has(lower(im.name))) await jCopy(j, src, dest); else await jMove(j, src, dest, { quiet: true });
+      if (name !== im.name) renames.push({ from: im.target, to: im.target.slice(0, im.target.length - im.name.length) + name });
+    }
+    if (renames.length) {
+      const r = await readText(to);
+      let next = r.text;
+      for (const x of renames) next = next.split(x.from).join(x.to);
+      if (next !== r.text) {
+        const after = files.writeBuffer(next, r.encoding, r.eol);
+        await writeFileAtomic(to, after);
+        j.entries.push({ t: 'write', path: to, before: r.buf, after });
+      }
+    }
+    await jRmdirIfEmpty(j, srcDir);
+  }
+
+  /** Before a note goes to the Recycle Bin: the images only it links go too. */
+  async function trashImages(idx, p) {
+    const text = (await readText(p).catch(() => null))?.text;
+    if (!text) return [];
+    const folder = imagesFolderName(idx);
+    const dir = path.join(path.dirname(p), folder);
+    const shared = await imagesUsedByOthers(path.dirname(p), path.basename(p), folder);
+    const gone = [];
+    for (const im of ownImages(text, folder)) {
+      const file = path.join(dir, im.name);
+      if (shared.has(lower(im.name)) || !(await exists(file))) continue;
+      await trash(file);
+      gone.push(file);
+    }
+    try { if (!(await fsp.readdir(dir)).length) await fsp.rmdir(dir); } catch { /* not there or not empty */ }
+    return gone;
+  }
+
   async function undo(id) {
     return run(async () => {
       const j = journals.get(id);
@@ -353,7 +475,9 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const moved = [];
       for (const e of [...j.entries].reverse()) {
         try {
-          if (e.t === 'move') { await moveFile(e.to, e.from); moved.push({ from: e.to, to: e.from }); }
+          if (e.t === 'move') { await moveFile(e.to, e.from); if (!e.quiet) moved.push({ from: e.to, to: e.from }); }
+          else if (e.t === 'copy') await fsp.unlink(e.to).catch(() => {});
+          else if (e.t === 'merge') { if (!(await exists(e.from))) await fsp.copyFile(e.to, e.from); }
           else if (e.t === 'rename') { await renameFile(e.to, e.from); moved.push({ from: e.to, to: e.from }); }
           else if (e.t === 'mkdir') await fsp.rmdir(e.dir).catch(() => {});
           else if (e.t === 'rmdir') await fsp.mkdir(e.dir, { recursive: true });
@@ -606,6 +730,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const to = path.join(destDir, name);
       await jMove(j, p, to);
       await jSetProject(j, to, toFolder, file.slice(0, file.length - ext.length));
+      await moveImages(j, idx, p, to);
       let pinned = false;
       if (loc && !loc.archived) pinned = forgetFile(idx, loc.folder, loc.file);
       idx.order[toFolder] = (await orderedFiles(idx, toFolder)).filter((n) => n !== name);
@@ -652,6 +777,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const ext = path.extname(loc.file);
       const to = path.join(dir, await uniqueName(dir, loc.file.slice(0, loc.file.length - ext.length), ext));
       await jMove(j, p, to);
+      await moveImages(j, idx, p, to);
       forgetFile(idx, loc.folder, loc.file);
       await saveIndex(idx);
       return { path: to, moved: j.moved, undoId: commit(j) };
@@ -675,6 +801,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const ext = path.extname(loc.file);
       const to = path.join(dirOf(target), await uniqueName(dirOf(target), loc.file.slice(0, loc.file.length - ext.length), ext));
       await jMove(j, p, to);
+      await moveImages(j, idx, p, to);
       idx.order[target] = (await orderedFiles(idx, target)).filter((n) => n !== path.basename(to));
       placeFile(idx, target, path.basename(to));
       await jRmdirIfEmpty(j, archiveDirOf(idx, loc.folder));
@@ -689,6 +816,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       const idx = await loadIndex();
       const loc = locate(idx, p);
       if (!loc) throw new Error('Not a note');
+      const images = await trashImages(idx, p).catch(() => []);
       await trash(p);
       if (!loc.archived) forgetFile(idx, loc.folder, loc.file);
       else if (!(await listNotes(archiveDirOf(idx, loc.folder))).length) {
@@ -696,7 +824,7 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
         if (!(await exists(archiveDirOf(idx, loc.folder)))) idx.archivedProjects = without(idx.archivedProjects, loc.folder);
       }
       await saveIndex(idx);
-      return { deleted: [p] };
+      return { deleted: [p], images };
     });
   }
 
@@ -796,9 +924,13 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       } else {
         // Notes of this project were archived one by one before: put everything together.
         for (const f of await fsp.readdir(src)) {
+          if (lower(f) === lower(imagesFolderName(idx))) continue; // each note takes its own images along
           const ext = path.extname(f);
-          await jMove(j, path.join(src, f), path.join(dest, await uniqueName(dest, f.slice(0, f.length - ext.length), ext)));
+          const to = path.join(dest, await uniqueName(dest, f.slice(0, f.length - ext.length), ext));
+          await jMove(j, path.join(src, f), to);
+          if (NOTE_EXT.test(f)) await moveImages(j, idx, path.join(src, f), to);
         }
+        await jRmdirIfEmpty(j, path.join(src, imagesFolderName(idx)));
         await jRmdirIfEmpty(j, src);
       }
       forgetProject(idx, name);
@@ -822,11 +954,14 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       } else {
         const list = await orderedFiles(idx, active);
         for (const f of await fsp.readdir(src)) {
+          if (lower(f) === lower(imagesFolderName(idx))) continue; // each note takes its own images along
           const ext = path.extname(f);
           const to = path.join(dirOf(active), await uniqueName(dirOf(active), f.slice(0, f.length - ext.length), ext));
           await jMove(j, path.join(src, f), to);
+          if (NOTE_EXT.test(f)) await moveImages(j, idx, path.join(src, f), to);
           list.unshift(path.basename(to));
         }
+        await jRmdirIfEmpty(j, path.join(src, imagesFolderName(idx)));
         idx.order[active] = list;
         await jRmdirIfEmpty(j, src);
       }
