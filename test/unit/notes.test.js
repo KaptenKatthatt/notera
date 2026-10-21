@@ -514,3 +514,78 @@ test('images folder: named once in the UI language, kept in the index, reserved 
   fs.writeFileSync(n2, '# x\n');
   assert.equal((await en.store.imagesDir(n2)).name, 'Notera images');
 });
+
+test('images follow their note: move, archive, restore, undo, shared images copied, clashes renamed', async () => {
+  const { store, root, ls, read } = setup('sv');
+  await store.tree();
+  for (const d of ['Enlantis/bilder', 'Lund/bilder']) fs.mkdirSync(path.join(root, d), { recursive: true });
+  const put = (rel, text) => { const p = path.join(root, rel); fs.writeFileSync(p, text); return p; };
+  const note = put('Enlantis/2026-10-21 Login error.md', '# Login error\nProjekt: Enlantis · Skapad: 2026-10-21 10:00\n\n![Bild 1](bilder/login-error-1.jpg)\n\n![Bild 2](bilder/delad.jpg)\n\n![Borta](bilder/finns-inte.jpg)\n\n![Annan](../Lund/bilder/x.jpg)\n');
+  put('Enlantis/2026-10-20 Annan.md', '# Annan\nProjekt: Enlantis · Skapad: 2026-10-20 10:00\n\n![Bild 1](bilder/delad.jpg)\n');
+  put('Enlantis/bilder/login-error-1.jpg', 'A');
+  put('Enlantis/bilder/delad.jpg', 'S');
+  put('Enlantis/bilder/orphan.jpg', 'O');
+  put('Lund/bilder/login-error-1.jpg', 'L'); // the name is taken where the note lands
+
+  // Move to Lund: the own image moves (renamed, link rewritten), the shared one is copied, the rest stays.
+  const m = await store.moveNote(note, 'Lund');
+  assert.deepEqual(m.moved, [{ from: note, to: m.path }], 'only the note itself is reported as moved');
+  assert.deepEqual(ls('Lund', 'bilder'), ['delad.jpg', 'login-error-1.jpg', 'login-error-2.jpg']);
+  assert.equal(read('Lund', 'bilder', 'login-error-2.jpg'), 'A');
+  assert.deepEqual(ls('Enlantis', 'bilder'), ['delad.jpg', 'orphan.jpg'], 'the shared and the unlinked image stay');
+  const text = read('Lund', path.basename(m.path));
+  assert.ok(text.includes('![Bild 1](bilder/login-error-2.jpg)'), text);
+  assert.ok(text.includes('![Bild 2](bilder/delad.jpg)') && text.includes('(bilder/finns-inte.jpg)') && text.includes('(../Lund/bilder/x.jpg)'), 'other links untouched');
+  // Undo: everything back, the copy gone.
+  assert.equal((await store.undo(m.undoId)).ok, true);
+  assert.deepEqual(ls('Enlantis', 'bilder'), ['delad.jpg', 'login-error-1.jpg', 'orphan.jpg']);
+  assert.deepEqual(ls('Lund', 'bilder'), ['login-error-1.jpg']);
+  assert.ok(read('Enlantis', path.basename(note)).includes('![Bild 1](bilder/login-error-1.jpg)'), 'the link is back');
+
+  // Archive and restore: the images go to Arkiv/Enlantis/bilder and back.
+  const a = await store.archiveNote(note);
+  assert.deepEqual(ls('Arkiv', 'Enlantis', 'bilder'), ['delad.jpg', 'login-error-1.jpg']);
+  assert.deepEqual(ls('Enlantis', 'bilder'), ['delad.jpg', 'orphan.jpg']);
+  const r = await store.restoreNote(a.path);
+  assert.deepEqual(ls('Enlantis', 'bilder'), ['delad.jpg', 'login-error-1.jpg', 'orphan.jpg']);
+  assert.ok(!fs.existsSync(path.join(root, 'Arkiv', 'Enlantis')), 'the archive folder is gone when empty');
+  assert.equal(r.path, note);
+});
+
+test('images go to the Recycle Bin with their note, unless another note links them', async () => {
+  const { store, root, ls, trashed } = setup('sv');
+  await store.tree();
+  fs.mkdirSync(path.join(root, 'Enlantis', 'bilder'), { recursive: true });
+  const put = (rel, text) => { const p = path.join(root, rel); fs.writeFileSync(p, text); return p; };
+  const note = put('Enlantis/2026-10-21 A.md', '# A\n\n![1](bilder/a-1.jpg)\n![2](bilder/delad.jpg)\n');
+  put('Enlantis/2026-10-21 B.md', '# B\n\n![1](bilder/delad.jpg)\n');
+  put('Enlantis/bilder/a-1.jpg', 'A');
+  put('Enlantis/bilder/delad.jpg', 'S');
+  const d = await store.deleteNote(note);
+  assert.deepEqual(d.deleted, [note]);
+  assert.deepEqual(d.images, [path.join(root, 'Enlantis', 'bilder', 'a-1.jpg')]);
+  assert.deepEqual(ls('Enlantis', 'bilder'), ['delad.jpg']);
+  assert.deepEqual(trashed, [path.join(root, 'Enlantis', 'bilder', 'a-1.jpg'), note], 'the image first, then the note');
+  // The last note: its image goes, and the empty images folder with it.
+  await store.deleteNote(path.join(root, 'Enlantis', '2026-10-21 B.md'));
+  assert.ok(!fs.existsSync(path.join(root, 'Enlantis', 'bilder')));
+});
+
+test('a whole project archived note by note and restored keeps every note with its images', async () => {
+  const { store, root, ls } = setup('sv');
+  await store.tree();
+  fs.mkdirSync(path.join(root, 'Enlantis', 'bilder'), { recursive: true });
+  const put = (rel, text) => { const p = path.join(root, rel); fs.writeFileSync(p, text); return p; };
+  const a = put('Enlantis/2026-10-21 A.md', '# A\n\n![1](bilder/a-1.jpg)\n');
+  put('Enlantis/2026-10-21 B.md', '# B\n\n![1](bilder/b-1.jpg)\n');
+  put('Enlantis/bilder/a-1.jpg', 'A');
+  put('Enlantis/bilder/b-1.jpg', 'B');
+  await store.archiveNote(a);
+  assert.deepEqual(ls('Arkiv', 'Enlantis', 'bilder'), ['a-1.jpg']);
+  await store.archiveProject('Enlantis'); // merges into the existing archive folder
+  assert.deepEqual(ls('Arkiv', 'Enlantis', 'bilder'), ['a-1.jpg', 'b-1.jpg']);
+  assert.ok(!fs.existsSync(path.join(root, 'Enlantis')));
+  await store.restoreProject('Enlantis');
+  assert.deepEqual(ls('Enlantis', 'bilder'), ['a-1.jpg', 'b-1.jpg']);
+  assert.ok(!fs.existsSync(path.join(root, 'Arkiv', 'Enlantis')));
+});
