@@ -1,0 +1,44 @@
+# Builds the Windows installer on GitHub's own Windows runner and publishes it as the GitHub
+# release for the version in package.json (tag v<version>), with the three files installed copies
+# need to update themselves: Notera-Setup-<version>.exe, its .blockmap and latest.yml, plus the
+# portable exe. Started by hand (Actions > Release > Run workflow) after the "Release v<version>"
+# commit is on master. The notes become the release text.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: Release notes (Markdown)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: node scripts/build.mjs --prod
+      - name: Build and publish the installer
+        run: npx electron-builder --win --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: node scripts/verify-package.mjs
+      - name: Release notes
+        if: ${{ inputs.notes != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          printf '%s\n' "$NOTES" > "$RUNNER_TEMP/notes.md"
+          gh release edit "v$(node -p "require('./package.json').version")" --notes-file "$RUNNER_TEMP/notes.md"
