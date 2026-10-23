@@ -28,6 +28,12 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: node scripts/build.mjs --prod
+      - name: Tag v<version> (a published release needs its tag first)
+        shell: bash
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
+          git fetch --tags origin
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then echo "$tag exists"; else git tag "$tag" && git push origin "$tag"; fi
       - name: Build and publish the installer
         run: npx electron-builder --win --x64 --publish always
         env:
