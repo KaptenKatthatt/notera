@@ -84,14 +84,22 @@ await win.keyboard.press('Control+Shift+Enter');
 await win.keyboard.type('över');
 await check('Ctrl+Shift+Enter ger ny rad över med samma indrag', '  över\n  ett\ntvå');
 
+// Ctrl+D writes a check mark; "Add next occurrence" has no key of its own any more.
+await reset('Klart ', 1, 6);
+await win.keyboard.press('Control+D');
+await check('Ctrl+D skriver en bock', 'Klart ✅');
+await win.keyboard.press('Backspace');
+await check('Backspace tar bort hela bocken', 'Klart ');
+
+const nextOccurrence = () => win.evaluate(() => window.__notera.handleAction('selectNextOccurrence'));
 await reset('katt hund katt fisk katt', 1, 1);
-await win.keyboard.press('Control+D');
-await win.keyboard.press('Control+D');
-assert.equal((await sel()).length, 2, 'Ctrl+D två gånger ger två markeringar');
+await nextOccurrence();
+await nextOccurrence();
+assert.equal((await sel()).length, 2, 'Lägg till nästa förekomst två gånger ger två markeringar');
 await win.keyboard.type('orm');
-await check('Ctrl+D och skriv ersätter båda', 'orm hund orm fisk katt');
+await check('Lägg till nästa förekomst och skriv ersätter båda', 'orm hund orm fisk katt');
 await reset('katt hund katt fisk katt', 1, 1);
-await win.keyboard.press('Control+D');
+await nextOccurrence();
 await win.keyboard.press('Control+Shift+L');
 await win.keyboard.type('x');
 await check('Ctrl+Shift+L markerar alla förekomster', 'x hund x fisk x');

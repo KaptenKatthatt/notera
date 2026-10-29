@@ -269,6 +269,8 @@ sv.templates = { standupTitle: 'Standup', doneLast: 'Gjort sen sist', blockers: 
 
 Object.assign(en.menu, { versionHistory: 'Version history…', insertImage: 'Insert image…' });
 Object.assign(sv.menu, { versionHistory: 'Versionshistorik…', insertImage: 'Infoga bild…' });
+Object.assign(en.menu, { checkMark: 'Check mark ✅', emoji: 'Emoji…' });
+Object.assign(sv.menu, { checkMark: 'Bock ✅', emoji: 'Emoji…' });
 Object.assign(en.dialog, { imageFiles: 'Images', insertImageTitle: 'Insert image' });
 Object.assign(sv.dialog, { imageFiles: 'Bilder', insertImageTitle: 'Infoga bild' });
 Object.assign(en.ui, {

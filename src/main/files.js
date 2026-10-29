@@ -37,6 +37,15 @@ function encodeAnsi(text) {
   return out.subarray(0, n);
 }
 
+/** Whether every character fits in windows-1252, so saving as ANSI loses nothing (an emoji does not fit). */
+function fitsAnsi(text) {
+  for (const ch of text) {
+    const cp = ch.codePointAt(0);
+    if (!(cp < 0x80 || (cp >= 0xa0 && cp <= 0xff) || CP1252_REVERSE.has(cp))) return false;
+  }
+  return true;
+}
+
 function swapBytes(buf) {
   const out = Buffer.from(buf);
   for (let i = 0; i + 1 < out.length; i += 2) { const t = out[i]; out[i] = out[i + 1]; out[i + 1] = t; }
@@ -102,4 +111,9 @@ function kindForPath(p) {
   return 'txt';
 }
 
-module.exports = { ENCODINGS, decode, encode, detectEol, normalizeEol, applyEol, readBuffer, writeBuffer, kindForPath, decodeAnsi, encodeAnsi };
+/** The encoding a text is saved in: ANSI becomes UTF-8 when the text has characters ANSI has not, instead of writing them as "?". */
+function saveEncoding(text, encoding) {
+  return encoding === 'ansi' && !fitsAnsi(text) ? 'utf8' : encoding;
+}
+
+module.exports = { ENCODINGS, decode, encode, detectEol, normalizeEol, applyEol, readBuffer, writeBuffer, kindForPath, decodeAnsi, encodeAnsi, fitsAnsi, saveEncoding };

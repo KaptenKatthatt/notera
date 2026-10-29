@@ -1,5 +1,5 @@
-// Images in notes: a relative link shows the image under its line in the Write view (not on the
-// cursor's line), in the preview, and at full size on a click; a missing file shows a dashed box;
+// Images in notes: a relative link shows as the image itself in the Write view, which the cursor
+// steps over like one character (as in Word), in the preview, and at full size on a click; a missing file shows a dashed box;
 // files outside the notes folder are not served.
 import { _electron as electron } from 'playwright';
 import fs from 'node:fs';
@@ -51,27 +51,69 @@ assert.ok(w[0].loaded && w[0].w === 320 && Math.round(w[0].shown) === 320, 'a sm
 assert.ok(w[1].loaded && w[1].w === 1800 && w[1].shown < 1000, 'a wide image scaled to the column: ' + JSON.stringify(w[1]));
 const column = await win.evaluate(() => { const l = document.querySelector('#editor .cm-line'); const cs = getComputedStyle(l); return l.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); });
 assert.ok(Math.abs(w[1].shown - column) < 2, `scaled to the text column (${w[1].shown} vs ${column})`);
-const left = await win.evaluate(() => ({ text: document.querySelector('#editor .cm-image-line').getBoundingClientRect().left + parseFloat(getComputedStyle(document.querySelector('#editor .cm-image-line')).paddingLeft), img: document.querySelector('#editor .cm-image img').getBoundingClientRect().left }));
+const left = await win.evaluate(() => {
+  const plain = Array.from(document.querySelectorAll('#editor .cm-line')).find((l) => l.textContent.startsWith('Felet'));
+  return { text: plain.getBoundingClientRect().left + parseFloat(getComputedStyle(plain).paddingLeft), img: document.querySelector('#editor .cm-image img').getBoundingClientRect().left };
+});
 assert.ok(Math.abs(left.text - left.img) < 2, `the image lines up with the text (${JSON.stringify(left)})`);
-// The image syntax is hidden: the line reads as its alt text.
-const lineText = await win.evaluate(() => Array.from(document.querySelectorAll('#editor .cm-line')).map((l) => l.innerText).find((x) => x.includes('Bild 1')));
-assert.equal(lineText.trim(), 'Bild 1', `markers hidden: ${JSON.stringify(lineText)}`);
+// The image is all the line shows: no alt text, no link.
+const lineOf = (alt) => win.evaluate((a) => {
+  const l = Array.from(document.querySelectorAll('#editor .cm-line')).find((x) => x.querySelector(`.cm-image img[alt="${a}"]`));
+  return l ? l.innerText.trim() : null;
+}, alt);
+assert.equal(await lineOf('Bild 1'), '', 'the image line shows the image only');
 await shot('images-write');
-console.log('ok   skrivläge: bilder under sina rader, saknade som streckad ruta');
+console.log('ok   skrivläge: bilder i texten, saknade som streckad ruta');
 
-// 2. The cursor on the image line: the text comes back and the widget goes away.
+// 2. The arrow keys step over an image like over one character: it stays an image.
+const head = () => win.evaluate(() => window.__notera.view.state.selection.main.head);
+const imgRange = await win.evaluate(() => { const t = window.__notera.view.state.doc.toString(); const a = t.indexOf('![Bild 1]'); return { from: a, to: t.indexOf('\n', a) }; });
 await win.click('.cm-content');
+await win.evaluate(() => { const v = window.__notera.view; const t = v.state.doc.toString(); v.dispatch({ selection: { anchor: t.indexOf('bild 1.') + 3 } }); });
+await win.keyboard.press('ArrowDown'); // the blank line
+await win.keyboard.press('ArrowDown'); // the image
+let h = await head();
+assert.ok(h === imgRange.from || h === imgRange.to, `the cursor is beside the image (${h}, ${JSON.stringify(imgRange)})`);
+assert.equal(await win.evaluate(() => document.querySelectorAll('#editor .cm-image img').length), 2, 'still an image with the cursor on its line');
+assert.equal(await lineOf('Bild 1'), '', 'no text on the cursor line');
+await shot('images-cursor');
+await win.keyboard.press('Home');
+await win.keyboard.press('ArrowRight');
+assert.equal(await head(), imgRange.to, 'one ArrowRight steps over the whole image');
+await win.keyboard.press('ArrowLeft');
+assert.equal(await head(), imgRange.from, 'one ArrowLeft steps back');
+await win.keyboard.press('ArrowDown');
+assert.equal(await head(), imgRange.to + 1, 'ArrowDown leaves for the line under it');
+await win.keyboard.press('ArrowUp');
+h = await head();
+assert.ok(h === imgRange.from || h === imgRange.to, `ArrowUp comes back beside the image (${h})`);
+// Shift+Arrow selects it, outlined like in Word.
+await win.keyboard.press('Home');
+await win.keyboard.press('Shift+ArrowRight');
+assert.deepEqual(await win.evaluate(() => { const s = window.__notera.view.state.selection.main; return [s.from, s.to]; }), [imgRange.from, imgRange.to]);
+assert.notEqual(await win.evaluate(() => getComputedStyle(document.querySelector('#editor .cm-image img')).outlineStyle), 'none', 'a selected image is outlined');
+await shot('images-selected');
+// Backspace after it removes the whole image; Ctrl+Z brings it back.
+await win.keyboard.press('End');
+await win.keyboard.press('Backspace');
+assert.equal(await win.evaluate(() => window.__notera.view.state.doc.toString().includes('![Bild 1]')), false, 'Backspace removes the image');
+await win.keyboard.press('Control+Z');
+await win.waitForFunction(() => window.__notera.view.state.doc.toString().includes('![Bild 1](bilder/login-error-1.png)'));
+await win.waitForFunction(() => document.querySelectorAll('#editor .cm-image img').length === 2);
+console.log('ok   piltangenterna kliver över bilden, den förblir en bild; Backspace tar bort hela');
+
+// A selection reaching into the link (a search match in the file name) shows that link as text.
 await win.evaluate(() => {
   const v = window.__notera.view;
-  const pos = v.state.doc.toString().indexOf('![Bild 1]');
-  v.dispatch({ selection: { anchor: pos + 3 } });
+  const pos = v.state.doc.toString().indexOf('login-error-1.png');
+  v.dispatch({ selection: { anchor: pos, head: pos + 5 } });
 });
 await win.waitForFunction(() => document.querySelectorAll('#editor .cm-image img').length === 1);
 const onLine = await win.evaluate(() => Array.from(document.querySelectorAll('#editor .cm-line')).map((l) => l.innerText).find((x) => x.includes('Bild 1')));
 assert.equal(onLine.trim(), '![Bild 1](bilder/login-error-1.png)');
-await win.keyboard.press('ArrowUp');
+await win.keyboard.press('Control+Home');
 await win.waitForFunction(() => document.querySelectorAll('#editor .cm-image img').length === 2);
-console.log('ok   markören på raden visar texten, lämnar den visar bilden');
+console.log('ok   en markering inne i länken visar texten');
 
 // 3. Preview: the images render over notera-file:, the missing one is a box, click opens the overlay.
 await win.evaluate(() => window.__notera.handleAction('viewSplit'));

@@ -508,6 +508,7 @@ async function writeTabNow(tab) {
   const r = await api.writeFile({ path: tab.path, text: doc.toString(), encoding: tab.encoding, eol: tab.eol });
   if (!r.ok) { await api.showError({ kind: 'write', name: r.name, detail: r.error }); return false; }
   tab.name = r.name; tab.mtimeMs = r.mtimeMs;
+  if (r.encoding) tab.encoding = r.encoding;
   tab.savedDoc = doc;
   tab.dirty = !docFor(tab).eq(doc);
   tab.lastSavedAt = Date.now();
@@ -534,6 +535,7 @@ async function saveTabAsNow(tab, target) {
   if (!r.ok) { await api.showError({ kind: 'write', name: r.name, detail: r.error }); return false; }
   const kindChanged = r.kind !== tab.kind;
   tab.path = r.path; tab.name = r.name; tab.kind = r.kind; tab.mtimeMs = r.mtimeMs;
+  if (r.encoding) tab.encoding = r.encoding;
   tab.savedDoc = doc;
   tab.dirty = !docFor(tab).eq(doc);
   tab.lastSavedAt = Date.now();
@@ -1049,6 +1051,8 @@ async function handleAction(action, payload) {
     }
     case 'goTo': ensureEditorVisible(); gotoLine(view); break;
     case 'timeDate': if (!active.readOnly) insertTimeDate(); break;
+    case 'checkMark': if (!active.readOnly) { ensureEditorVisible(); fmt.insertAtCursor(view, '✅'); } break;
+    case 'emoji': if (!active.readOnly) { ensureEditorVisible(); view.focus(); await api.showEmojiPanel(); } break;
     case 'font': await dialogs.font(); break;
     case 'zoomIn': setZoom((settings.zoom || 100) + 10); break;
     case 'zoomOut': setZoom((settings.zoom || 100) - 10); break;
