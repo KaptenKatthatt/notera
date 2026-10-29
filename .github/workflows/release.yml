@@ -28,12 +28,19 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: node scripts/build.mjs --prod
-      - name: Tag v<version> (a published release needs its tag first)
+      - name: Tag v<version> and create its release (a published release needs its tag first)
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTES: ${{ inputs.notes }}
         run: |
           tag="v$(node -p "require('./package.json').version")"
           git fetch --tags origin
           if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then echo "$tag exists"; else git tag "$tag" && git push origin "$tag"; fi
+          # The release exists before electron-builder uploads to it. Left to itself, electron-builder
+          # creates it once per target (nsis, portable) at the same moment, and two releases with one
+          # tag break the update feed: the tag's download links lead to the one without latest.yml (0.16.0).
+          if gh release view "$tag" >/dev/null 2>&1; then echo "release $tag exists"; else gh release create "$tag" --verify-tag --title "${tag#v}" --notes "$NOTES"; fi
       - name: Build and publish the installer
         run: npx electron-builder --win --x64 --publish always
         env:
