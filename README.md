@@ -10,11 +10,12 @@ The editor takes its cues from [Omawrite](https://github.com/omacom-io/omawrite)
 
 - Opens and saves `.md` and `.txt` files. The file extension decides the mode; the status bar button switches it by hand.
 - Save as opens in the current file's folder. A new file opens in the folder you last used.
-- Remembers encoding (UTF-8, UTF-8 with BOM, UTF-16 LE/BE, ANSI) and line endings (CRLF or LF) per file and writes them back unchanged. The encoding can be changed from the status bar.
+- Remembers encoding (UTF-8, UTF-8 with BOM, UTF-16 LE/BE, ANSI) and line endings (CRLF or LF) per file and writes them back unchanged. The encoding can be changed from the status bar. An ANSI file that gets a character ANSI has not (an emoji) is saved as UTF-8 instead of turning it into `?`.
+- Emoji are drawn in colour in every font and theme. Edit > Emoji… opens Windows' emoji panel (the same as Win+.), and Ctrl+D writes a check mark ✅.
 - Tabs with unsaved-change dots, a save prompt on close, and reload prompts when a file changed on disk. The mouse wheel scrolls the tab strip when the tabs do not fit. A tab's right-click menu closes the others, the ones to the right, or all of them; unsaved tabs are asked about first, and closing all leaves one empty tab. File > Reopen closed tab (Ctrl+Shift+T) brings back the tabs closed in the window, newest first, at their place and cursor; untitled text closed without saving comes back unsaved. File > Reopen closed window (Ctrl+Shift+N) brings back a closed window with its tabs, while Notera runs.
 - Markdown formatting: bold, italic, strikethrough, headings, bullet/numbered/task lists, quote, inline code, code block, link, horizontal rule, table. Each toggles on and off.
 - Three views for Markdown: Write (Skriv), Split (Delad) and Read (Läs, the rendered preview). Preview links open in the browser.
-- Images: `![Bild 1](bilder/login-error-1.jpg)` shows the file next to the note (relative to the note's folder) scaled to the text column, in the preview and, when the line is nothing but the image, under that line in the Write view too, until the cursor reaches the line. Clicking an image shows it at full size; Esc closes. A file that is not there shows a dashed box with the alt text and the file name. Only images under the notes folder, or next to a file you opened, are shown.
+- Images: `![Bild 1](bilder/login-error-1.jpg)` shows the file next to the note (relative to the note's folder) scaled to the text column, in the preview and, in place of the link, in the Write view too. There the cursor steps over an image like over one character, as in Word: the arrow keys land before or after it and it stays an image, Shift+arrow selects it (outlined), and Backspace or Delete removes it. To edit the link's text, turn off View > Hide Markdown markers. Clicking an image shows it at full size; Esc closes. A file that is not there shows a dashed box with the alt text and the file name. Only images under the notes folder, or next to a file you opened, are shown.
 - Images in: Ctrl+V with a screenshot on the clipboard (Win+Shift+S puts one there), an image file dropped on the window, or Format > Insert image… (Ctrl+Shift+I). The file goes into `bilder` (`images` in an English UI) inside the project, or next to a file outside the notes folder, named after the note's title (`login-error-1.jpg`, `login-error-2.jpg`), and `![Bild 1](bilder/login-error-1.jpg)` goes in at the cursor on a line of its own. Everything but jpg, gif and svg is saved as JPEG (quality 85, transparency on white) to keep the folder small. An untitled tab becomes a note in Unsorted first; without a notes folder it has to be saved first.
 - The images follow the note: moving, archiving or restoring a note takes the images it links along to the images folder next to its new place (Undo brings them back too), and an image only that note links goes to the Recycle Bin with it. An image two notes in a project share is copied, not moved, and stays when one of them is deleted. Renaming a note or a project changes nothing, since the links are relative. A line deleted from the text leaves its file in the folder.
 - A command palette (Ctrl+Shift+P, as in VS Code) with every command and setting, a theme picker that previews each theme as you move through the list, and Open settings (JSON) for editing settings.json by hand.
@@ -69,7 +70,7 @@ Notera can keep your notes in one folder, sorted into projects. Choose the folde
 | Next / previous tab | Ctrl+Tab / Ctrl+Shift+Tab |
 | Find / Replace / Go to | Ctrl+F / Ctrl+H / Ctrl+G |
 | Find next / previous | F3 / Shift+F3 |
-| Time/Date | F5 |
+| Time/Date / check mark ✅ | F5 / Ctrl+D |
 | Bold / Italic / Strikethrough | Ctrl+B / Ctrl+I / Ctrl+Shift+X |
 | Heading 1 to 6 | Ctrl+1 to Ctrl+6 |
 | Bullet / numbered / task list | Ctrl+Shift+8 / Ctrl+Shift+7 / Ctrl+Shift+9 |
@@ -84,7 +85,7 @@ Notera can keep your notes in one folder, sorted into projects. Choose the folde
 | Delete line | Ctrl+Shift+K |
 | Cut / copy line (nothing selected) | Ctrl+X / Ctrl+C |
 | New line below / above | Ctrl+Enter / Ctrl+Shift+Enter |
-| Add next occurrence / select all occurrences | Ctrl+D / Ctrl+Shift+L |
+| Add next occurrence / select all occurrences | none by default (Settings > Keyboard shortcuts) / Ctrl+Shift+L |
 | Add cursor above / below | Ctrl+Alt+Up / Ctrl+Alt+Down |
 | Indent / outdent line | Ctrl+] / Ctrl+[ |
 | Keyboard shortcuts | Ctrl+? / F1 |

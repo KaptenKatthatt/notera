@@ -1,13 +1,16 @@
-// images.js: the image under its line in the Write view. A line that is nothing but an image,
-// `![Bild 1](bilder/login-error-1.jpg)`, shows the image below it, scaled to the text column,
-// while the cursor is on another line; on the cursor's line the plain text is there to edit. A
-// file that cannot be loaded shows a dashed box with the alt text and the file name instead.
-import { EditorView, Decoration, WidgetType } from '@codemirror/view';
+// images.js: images in the Write view, shown like Word shows a picture. An image link,
+// `![Bild 1](bilder/login-error-1.jpg)`, is replaced by the image itself, scaled to the text
+// column, and the cursor steps over it as over one character: the arrow keys land before or after
+// it, never in the link's text, and Backspace or Delete next to it removes the whole image. A
+// selection that reaches into the link from elsewhere (a search match in the file name) shows that
+// link as text. A file that cannot be loaded shows a dashed box with the alt text and the file name.
+import { EditorView, Decoration, WidgetType, ViewPlugin } from '@codemirror/view';
+import { Prec } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { imageLine, resolveImagePath, imageUrl, baseOf } from '../shared/imageLinks.js';
 import { openLightbox } from './lightbox.js';
 
-/** Natural sizes of images loaded so far, so a widget made again (the cursor left the line) takes its height at once. */
+/** Natural sizes of images loaded so far, so a widget made again (the note reopened) takes its height at once. */
 const sizes = new Map();
 /**
  * URLs that failed to load, and when: shown as missing without asking for them again. A local
@@ -32,9 +35,18 @@ export function missingImageBox(alt, file) {
 }
 
 class ImageWidget extends WidgetType {
-  /** @param {string} src @param {string} alt @param {string} file */
-  constructor(src, alt, file) { super(); this.src = src; this.alt = alt; this.file = file; }
-  eq(other) { return other.src === this.src && other.alt === this.alt && other.file === this.file; }
+  /** @param {string} src @param {string} alt @param {string} file @param {boolean} selected */
+  constructor(src, alt, file, selected) { super(); this.src = src; this.alt = alt; this.file = file; this.selected = selected; }
+  /** @param {ImageWidget} other */
+  same(other) { return other.src === this.src && other.alt === this.alt && other.file === this.file; }
+  /** @param {ImageWidget} other */
+  eq(other) { return this.same(other) && other.selected === this.selected; }
+  /** Selecting or unselecting keeps the image element: only the outline changes. @param {HTMLElement} dom @param {EditorView} _view */
+  updateDOM(dom, _view, from) {
+    if (!(from instanceof ImageWidget) || !this.same(from)) return false;
+    dom.classList.toggle('cm-image-selected', this.selected);
+    return true;
+  }
   ignoreEvent() { return true; }
   get estimatedHeight() {
     const s = sizes.get(this.src);
@@ -42,12 +54,12 @@ class ImageWidget extends WidgetType {
   }
   /** @param {EditorView} view */
   toDOM(view) {
-    const wrap = document.createElement('div');
-    wrap.className = 'cm-image';
+    const wrap = document.createElement('span');
+    wrap.className = this.selected ? 'cm-image cm-image-selected' : 'cm-image';
     if (isFailed(this.src)) { wrap.appendChild(missingImageBox(this.alt, this.file)); return wrap; }
     const img = document.createElement('img');
     img.alt = this.alt;
-    img.title = this.file;
+    img.title = [this.alt, this.file].filter(Boolean).join(' · ');
     img.draggable = false;
     const known = sizes.get(this.src);
     if (known) { img.width = known.w; img.height = known.h; }
@@ -68,44 +80,60 @@ class ImageWidget extends WidgetType {
   }
 }
 
-/** Inside a code block or raw HTML, an image line is text, not an image. */
-function inCode(state, pos) {
-  let n = syntaxTree(state).resolveInner(pos, 1);
-  for (; n; n = n.parent) if (/^(FencedCode|CodeBlock|HTMLBlock|InlineCode)$/.test(n.name)) return true;
-  return false;
-}
-
-/** The line above a shown image reads as its caption (the alt text), not as a link. */
-const captionLine = Decoration.line({ class: 'cm-image-line' });
-
+/**
+ * The images' decorations, and whether the text has any image link at all (shown or not).
+ * @param {import('@codemirror/state').EditorState} state
+ * @param {string | null} baseDir
+ */
 function build(state, baseDir) {
   const { doc, selection } = state;
-  const cursorLines = new Set();
-  for (const r of selection.ranges) {
-    for (let n = doc.lineAt(r.from).number, end = doc.lineAt(r.to).number; n <= end; n++) cursorLines.add(n);
-  }
+  /** A selection end strictly inside the link: show it as text, so what was found or selected there is seen. */
+  const reaching = (from, to) => selection.ranges.some((r) => (r.from > from && r.from < to) || (r.to > from && r.to < to));
+  /** Selected as a whole: outlined, as in Word. */
+  const covered = (from, to) => selection.ranges.some((r) => !r.empty && r.from <= from && r.to >= to);
   const widgets = [];
-  for (let n = 1; n <= doc.lines; n++) {
-    const line = doc.line(n);
-    if (line.length < 5 || line.text.indexOf('![') < 0) continue;
-    const im = imageLine(line.text);
-    if (!im || cursorLines.has(n) || inCode(state, line.from + line.text.search(/\S/))) continue;
-    const abs = resolveImagePath(im.href, baseDir);
-    const src = abs ? imageUrl(abs) : im.target;
-    if (!src) continue;
-    widgets.push(captionLine.range(line.from));
-    widgets.push(Decoration.widget({ widget: new ImageWidget(src, im.alt, baseOf(abs || im.target)), block: true, side: 1 }).range(line.to));
-  }
-  return Decoration.set(widgets);
+  let any = false;
+  // Image nodes only: inside a code block, inline code or raw HTML an image link is text.
+  syntaxTree(state).iterate({
+    enter: (n) => {
+      if (n.name !== 'Image') return;
+      any = true;
+      const im = imageLine(doc.sliceString(n.from, n.to));
+      if (!im || reaching(n.from, n.to)) return false;
+      const abs = resolveImagePath(im.href, baseDir);
+      const src = abs ? imageUrl(abs) : im.target;
+      if (!src) return false;
+      widgets.push(Decoration.replace({ widget: new ImageWidget(src, im.alt, baseOf(abs || im.target), covered(n.from, n.to)) }).range(n.from, n.to));
+      return false;
+    }
+  });
+  return { decorations: Decoration.set(widgets), any };
 }
 
 /**
  * The extension for one tab: its images resolve against the note's folder (null for an untitled
- * tab, whose relative links stay unresolved and show as missing).
+ * tab, whose relative links stay unresolved and show as missing). The images are atomic, so the
+ * cursor moves and deletes over each one in one step.
  * @param {string | null} baseDir
  */
 export function imagePreviews(baseDir) {
-  return EditorView.decorations.compute(['doc', 'selection'], (state) => build(state, baseDir));
+  const plugin = ViewPlugin.fromClass(class {
+    /** @param {EditorView} view */
+    constructor(view) { this.set(build(view.state, baseDir)); }
+    /** @param {{ decorations: import('@codemirror/view').DecorationSet, any: boolean }} r */
+    set(r) { this.decorations = r.decorations; this.any = r.any; }
+    /** @param {import('@codemirror/view').ViewUpdate} u */
+    update(u) {
+      // A moved cursor only matters to a text with images: it may select one or reach into its link.
+      if (u.docChanged || (u.selectionSet && this.any) || syntaxTree(u.startState) !== syntaxTree(u.state)) this.set(build(u.state, baseDir));
+    }
+  }, {
+    decorations: (p) => p.decorations,
+    provide: (p) => EditorView.atomicRanges.of((view) => view.plugin(p)?.decorations || Decoration.none)
+  });
+  // Above the hidden markers (markers.js), which replace the `![` and `](…)` inside the same link:
+  // where two replacements overlap the one with the higher precedence is drawn.
+  return Prec.high(plugin);
 }
 
 /** For tests: forget failed loads, so a file written since is tried again. */

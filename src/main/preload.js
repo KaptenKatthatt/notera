@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('notera', {
   setTitle: (t) => ipcRenderer.send('window:setTitle', t),
   clipboardText: () => ipcRenderer.invoke('clipboard:readText'),
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
+  showEmojiPanel: () => ipcRenderer.invoke('window:showEmojiPanel'),
   quit: () => ipcRenderer.invoke('app:quit'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   about: () => ipcRenderer.invoke('app:about'),

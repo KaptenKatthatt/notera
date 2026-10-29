@@ -38,6 +38,15 @@ test('ANSI encode replaces unrepresentable characters with ?', () => {
   assert.equal(f.encodeAnsi('a→b').toString('latin1'), 'a?b');
 });
 
+test('a text with an emoji is saved as UTF-8 instead of ANSI, so it is not lost', () => {
+  assert.equal(f.fitsAnsi('Räk € “citat”'), true);
+  assert.equal(f.fitsAnsi('Klart ✅'), false);
+  assert.equal(f.saveEncoding('Räk €', 'ansi'), 'ansi');
+  assert.equal(f.saveEncoding('Klart ✅', 'ansi'), 'utf8');
+  assert.equal(f.saveEncoding('Klart ✅', 'utf16le'), 'utf16le');
+  assert.equal(f.readBuffer(f.writeBuffer('Klart ✅', f.saveEncoding('Klart ✅', 'ansi'), 'LF'), 'LF').text, 'Klart ✅');
+});
+
 test('empty file uses the platform default EOL', () => {
   assert.equal(f.readBuffer(Buffer.alloc(0), 'CRLF').eol, 'CRLF');
   assert.equal(f.readBuffer(Buffer.alloc(0), 'LF').eol, 'LF');

@@ -626,13 +626,14 @@ ipcMain.handle('file:write', async (_e, { path: p, text, encoding, eol }) => {
     const isSettings = samePath(p, settings.file);
     // The text being replaced may become a version first. History never stops a save.
     if (!isSettings) await history.beforeWrite(p, files.normalizeEol(String(text))).catch(() => {});
-    await writeFileAtomic(p, files.writeBuffer(text, encoding, eol));
+    const enc = files.saveEncoding(String(text), encoding);
+    await writeFileAtomic(p, files.writeBuffer(text, enc, eol));
     // settings.json saved by hand is applied, not added to recent files: addRecent would write the
     // settings still in memory straight over the file that was just saved.
     const settingsReload = isSettings ? reloadSettingsFile() : null;
     if (!isSettings) { settings.addRecent(p); images.allow(p); }
     buildMenu();
-    return { ok: true, path: p, name: path.basename(p), kind: files.kindForPath(p), mtimeMs: (await fs.stat(p)).mtimeMs, settingsReload };
+    return { ok: true, path: p, name: path.basename(p), kind: files.kindForPath(p), encoding: enc, mtimeMs: (await fs.stat(p)).mtimeMs, settingsReload };
   } catch (err) {
     return { ok: false, path: p, name: path.basename(p), error: err.message };
   }
@@ -704,6 +705,12 @@ ipcMain.handle('window:print', async (e) => {
 
 ipcMain.handle('clipboard:readText', () => clipboard.readText());
 ipcMain.handle('window:toggleFullscreen', (e) => toggleFullscreen(BrowserWindow.fromWebContents(e.sender)));
+// The system's emoji panel (on Windows the same as Win+.); it types into the focused editor.
+ipcMain.handle('window:showEmojiPanel', () => {
+  if (!app.isEmojiPanelSupported()) return false;
+  app.showEmojiPanel();
+  return true;
+});
 
 // Drafts: crash recovery for untitled tabs, one JSON file per draft.
 ipcMain.handle('draft:list', async () => {
@@ -1024,6 +1031,8 @@ function buildMenu() {
           ]
         },
         cmd('timeDate'),
+        cmd('checkMark'),
+        cmd('emoji', { enabled: app.isEmojiPanelSupported() }),
         { type: 'separator' },
         check('spellcheck'),
         cmd('font')

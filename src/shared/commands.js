@@ -50,6 +50,9 @@ const COMMANDS = [
   { id: 'goTo', cat: 'edit', label: 'menu.goTo', keys: ['Ctrl+G'], global: true },
   { id: 'spellcheck', cat: 'edit', label: 'menu.spellcheck', keys: [], global: true },
   { id: 'timeDate', cat: 'edit', label: 'menu.timeDate', keys: ['F5'] },
+  { id: 'checkMark', cat: 'edit', label: 'menu.checkMark', keys: ['Ctrl+D'] },
+  // Windows' own emoji panel (Win+.), opened from the menu for those who don't know the key.
+  { id: 'emoji', cat: 'edit', label: 'menu.emoji', keys: [] },
   { id: 'font', cat: 'edit', label: 'menu.font', keys: [], global: true },
   // Line (VS Code)
   { id: 'moveLineUp', cat: 'line', label: 'menu.moveLineUp', keys: ['Alt+Up'] },
@@ -60,7 +63,8 @@ const COMMANDS = [
   { id: 'deleteLine', cat: 'line', label: 'menu.deleteLine', keys: ['Ctrl+Shift+K'] },
   { id: 'insertLineBelow', cat: 'line', label: 'menu.insertLineBelow', keys: ['Ctrl+Enter'] },
   { id: 'insertLineAbove', cat: 'line', label: 'menu.insertLineAbove', keys: ['Ctrl+Shift+Enter'] },
-  { id: 'selectNextOccurrence', cat: 'line', label: 'menu.selectNextOccurrence', keys: ['Ctrl+D'] },
+  // Ctrl+D (VS Code's key for this) writes a check mark since 0.16; this one can be given a key in Settings.
+  { id: 'selectNextOccurrence', cat: 'line', label: 'menu.selectNextOccurrence', keys: [] },
   { id: 'selectAllOccurrences', cat: 'line', label: 'menu.selectAllOccurrences', keys: ['Ctrl+Shift+L'] },
   { id: 'addCursorAbove', cat: 'line', label: 'menu.addCursorAbove', keys: ['Ctrl+Alt+Up'] },
   { id: 'addCursorBelow', cat: 'line', label: 'menu.addCursorBelow', keys: ['Ctrl+Alt+Down'] },
