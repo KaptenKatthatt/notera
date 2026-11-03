@@ -6,6 +6,7 @@
 // and gets a 304 instead of the bytes again.
 const path = require('path');
 const fsp = require('fs/promises');
+const fsSync = require('fs');
 const { IMAGE_EXT_RE, pathFromUrl } = require('../shared/imageLinks');
 const { writeFileAtomic } = require('./atomicWrite');
 
@@ -45,10 +46,7 @@ function createImageServer({ roots }) {
 
   /** The file a URL names, when it may be shown; null otherwise. */
   function fileFor(url) {
-    const p = pathFromUrl(url);
-    if (!p || !path.isAbsolute(p) || !IMAGE_EXT_RE.test(p)) return null;
-    const abs = path.resolve(p);
-    return allowed(abs) ? abs : null;
+    return allowedFile(pathFromUrl(url));
   }
 
   async function serve(request) {
@@ -66,7 +64,14 @@ function createImageServer({ roots }) {
     }
   }
 
-  return { serve, allow, fileFor };
+  /** The file at an absolute path, when the window may show it (and so copy it into a note); null otherwise. */
+  function allowedFile(p) {
+    if (typeof p !== 'string' || !path.isAbsolute(p) || !IMAGE_EXT_RE.test(p)) return null;
+    const abs = path.resolve(p);
+    return allowed(abs) ? abs : null;
+  }
+
+  return { serve, allow, fileFor, allowedFile };
 }
 
 const lower = (s) => String(s).toLowerCase();
@@ -78,6 +83,47 @@ async function uniqueImageName(dir, slug, ext) {
     const name = `${slug}-${n}.${ext}`;
     if (!taken.includes(lower(name))) return name;
   }
+}
+
+/** A free name in dir for an image called `name`: the name itself, or the same stem with the next number. */
+async function freeImageName(dir, name) {
+  let taken = [];
+  try { taken = (await fsp.readdir(dir)).map(lower); } catch { /* new folder */ }
+  if (!taken.includes(lower(name))) return name;
+  const m = /^(.*?)(?:-(\d+))?(\.[^.]+)$/.exec(name) || [name, name, undefined, ''];
+  for (let n = Number(m[2] || 1) + 1; ; n++) {
+    const cand = `${m[1]}-${n}${m[3]}`;
+    if (!taken.includes(lower(cand))) return cand;
+  }
+}
+
+async function sameBytes(a, b) {
+  const [sa, sb] = await Promise.all([fsp.stat(a), fsp.stat(b)]);
+  if (sa.size !== sb.size) return false;
+  const [ba, bb] = await Promise.all([fsp.readFile(a), fsp.readFile(b)]);
+  return ba.equals(bb);
+}
+
+/**
+ * Copy an image another note links into the images folder `dir` (text with images pasted from a
+ * note in another folder). The file keeps its name when that is free; a file already there with the
+ * same name and the same bytes is used as it is (the same image pasted twice); otherwise the name
+ * gets the next free number. The original is left alone.
+ * @param {{ src: string, dir: string }} opts
+ * @returns {Promise<string>} the file's name in dir
+ */
+async function importImage({ src, dir }) {
+  if (!IMAGE_EXT_RE.test(src)) throw new Error(`Not an image: ${src}`);
+  const st = await fsp.stat(src);
+  if (!st.isFile()) throw new Error(`Not a file: ${src}`);
+  const name = path.basename(src);
+  if (lower(path.resolve(path.dirname(src))) === lower(path.resolve(dir))) return name;
+  const same = path.join(dir, name);
+  try { if (await sameBytes(src, same)) return name; } catch { /* not there */ }
+  await fsp.mkdir(dir, { recursive: true });
+  const free = await freeImageName(dir, name);
+  await fsp.copyFile(src, path.join(dir, free), fsSync.constants.COPYFILE_EXCL);
+  return free;
 }
 
 const SAVE_EXT = new Set(['jpg', 'gif', 'svg', 'png', 'webp']);
@@ -97,4 +143,4 @@ async function saveImage({ dir, slug, ext, bytes }) {
   return name;
 }
 
-module.exports = { createImageServer, isInside, MIME, uniqueImageName, saveImage };
+module.exports = { createImageServer, isInside, MIME, uniqueImageName, saveImage, freeImageName, importImage };

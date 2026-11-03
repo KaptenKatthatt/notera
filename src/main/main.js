@@ -16,7 +16,7 @@ const { createThemeStore, describeError, SCHEME } = require('./themes');
 const vscode = require('./vscodeImport');
 const { createNotesStore, FOLDER_NAMES } = require('./notes');
 const { createHistory } = require('./history');
-const { createImageServer, saveImage } = require('./images');
+const { createImageServer, saveImage, importImage } = require('./images');
 const { IMAGE_SCHEME, slugOf } = require('../shared/imageLinks');
 
 const isDev = !app.isPackaged;
@@ -792,6 +792,28 @@ ipcMain.handle('images:save', async (_e, { notePath, bytes, ext, title } = {}) =
     const name = await saveImage({ dir, slug, ext: String(ext || ''), bytes });
     images.allow(notePath);
     return { ok: true, path: path.join(dir, name), link: `${folder}/${name}` };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+/**
+ * Text with images pasted from a note in another folder: copy the images it links into the images
+ * folder of the note at notePath. `files` are the absolute paths the links point at; only images
+ * the window may show are copied. Returns the link for each file, in order, null for one that
+ * could not be copied (its link stays as it was).
+ */
+ipcMain.handle('images:import', async (_e, { notePath, files } = {}) => {
+  try {
+    if (typeof notePath !== 'string' || !path.isAbsolute(notePath)) throw new Error('No file');
+    if (!Array.isArray(files)) throw new Error('No images');
+    const { dir, name: folder } = await imagesFolderFor(notePath);
+    const links = [];
+    for (const f of files) {
+      const src = images.allowedFile(f);
+      try { links.push(src ? `${folder}/${await importImage({ src, dir })}` : null); } catch { links.push(null); }
+    }
+    images.allow(notePath);
+    return { ok: true, links };
   } catch (err) {
     return { ok: false, error: err.message };
   }

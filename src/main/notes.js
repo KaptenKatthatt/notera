@@ -33,6 +33,7 @@ const H = require('../shared/noteHeader');
 const T = require('../shared/templates');
 const { makeT } = require('../shared/strings');
 const { imageLinks } = require('../shared/imageLinks');
+const { freeImageName } = require('./images');
 
 const INDEX_FILE = '.notera.json';
 const NOTE_EXT = /\.(md|markdown|txt)$/i;
@@ -391,18 +392,6 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
       if (r) for (const im of ownImages(r.text, folderName)) used.add(lower(im.name));
     }
     return used;
-  }
-
-  /** A free name in dir for an image called `name`: the same stem with the next number. */
-  async function freeImageName(dir, name) {
-    let taken = [];
-    try { taken = (await fsp.readdir(dir)).map(lower); } catch { /* new folder */ }
-    if (!taken.includes(lower(name))) return name;
-    const m = /^(.*?)(?:-(\d+))?(\.[^.]+)$/.exec(name) || [name, name, undefined, ''];
-    for (let n = Number(m[2] || 1) + 1; ; n++) {
-      const cand = `${m[1]}-${n}${m[3]}`;
-      if (!taken.includes(lower(cand))) return cand;
-    }
   }
 
   /**

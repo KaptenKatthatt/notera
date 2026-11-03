@@ -87,6 +87,40 @@ function imageLinks(text) {
   return out;
 }
 
+/**
+ * The image files a text links by a relative path, resolved against the folder it was written in:
+ * `[{ href, abs }]`, one per distinct link. Links to the web and absolute paths are left out:
+ * they mean the same wherever the text goes.
+ * @param {string} text @param {string | null | undefined} baseDir
+ */
+function relativeImageFiles(text, baseDir) {
+  const out = [];
+  for (const l of imageLinks(text)) {
+    if (!l.target || l.target.startsWith('//') || hasScheme(l.target) || isAbsolutePath(l.target)) continue;
+    if (out.some((x) => x.href === l.href)) continue;
+    const abs = resolveImagePath(l.href, baseDir);
+    if (abs) out.push({ href: l.href, abs });
+  }
+  return out;
+}
+
+/** A link as it goes in the text: in `<>` when it has a space or a bracket a bare link cannot hold. */
+function linkHref(link) { return /[\s()<>]/.test(link) ? `<${link}>` : link; }
+
+/**
+ * The text with image links' targets swapped: `hrefs` maps a link as written to the new one.
+ * Alt text and title stay as they are.
+ * @param {string} text @param {Map<string, string>} hrefs
+ */
+function rewriteImageLinks(text, hrefs) {
+  return String(text || '').replace(IMAGE_LINK_RE, (full, alt, href) => {
+    const next = hrefs.get(href);
+    if (next === undefined) return full;
+    const at = full.indexOf(href, alt.length + 4); // after `![alt](` and any space: the target itself
+    return full.slice(0, at) + next + full.slice(at + href.length);
+  });
+}
+
 /** The one image a line consists of, or null. */
 function imageLine(lineText) {
   const m = IMAGE_LINE_RE.exec(lineText);
@@ -141,4 +175,5 @@ function insertImageText(doc, pos, text) {
   return { from: p, to: p, insert, cursor: p + insert.length - 1 };
 }
 
-module.exports = { IMAGE_SCHEME, slugOf, insertImageText, IMAGE_EXT_RE, IMAGE_LINE_RE, hasScheme, hrefTarget, dirOf, baseOf, resolveImagePath, imageUrl, pathFromUrl, imageLinks, imageLine };
+module.exports = { IMAGE_SCHEME, slugOf, insertImageText, IMAGE_EXT_RE, IMAGE_LINE_RE, hasScheme, hrefTarget, dirOf, baseOf, resolveImagePath, imageUrl, pathFromUrl, imageLinks, imageLine,
+  relativeImageFiles, linkHref, rewriteImageLinks };

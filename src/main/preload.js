@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('notera', {
   },
   images: {
     save: (args) => ipcRenderer.invoke('images:save', args),
+    import: (args) => ipcRenderer.invoke('images:import', args),
     pick: () => ipcRenderer.invoke('images:pick')
   },
   history: {

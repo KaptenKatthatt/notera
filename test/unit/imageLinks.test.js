@@ -79,3 +79,18 @@ test('image links: where the image line goes', () => {
   // A new note (header, then one empty line): the image under the header, the empty line stays after the cursor.
   assert.equal(apply('# T\nProjekt: P · Skapad: 2026-01-01 10:00\n\n', 1).at, `# T\nProjekt: P · Skapad: 2026-01-01 10:00\n\n${img}\n|\n`);
 });
+
+test('image links: the relative ones a pasted text brings, and rewriting them', () => {
+  const text = '![A](bilder/a.jpg) ![B](<bilder/b c.png> "titel") ![A igen](bilder/a.jpg) ![W](https://x.se/w.png) ![Abs](/tmp/z.png)';
+  assert.deepEqual(L.relativeImageFiles(text, '/n/Enlantis'), [
+    { href: 'bilder/a.jpg', abs: '/n/Enlantis/bilder/a.jpg' },
+    { href: '<bilder/b c.png>', abs: '/n/Enlantis/bilder/b c.png' }
+  ]);
+  assert.deepEqual(L.relativeImageFiles(text, null), [], 'without a folder nothing resolves');
+  assert.equal(L.linkHref('bilder/a-2.jpg'), 'bilder/a-2.jpg');
+  assert.equal(L.linkHref('bilder/b c.png'), '<bilder/b c.png>');
+  const hrefs = new Map([['bilder/a.jpg', 'bilder/a-2.jpg'], ['<bilder/b c.png>', '<bilder/b c-2.png>']]);
+  assert.equal(L.rewriteImageLinks(text, hrefs),
+    '![A](bilder/a-2.jpg) ![B](<bilder/b c-2.png> "titel") ![A igen](bilder/a-2.jpg) ![W](https://x.se/w.png) ![Abs](/tmp/z.png)');
+  assert.equal(L.rewriteImageLinks('![bilder/a.jpg](bilder/a.jpg)', hrefs), '![bilder/a.jpg](bilder/a-2.jpg)', 'the alt text is left alone');
+});

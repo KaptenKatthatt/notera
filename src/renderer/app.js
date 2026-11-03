@@ -60,7 +60,8 @@ function editorOpts(tab) {
     readOnly: !!tab.readOnly,
     spellcheck: !!settings.spellcheck,
     imageBase: tab.path ? dirOf(tab.path) : null,
-    onImageFiles: (files) => imageInserter.addFiles(files)
+    onImageFiles: (files) => imageInserter.addFiles(files),
+    onImageText: (text, from) => imageInserter.pasteText(text, from)
   };
 }
 
