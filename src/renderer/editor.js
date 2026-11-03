@@ -4,7 +4,8 @@ import {
   rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder, ViewPlugin, Decoration, scrollPastEnd
 } from '@codemirror/view';
 import { hideMarkers } from './markers.js';
-import { imagePreviews } from './images.js';
+import { imagePreviews, copyImageBase, IMAGE_BASE_TYPE } from './images.js';
+import { relativeImageFiles } from '../shared/imageLinks.js';
 import { headings } from './headings.js';
 import { typingEffects } from './effects.js';
 import { searchCount } from './searchCount.js';
@@ -308,15 +309,30 @@ const wrapExt = [EditorView.lineWrapping, wrapIndent];
 // The image under its line (images.js) goes with the hidden markers: both show the text as it reads.
 // An image on the clipboard pasted into a Markdown tab goes to opts.onImageFiles (imageInsert.js)
 // instead of being dropped by CodeMirror; when both text and an image are there, the image wins.
+// Text copied from a Markdown tab carries the folder it was written in (IMAGE_BASE_TYPE), so text
+// with relative image links pasted into a note in another folder goes to opts.onImageText, which
+// copies the images along; otherwise the link would point into a folder without them.
 function imagesExt(opts) {
+  const base = opts.imageBase || null;
   return [
-    opts.kind === 'md' && opts.hideMarkers ? imagePreviews(opts.imageBase || null) : [],
-    opts.kind === 'md' && opts.onImageFiles ? EditorView.domEventHandlers({
+    opts.kind === 'md' && opts.hideMarkers ? imagePreviews(base) : [],
+    opts.kind === 'md' ? copyImageBase(base) : [],
+    opts.kind === 'md' && (opts.onImageFiles || opts.onImageText) ? EditorView.domEventHandlers({
       paste(e) {
-        const files = Array.from((e.clipboardData && e.clipboardData.files) || []).filter((f) => /^image\//.test(f.type));
-        if (!files.length) return false;
+        const data = e.clipboardData;
+        if (!data) return false;
+        const files = Array.from(data.files || []).filter((f) => /^image\//.test(f.type));
+        if (files.length && opts.onImageFiles) {
+          e.preventDefault();
+          void opts.onImageFiles(files);
+          return true;
+        }
+        const from = data.getData(IMAGE_BASE_TYPE);
+        if (!from || from === base || !opts.onImageText) return false;
+        const text = data.getData('text/plain');
+        if (!relativeImageFiles(text, from).length) return false;
         e.preventDefault();
-        void opts.onImageFiles(files);
+        void opts.onImageText(text, from);
         return true;
       }
     }) : []

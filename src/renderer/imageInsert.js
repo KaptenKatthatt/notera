@@ -3,7 +3,7 @@
 // folder (main/images.js names it after the note's title) and `![Bild N](bilder/name.jpg)` goes
 // in at the cursor on a line of its own. Everything but jpg, gif and svg is converted to JPEG
 // here, on a canvas, since the window's Chromium decodes every image type there is.
-import { imageLinks, insertImageText } from '../shared/imageLinks.js';
+import { imageLinks, insertImageText, relativeImageFiles, rewriteImageLinks, linkHref } from '../shared/imageLinks.js';
 
 const JPEG_QUALITY = 0.85;
 const KEEP_AS_IS = new Set(['jpg', 'jpeg', 'gif', 'svg']);
@@ -90,5 +90,35 @@ export function createImageInserter(ctx) {
     await addFiles(picked.map((f) => new File([f.bytes], f.name)));
   }
 
-  return { addFiles, pick, insertLink };
+  /**
+   * Text copied from a note in another folder (`from`), with relative image links: the images are
+   * copied into this note's images folder and the links rewritten to point there, then the text is
+   * pasted as CodeMirror would. An untitled tab becomes a note first, as for a pasted image; when it
+   * cannot, the text goes in as it is and a toast says why its images are missing.
+   * @param {string} text @param {string} from
+   */
+  async function pasteText(text, from) {
+    const tab = ctx.getActive();
+    if (!tab || tab.kind !== 'md' || tab.readOnly) return false;
+    let out = text;
+    const found = relativeImageFiles(text, from);
+    if (!tab.path && !(await ctx.ensureFile(tab))) ctx.toast(t('ui.imageSaveFirst'));
+    else if (ctx.getActive() === tab && tab.path) {
+      const r = await ctx.api.images.import({ notePath: tab.path, files: found.map((f) => f.abs) });
+      if (!r || !r.ok) ctx.toast(t('ui.imageFailed', { error: (r && r.error) || '?' }));
+      else {
+        const hrefs = new Map();
+        found.forEach((f, i) => { if (r.links[i]) hrefs.set(f.href, linkHref(r.links[i])); });
+        out = rewriteImageLinks(text, hrefs);
+      }
+    }
+    if (ctx.getActive() !== tab) return false; // the tab went away meanwhile
+    const view = ctx.getView();
+    view.dispatch(view.state.replaceSelection(out), { userEvent: 'input.paste', scrollIntoView: true });
+    view.focus();
+    ctx.afterInsert();
+    return true;
+  }
+
+  return { addFiles, pick, insertLink, pasteText };
 }

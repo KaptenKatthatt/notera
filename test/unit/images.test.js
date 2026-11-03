@@ -75,3 +75,28 @@ test('image files: named after the note, numbered from 1, written as given', asy
   await assert.rejects(saveImage({ dir, slug: 'x', ext: 'jpg', bytes: new Uint8Array([]) }), /Empty/);
   await assert.rejects(saveImage({ dir, slug: 'x', ext: 'jpg', bytes: 'nope' }), /Empty/);
 });
+
+test('importImage: keeps the name, reuses the same bytes, numbers a clash', async () => {
+  const { importImage } = require('../../src/main/images');
+  const { tmp, notes } = setup();
+  const src = path.join(notes, 'Enlantis', 'bilder', 'a.png');
+  const dest = path.join(notes, 'Kund', 'bilder');
+  assert.equal(await importImage({ src, dir: dest }), 'a.png');
+  assert.equal(Buffer.compare(fs.readFileSync(path.join(dest, 'a.png')), PNG), 0);
+  assert.equal(await importImage({ src, dir: dest }), 'a.png', 'the same image again is not copied twice');
+  assert.deepEqual(fs.readdirSync(dest), ['a.png']);
+  fs.writeFileSync(path.join(dest, 'a.png'), 'other');
+  assert.equal(await importImage({ src, dir: dest }), 'a-2.png', 'another file of that name: the next number');
+  assert.equal(fs.readFileSync(path.join(dest, 'a.png'), 'utf8'), 'other', 'and it is left alone');
+  assert.equal(await importImage({ src, dir: path.dirname(src) }), 'a.png', 'its own folder: nothing to copy');
+  await assert.rejects(importImage({ src: path.join(notes, 'Enlantis', 'secret.md'), dir: dest }));
+  await assert.rejects(importImage({ src: path.join(tmp, 'nope.png'), dir: dest }));
+});
+
+test('image server: allowedFile answers for images it would serve only', () => {
+  const { tmp, notes, server } = setup();
+  assert.ok(server.allowedFile(path.join(notes, 'Enlantis', 'bilder', 'a.png')));
+  assert.equal(server.allowedFile(path.join(notes, 'Enlantis', 'secret.md')), null);
+  assert.equal(server.allowedFile(path.join(tmp, 'outside.png')), null);
+  assert.equal(server.allowedFile('bilder/a.png'), null);
+});

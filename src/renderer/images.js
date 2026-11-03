@@ -136,5 +136,36 @@ export function imagePreviews(baseDir) {
   return Prec.high(plugin);
 }
 
+/** The clipboard type that names the folder copied text was written in (see copyImageBase). */
+export const IMAGE_BASE_TYPE = 'application/x-notera-image-base';
+
+/**
+ * Text copied or cut from this tab carries the tab's folder beside the text, so a paste elsewhere
+ * can tell what its relative image links point at (editor.js). Listened for on the editor's outer
+ * element, so it runs after CodeMirror has put the text on the clipboard (CodeMirror clears it first).
+ * @param {string | null} baseDir
+ */
+export function copyImageBase(baseDir) {
+  if (!baseDir) return [];
+  return ViewPlugin.fromClass(class {
+    /** @param {EditorView} view */
+    constructor(view) {
+      this.dom = view.dom;
+      /** @param {ClipboardEvent} e */
+      this.onCopy = (e) => {
+        const data = e.clipboardData;
+        if (!e.defaultPrevented || !data || !data.types.includes('text/plain')) return; // CodeMirror did not copy
+        data.setData(IMAGE_BASE_TYPE, baseDir);
+      };
+      this.dom.addEventListener('copy', this.onCopy);
+      this.dom.addEventListener('cut', this.onCopy);
+    }
+    destroy() {
+      this.dom.removeEventListener('copy', this.onCopy);
+      this.dom.removeEventListener('cut', this.onCopy);
+    }
+  });
+}
+
 /** For tests: forget failed loads, so a file written since is tried again. */
 export function resetImageCache() { failed.clear(); sizes.clear(); }

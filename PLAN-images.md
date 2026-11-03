@@ -44,6 +44,7 @@ Three ways in, all ending the same: the file is written to the images folder, an
 - **Delete note**: the images only that note links go to the Recycle Bin with it. An image line deleted from the text leaves the file behind, untouched. "Clean up unused images" (a command that lists and trashes orphans) goes to the backlog.
 - **Version history** stays text only. A restored version that links a trashed image shows the missing-file box.
 - **Templates**: a template's images are not copied when a note is made from it. Out of scope.
+- **Copy and paste between notes** (added 2026-11-03, asked for by Jonas): text copied from a Markdown tab carries the tab's folder on the clipboard (`application/x-notera-image-base`). Pasted into a note in another folder, the images its relative links point at are copied into that note's images folder and the links rewritten, so the image shows instead of the missing-file box. The name is kept when free; a file of that name with the same bytes is reused; another file of that name gives the next number. Within the same folder the text goes in as it is. An untitled tab becomes a note first, as for a pasted image.
 
 ## Tests
 
