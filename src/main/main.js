@@ -335,13 +335,25 @@ function setupSpellcheck() {
   ses.setSpellCheckerEnabled(!!settings.get('spellcheck'));
 }
 
-/** Right-click in a text field: spelling suggestions when spell check flags the word, then the edit commands. */
+/**
+ * Right-click on an image (in the editor, the preview or the lightbox): Copy image, which puts the
+ * picture itself on the clipboard. Right-click in a text field: spelling suggestions when spell
+ * check flags the word, then the edit commands.
+ */
 function showEditContextMenu(win, p) {
-  if (!p.isEditable) return;
-  const s = settings.get();
-  const label = (id) => t(commands.BY_ID[id].label);
+  const onImage = p.mediaType === 'image' && !!p.hasImageContents;
   /** @type {Electron.MenuItemConstructorOptions[]} */
   const items = [];
+  if (onImage) {
+    items.push({ label: t('menu.copyImage'), click: () => { if (!win.isDestroyed()) win.webContents.copyImageAt(p.x, p.y); } });
+  }
+  if (!p.isEditable) {
+    if (items.length) Menu.buildFromTemplate(items).popup({ window: win });
+    return;
+  }
+  if (onImage) items.push({ type: 'separator' });
+  const s = settings.get();
+  const label = (id) => t(commands.BY_ID[id].label);
   if (s.spellcheck && p.misspelledWord) {
     const words = (p.dictionarySuggestions || []).slice(0, 6);
     for (const w of words) items.push({ label: w, click: () => win.webContents.replaceMisspelling(w) });
