@@ -1,6 +1,6 @@
 // Update flow against a local feed: auto check -> offer -> one click downloads with progress and
-// installs, keeping untitled text as a draft. Plus the manual check's dialog, an install called off
-// by a cancelled save, "Later", the no-update case and unsupported builds.
+// installs, keeping untitled text as a draft. Plus the manual check's dialog, the windows coming
+// back as they were after the update, "Later", the no-update case and unsupported builds.
 import { _electron as electron } from 'playwright';
 import http from 'node:http';
 import crypto from 'node:crypto';
@@ -15,6 +15,10 @@ const shots = path.join(root, 'test/e2e/shots');
 fs.mkdirSync(shots, { recursive: true });
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'notera-u-'));
 const ok = (label) => console.log('ok  ', label);
+const until = async (fn, what) => {
+  for (let i = 0; i < 200; i++) { if (await fn()) return; await new Promise((r) => setTimeout(r, 50)); }
+  throw new Error('timed out: ' + what);
+};
 
 // ---- feed ----
 const payload = crypto.randomBytes(3 * 1024 * 1024);
@@ -181,7 +185,7 @@ await win.evaluate(() => { for (const t of window.__notera.tabs) { t.dirty = fal
 await app.close();
 
 // Stubs the native message boxes in the main process. Each box is recorded; the answer is
-// globalThis.__answer, or waits for release() when globalThis.__hold is set.
+// globalThis.__answer, or never comes when globalThis.__hold is set.
 const stubDialogs = () => app.evaluate(({ dialog }) => {
   globalThis.__asked = [];
   globalThis.__answer = 0;
@@ -194,7 +198,6 @@ const stubDialogs = () => app.evaluate(({ dialog }) => {
 });
 const answer = (n, hold = false) => app.evaluate((_e, [n, hold]) => { globalThis.__answer = n; globalThis.__hold = hold; globalThis.__asked = []; }, [n, hold]);
 const asked = () => app.evaluate(() => globalThis.__asked);
-const release = () => app.evaluate(() => { globalThis.__hold = false; globalThis.__release(); });
 
 // Manual check that finds an update: one dialog asks; "Senare" dismisses, yes downloads and installs.
 feedVersion = '9.9.9';
@@ -229,14 +232,17 @@ await closed2;
 assert.equal(fs.readFileSync(marker, 'utf8'), '9.9.9');
 ok('Hjälp → Sök efter uppdateringar, ja: laddar ner och installerar utan fler klick');
 
-// A cancelled save calls the install off: the toast offers "Starta om och installera" instead,
-// and that click installs once the save question is answered.
+// After an update every window comes back as it was, like Chrome: nothing is asked before the
+// install, and the windows reopen with their place and size, their tabs in order, the tab in front,
+// the cursor, a named file's unsaved change (still unsaved, the file untouched) and untitled text.
 fs.rmSync(marker, { force: true });
 const named = path.join(tmp, 'Inköp.md');
+const other = path.join(tmp, 'Lista.md');
 fs.writeFileSync(named, '# Inköp\n');
-app = await launch([named]);
+fs.writeFileSync(other, '# Lista\n');
+app = await launch([named, other]);
 win = await app.firstWindow();
-await win.waitForFunction(() => window.__notera && window.__notera.tabs.some((t) => t.path));
+await win.waitForFunction(() => window.__notera && window.__notera.tabs.some((t) => t.name === 'Lista.md'));
 await win.evaluate(() => window.notera.setSettings({ autosave: false }));
 await win.waitForSelector('#update-toast:not([hidden])', { timeout: 15000 });
 await stubDialogs();
@@ -244,35 +250,50 @@ await win.locator('.tab', { hasText: 'Inköp' }).click();
 await win.click('.cm-content');
 await win.keyboard.press('Control+End');
 await win.keyboard.type('mjölk');
+await win.keyboard.press('ArrowLeft');
 await win.waitForFunction(() => window.__notera.tabs.some((t) => t.path && t.dirty));
-await answer(2, true); // "Avbryt" on the save question, held so the installing state can be seen
-await win.click('#update-go');
-await win.waitForFunction(() => window.__notera.update.state === 'installing', null, { timeout: 30000 });
-await win.waitForFunction(() => document.querySelector('#update-text').textContent === 'Installerar Notera 9.9.9…');
-assert.equal(await win.evaluate(() => document.querySelector('#update-go').hidden), true);
-await shot('34-update-installing');
-assert.match((await asked())[0].message, /Inköp/);
-await release();
-await win.waitForFunction(() => window.__notera.update.state === 'downloaded');
-assert.equal(await win.textContent('#update-text'), 'Notera 9.9.9 är klar att installeras.');
-assert.equal(await win.textContent('#update-go'), 'Starta om och installera');
-assert.equal(await win.evaluate(() => document.querySelector('#update-toast').hidden), false);
-assert.equal(fs.existsSync(marker), false);
-await shot('35-update-install-cancelled');
-// "Senare" hides it; a manual check shows it again instead of doing nothing.
-await win.click('#update-later');
-await win.waitForSelector('#update-toast[hidden]', { state: 'attached' });
-assert.equal((await win.evaluate(() => window.notera.checkForUpdates(true))).status, 'busy');
-await win.waitForSelector('#update-toast:not([hidden])', { timeout: 2000 });
-assert.equal(await win.textContent('#update-go'), 'Starta om och installera');
-ok('avbruten sparning: appen lever, rutan visar Starta om och installera, och manuell kontroll visar den igen efter Senare');
-await answer(1); // "Spara inte"
+const win2Opened = app.waitForEvent('window');
+await win.evaluate(() => window.notera.newWindow());
+const win2 = await win2Opened;
+await win2.waitForFunction(() => window.__notera && window.__notera.tabs.length === 1);
+await win2.click('.cm-content');
+await win2.keyboard.type('Utkast i fönster två');
+await (await app.browserWindow(win2)).evaluate((w) => w.setBounds({ x: 120, y: 90, width: 760, height: 520 }));
+const bounds2 = await (await app.browserWindow(win2)).evaluate((w) => w.getNormalBounds());
+const state = (w) => w.evaluate(() => {
+  const n = window.__notera;
+  const sel = n.view.state.selection.main;
+  return { tabs: n.tabs.map((t) => (t.path ? t.name : '·' + (t === n.active ? n.view.state.doc : t.state.doc).toString())), active: n.tabs.indexOf(n.active), dirty: n.tabs.map((t) => t.dirty), cursor: sel.head, text: n.view.state.doc.toString() };
+});
+const before1 = await state(win);
+const before2 = await state(win2);
+await answer(1, true); // a question would hold the install up, and the app would not exit
 const closed3 = new Promise((res) => app.process().once('exit', res));
 await win.click('#update-go');
-await closed3;
+await Promise.race([closed3, new Promise((_r, no) => setTimeout(() => no(new Error('the install waited on a question')), 30000))]);
 assert.equal(fs.readFileSync(marker, 'utf8'), '9.9.9');
-assert.equal(fs.readFileSync(named, 'utf8'), '# Inköp\n');
-ok('Starta om och installera installerar när frågan är besvarad');
+assert.equal(fs.readFileSync(named, 'utf8'), '# Inköp\n', 'the unsaved change is not written');
+ok('installationen frågar ingenting: osparade ändringar behålls');
+
+app = await launch();
+await until(() => app.windows().length === 2, 'two windows back');
+const wins = app.windows();
+for (const w of wins) await w.waitForFunction(() => window.__notera && window.__notera.tabs.length > 0);
+const back = await Promise.all(wins.map(state));
+const i1 = back.findIndex((b) => b.tabs.includes('Inköp.md'));
+assert.ok(i1 >= 0, 'the first window is back');
+assert.deepEqual(back[i1], before1, 'its tabs, the tab in front, the cursor and the unsaved change');
+assert.deepEqual(back[1 - i1], before2, 'the second window with its untitled text');
+const bw = await (await app.browserWindow(wins[1 - i1])).evaluate((w) => w.getNormalBounds());
+assert.deepEqual(bw, bounds2, 'the second window where it was, as big');
+assert.equal(bounds2.width, 760);
+assert.equal(await wins[i1].evaluate(() => document.hasFocus()), true, 'the window in front is in front again');
+assert.equal(fs.existsSync(path.join(userData, 'restore-session.json')), false, 'the session opens once');
+await wins[i1].screenshot({ path: path.join(shots, '37-update-restored.png') });
+ok('efter uppdateringen är fönstren tillbaka som de var: flikar, flik i fokus, markör, osparat, plats och storlek');
+for (const w of wins) await w.evaluate(() => { for (const t of window.__notera.tabs) t.dirty = false; });
+await app.evaluate(({ app: a }) => a.exit(0)).catch(() => {});
+await new Promise((r) => setTimeout(r, 500));
 
 // A failed download shows the error toast; one click on retry downloads and installs.
 fs.rmSync(marker, { force: true });

@@ -46,9 +46,7 @@ function createTabDrag({ BrowserWindow, screen, createWindow, discardWindow }) {
 
   /** The window whose tab strip is under p, and p's x in its page; null when p is over none. */
   function targetAt(p) {
-    const all = BrowserWindow.getAllWindows();
-    const wins = [...order.filter((w) => all.includes(w)), ...all.filter((w) => !order.includes(w))];
-    for (const w of wins) {
+    for (const w of byFocus()) {
       if (w.isDestroyed() || w === drag.win || !w.isVisible() || w.isMinimized()) continue;
       const c = w.getContentBounds();
       if (p.x < c.x || p.x >= c.x + c.width || p.y < c.y - SLACK || p.y >= c.y + c.height) continue;
@@ -149,7 +147,13 @@ function createTabDrag({ BrowserWindow, screen, createWindow, discardWindow }) {
     drag = null;
   }
 
-  return { start, end, focused, forget, setStrip, get active() { return !!drag; } };
+  /** The open windows, most recently focused first. */
+  function byFocus() {
+    const all = BrowserWindow.getAllWindows();
+    return [...order.filter((w) => all.includes(w)), ...all.filter((w) => !order.includes(w))];
+  }
+
+  return { start, end, focused, forget, setStrip, byFocus, get active() { return !!drag; } };
 }
 
 module.exports = { createTabDrag };

@@ -33,6 +33,8 @@ const pendingFiles = new Map(); // webContents.id -> string[]
 const pendingSessions = new Map(); // webContents.id -> a closed window's tabs (Reopen closed window)
 const closeConfirmed = new WeakSet(); // windows whose renderer has settled unsaved work, so close() may go ahead
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
+/** Drafts the windows brought back after an update open themselves, so the draft restore skips them. */
+let sessionDrafts = [];
 let updater;
 let notesStore = null;
 let history = null; // version history of every file written from the editor (history.js)
@@ -449,6 +451,7 @@ function createWindow(filesToOpen = [], sourceWin = null, reopen = null, opts = 
     }
   });
   if (bounds.maximized) win.maximize();
+  if (reopen && reopen.fullscreen) win.setFullScreen(true);
   if (opts.inactive) win.showInactive();
   applyMenuBar(win, settings.get('writingMode'));
   const wcId = win.webContents.id;
@@ -499,7 +502,7 @@ ipcMain.handle('app:bootstrap', (e) => {
   const restoreDrafts = !draftsClaimed;
   draftsClaimed = true;
   return {
-    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, reopen, platform: process.platform, isDev,
+    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, reopen, sessionDrafts, platform: process.platform, isDev,
     dark: nativeTheme.shouldUseDarkColors, theme: themeMessage(), restoreDrafts, update: updater ? { ...updater.getState(), reason: updater.reason() } : null
   };
 });
@@ -543,8 +546,9 @@ async function installUpdate() {
   if (installRunning || !['downloaded', 'installing'].includes(updater.getState().state)) return false;
   installRunning = true;
   try {
-    const ok = await prepareAllForQuit();
-    if (!ok) { updater.installCancelled(); return false; }
+    const results = await prepareAllForQuit();
+    if (!results.every((r) => r.ok)) { updater.installCancelled(); return false; }
+    await saveRestoreSession(results);
     for (const w of BrowserWindow.getAllWindows()) closeConfirmed.add(w);
     return updater.install();
   } finally {
@@ -556,18 +560,53 @@ async function installUpdate() {
 // draft and comes back after the restart.
 const prepareWaiters = new Map();
 let prepareSeq = 0;
+/** @returns {Promise<{ win: any, ok: boolean, session: any }[]>} */
 function prepareAllForQuit() {
   const wins = BrowserWindow.getAllWindows();
   return Promise.all(wins.map((w) => new Promise((resolve) => {
     const id = ++prepareSeq;
-    prepareWaiters.set(id, resolve);
+    prepareWaiters.set(id, (ok, session) => resolve({ win: w, ok, session }));
     w.webContents.send('window:prepareQuit', id);
-  }))).then((results) => results.every(Boolean));
+  })));
 }
-ipcMain.on('window:prepareQuitResult', (_e, id, ok) => {
+ipcMain.on('window:prepareQuitResult', (_e, id, ok, session) => {
   const r = prepareWaiters.get(id);
-  if (r) { prepareWaiters.delete(id); r(!!ok); }
+  if (r) { prepareWaiters.delete(id); r(!!ok, session && typeof session === 'object' ? session : null); }
 });
+
+// ---------- the session an update restarts into ----------
+// Like Chrome after an update: every window comes back where it was, with its size, its tabs, the
+// tab in front, the cursors and the unsaved work. Written just before the installer runs, read
+// (and removed) by the next start.
+function restoreSessionFile() { return path.join(app.getPath('userData'), 'restore-session.json'); }
+
+async function saveRestoreSession(results) {
+  const focus = tabDrag.byFocus();
+  const windows = results
+    .filter((r) => r.session && !r.win.isDestroyed())
+    .sort((a, b) => focus.indexOf(b.win) - focus.indexOf(a.win)) // the window in front last, so it opens on top
+    .map(({ win, session }) => ({
+      tabs: Array.isArray(session.tabs) ? session.tabs : [],
+      active: Number(session.active) || 0,
+      scroll: Number(session.scroll) || 0,
+      bounds: { ...win.getNormalBounds(), maximized: win.isMaximized() },
+      fullscreen: win.isFullScreen()
+    }));
+  try { await writeFileAtomic(restoreSessionFile(), JSON.stringify({ version: app.getVersion(), windows })); }
+  catch { /* the drafts still bring the untitled text back */ }
+}
+
+/** The session the last update left, removed so it opens once; null when there is none. */
+function takeRestoreSession() {
+  const file = restoreSessionFile();
+  let data;
+  try { data = JSON.parse(fsSync.readFileSync(file, 'utf8')); } catch { return null; }
+  try { fsSync.unlinkSync(file); } catch { /* opened once anyway: the next update writes a new one */ }
+  const windows = data && Array.isArray(data.windows) ? data.windows.filter((w) => w && Array.isArray(w.tabs)) : [];
+  if (!windows.length) return null;
+  sessionDrafts = windows.flatMap((w) => w.tabs.map((x) => x && x.draftId).filter((id) => typeof id === 'string'));
+  return windows;
+}
 
 ipcMain.handle('app:quit', () => quitAll());
 // Goes through the window's close handler, so unsaved tabs still ask first.
@@ -1214,8 +1253,12 @@ if (!gotLock) {
     buildMenu();
     void refreshTemplates();
     setJumplist();
-    if (process.argv.some((a) => a === '--new-window')) createWindow();
-    else createWindow(parseFileArgs(process.argv, process.cwd()));
+    const files = parseFileArgs(process.argv, process.cwd());
+    const restore = takeRestoreSession();
+    // After an update, the windows as they were; files the start was asked to open join the one in front.
+    if (restore) restore.forEach((w, i) => createWindow(i === restore.length - 1 ? files : [], null, w));
+    else if (process.argv.some((a) => a === '--new-window')) createWindow();
+    else createWindow(files);
     updater.start();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   });

@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld('notera', {
   installUpdate: () => ipcRenderer.invoke('update:install'),
   onUpdateStatus: (cb) => on('update:status', cb),
   onPrepareQuit: (cb) => on('window:prepareQuit', cb),
-  prepareQuitResult: (id, ok) => ipcRenderer.send('window:prepareQuitResult', id, ok),
+  prepareQuitResult: (id, ok, session) => ipcRenderer.send('window:prepareQuitResult', id, ok, session),
   listDrafts: () => ipcRenderer.invoke('draft:list'),
   writeDraft: (args) => ipcRenderer.invoke('draft:write', args),
   deleteDraft: (id) => ipcRenderer.invoke('draft:delete', id),
