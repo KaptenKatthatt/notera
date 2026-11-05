@@ -589,3 +589,19 @@ test('a whole project archived note by note and restored keeps every note with i
   assert.deepEqual(ls('Enlantis', 'bilder'), ['a-1.jpg', 'b-1.jpg']);
   assert.ok(!fs.existsSync(path.join(root, 'Arkiv', 'Enlantis')));
 });
+
+test('a file Notera did not make (no header line) keeps its name when its heading changes', async () => {
+  const { store, root, ls } = setup();
+  await store.createProject('Jobb');
+  const own = path.join(root, 'Jobb', 'Möte.md');
+  fs.writeFileSync(own, '# Möte om budget\n\ntext\n');
+  const r = await store.renameForTitle(own, 'Möte om budget');
+  assert.deepEqual(r, { path: own, moved: [] });
+  assert.ok(ls('Jobb').includes('Möte.md'), 'still Möte.md');
+  // Moved into a project by hand it becomes a note, header and all, and then follows its heading.
+  const outside = path.join(path.dirname(root), 'Lös.md');
+  fs.writeFileSync(outside, '# Lös\n');
+  const m = await store.moveNote(outside, 'Jobb');
+  assert.ok(H.parseMeta(fs.readFileSync(m.path, 'utf8')));
+  assert.equal((await store.renameForTitle(m.path, 'Lös idé')).moved.length, 1);
+});

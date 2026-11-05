@@ -645,13 +645,19 @@ function createNotesStore({ root, getLocale = () => 'en', trash, untitled = () =
     return to;
   }
 
-  /** Rename an active note after its heading. A no-op for anything else. */
+  /**
+   * Rename an active note after its heading. A no-op for anything else, and for a file Notera did
+   * not make a note of (no header line): a file someone keeps in a project folder and opens keeps
+   * its name, wherever it lies.
+   */
   async function renameForTitle(p, title) {
     return run(async () => {
       const idx = await loadIndex();
       const loc = locate(idx, p);
       if (!loc || loc.archived || !(await exists(p))) return { path: p, moved: [] };
-      const text = /^\d{4}-\d{2}-\d{2}/.test(loc.file) ? '' : (await readText(p)).text;
+      const full = (await readText(p)).text;
+      if (!H.parseMeta(full)) return { path: p, moved: [] };
+      const text = /^\d{4}-\d{2}-\d{2}/.test(loc.file) ? '' : full;
       const to = await renameToTitle(idx, loc, p, title, text, null);
       return to ? { path: to, moved: [{ from: p, to }] } : { path: p, moved: [] };
     });
