@@ -414,7 +414,10 @@ async function restoreTab(c) {
     tab = findTab(c.path);
     if (tab) place = false; // already open again: leave it where it is
     else { await openPaths([c.path]); tab = findTab(c.path); }
-    if (!tab) return null;
+    // A file gone since: its unsaved text, if it had any, comes back as untitled text.
+    if (!tab) return typeof c.text === 'string' && c.text.trim() ? restoreTab({ ...c, path: undefined }) : null;
+    // The copy of its unsaved text kept as a draft while Notera updated (sessionSnapshot) is done with.
+    if (c.draftId) void api.deleteDraft(c.draftId);
     // Unsaved changes moved along from another window: they stay unsaved here.
     if (typeof c.text === 'string' && c.text !== docFor(tab).toString()) {
       activateTab(tab);
@@ -450,9 +453,17 @@ async function reopenClosedTab() {
 /** A reopened window: its tabs as they were, the one that was active in front. */
 async function restoreWindow(w) {
   const back = [];
-  for (const c of w.tabs || []) back.push(await restoreTab(c));
+  for (const c of w.tabs || []) {
+    // An empty untitled tab (the session before an update keeps those too) comes back empty.
+    back.push(c.path || (c.text || '').trim() ? await restoreTab(c) : makeTab({ kind: c.kind || 'md' }));
+  }
   const front = back[w.active] || back.find(Boolean);
   if (front) activateTab(front); else if (!tabs.length) newTab();
+  if (front && typeof w.scroll === 'number') {
+    const top = w.scroll;
+    requestAnimationFrame(() => { view.scrollDOM.scrollTop = top; });
+  }
+  renderTabs();
 }
 
 /** The tabs Close others / Close all / Close to the right would close, from the tab right-clicked. */
@@ -662,8 +673,9 @@ async function flushPending(tab) {
   return (await tab.diskQueue) !== false;
 }
 
-async function restoreDrafts() {
-  const drafts = await api.listDrafts();
+/** skip: drafts a restored window brings back itself (the session before an update). */
+async function restoreDrafts(skip = []) {
+  const drafts = (await api.listDrafts()).filter((d) => !skip.includes(d.id));
   for (const d of drafts) {
     if (!d.text || !d.text.trim()) { await api.deleteDraft(d.id); continue; }
     const tab = makeTab({ text: d.text, kind: d.kind || 'md', draftId: d.id });
@@ -1249,20 +1261,37 @@ function bindUi() {
   api.onSettingsChanged((next) => applySettings(next, settings));
 }
 
-// Before an update restarts the app: save or keep everything. Named files are saved (or the user
-// is asked, when autosave is off); untitled text is kept as a draft and comes back after restart.
+// Before an update restarts the app, like Chrome: nothing is asked, and the window comes back as it
+// is, with its tabs, the one in front, the cursors and unsaved work. Pending autosaves are written;
+// untitled text is kept as a draft; a named file's unsaved changes stay unsaved and come back so.
 async function prepareQuit(id) {
-  let ok = true;
+  let session = null;
   try {
     if (active) active.state = view.state;
     for (const tab of [...tabs]) await flushPending(tab);
     for (const tab of [...tabs]) if (!tab.path && tab.dirty) await writeDraft(tab);
-    for (const tab of [...tabs]) {
-      if (tab.path && tab.dirty && !(await resolveUnsaved(tab))) { ok = false; break; }
-    }
+    session = await sessionSnapshot();
   } finally {
-    api.prepareQuitResult(id, ok);
+    api.prepareQuitResult(id, !!session, session);
   }
+}
+
+/** This window as it is, for main to bring back after the update (restoreWindow). */
+async function sessionSnapshot() {
+  const list = [];
+  for (const tab of tabs) {
+    const state = tab === active ? view.state : tab.state;
+    const { anchor, head } = state.selection.main;
+    const text = state.doc.toString();
+    if (tab.path && tab.dirty) {
+      // A copy as a draft too: should the new version not start, the text still comes back.
+      const draftId = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      await api.writeDraft({ id: draftId, text, kind: tab.kind });
+      list.push({ path: tab.path, text, draftId, anchor, head });
+    } else if (tab.path) list.push({ path: tab.path, anchor, head });
+    else list.push({ text: text.trim() ? text : '', kind: tab.kind, draftId: text.trim() ? tab.draftId : null, anchor, head });
+  }
+  return { tabs: list, active: Math.max(0, tabs.indexOf(active)), scroll: view.scrollDOM.scrollTop };
 }
 
 /**
@@ -1386,11 +1415,10 @@ async function boot() {
   api.onPrepareQuit((id) => void prepareQuit(id));
   applySettings(b.settings, { __locale: b.locale });
   if (b.update) updates.onStatus(b.update);
-  const restored = b.restoreDrafts ? await restoreDrafts() : 0;
+  const restored = b.restoreDrafts ? await restoreDrafts(b.sessionDrafts || []) : 0;
+  if (b.reopen) await restoreWindow(b.reopen);
   if (b.filesToOpen.length) { await openPaths(b.filesToOpen); if (!tabs.length) newTab(); }
-  else if (b.reopen) await restoreWindow(b.reopen);
-  else if (restored) activateTab(tabs[0]);
-  else newTab();
+  else if (!b.reopen) { if (restored) activateTab(tabs[0]); else newTab(); }
   await sidebar.refresh();
   sidebar.applyI18n();
   renderNotesBanner();
