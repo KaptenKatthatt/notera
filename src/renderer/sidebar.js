@@ -27,7 +27,8 @@ const ICONS = {
   edit: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13l.6-2.6L10.8 3.2l2 2L5.6 12.4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
   note: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5h6l3 3v10h-9z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.5 8h5M5.5 10.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
   check: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  close: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>'
+  close: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  window: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="4.5" width="10" height="9" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 4.5V2.5h10v9h-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>'
 };
 export { ICONS };
 
@@ -631,7 +632,7 @@ export function createSidebar(ctx) {
     ], folderLabel(name), point);
   }
 
-  /** Right-click menu of a tab: move it into a project, show it on disk or in the sidebar, archive it. */
+  /** Right-click menu of a tab: move it into a project, show it on disk or in the sidebar, archive it, move it to a new window. */
   function showTabMenu(tab, point) {
     const settings = ctx.settings();
     const info = tab.path ? noteInfo(tab.path) : null;
@@ -653,6 +654,8 @@ export function createSidebar(ctx) {
       if (info.archived) items.push({ label: t('notes.restore'), icon: ICONS.restore, act: () => restoreNote(tab.path) });
       else items.push({ label: t('notes.archive'), icon: ICONS.archive, key: 'A', act: () => archiveNote(tab.path) });
     }
+    // The only tab stays: moving it out would leave this window with nothing but an empty tab.
+    items.push({ label: t('notes.openInNewWindow'), icon: ICONS.window, disabled: ctx.tabCount() < 2, act: () => ctx.detachTab(tab) });
     const closeMany = (which, label) => ({
       label: t(label), disabled: !ctx.tabsToClose(tab, which).length,
       act: () => ctx.closeTabs(tab, which)

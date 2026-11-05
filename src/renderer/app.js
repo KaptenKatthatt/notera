@@ -1313,7 +1313,7 @@ async function boot() {
     flush: flushAll, saveBeforeMove, applyResult, onTreeChanged, openNote, createNote: createNoteIn, chooseRoot: chooseNotesRoot,
     promptProjectName: dialogs.projectName, moveTabToProject, closeTab: (tab) => closeTab(tab), retitleTab,
     showHistory: (tab) => showHistory(tab), showNoteHistory: async (p) => { await openNote(p); await showHistory(findTab(p)); },
-    tabsToClose, closeTabs,
+    tabsToClose, closeTabs, tabCount: () => tabs.length, detachTab: (tab) => detachTabToWindow(tab),
     focusEditor: () => view.focus(),
     sidebarVisible: () => !!settings.sidebarOpen && !settings.writingMode,
     showSidebar: async () => { if (settings.writingMode) await api.setSettings({ writingMode: false }); if (!settings.sidebarOpen) await api.setSettings({ sidebarOpen: true }); },
