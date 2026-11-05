@@ -4,7 +4,7 @@ import * as fmt from './format.js';
 import { lineCommands } from './lines.js';
 import { createKeyDispatcher } from './keybindings.js';
 import { createSettingsDialog } from './settingsDialog.js';
-import { attachTabDrag } from './tabdrag.js';
+import { attachTabDrag, createTabDropZone } from './tabdrag.js';
 import { display } from '../shared/commands.js';
 import { fillPlaceholders, cursorAfterHeading, standupTemplate, BUILTIN } from '../shared/templates.js';
 import { createThemeApplier } from './themeApply.js';
@@ -268,8 +268,40 @@ attachTabDrag($('#tabbar'), {
     tabs = next;
     renderTabs();
   },
-  onDetach: (tabId) => void detachTabToWindow(tabs.find((tb) => String(tb.id) === String(tabId)))
+  onDetach: (tabId, grab) => startTabDrag(tabs.find((tb) => String(tb.id) === String(tabId)), grab),
+  onDragEnd: () => { const started = tabDragStart; tabDragStart = null; if (started) void started.then(() => api.tabDrag.end()); }
 });
+
+// ---------- tabs dragged between windows (main's tabDrag.js runs the drag) ----------
+/** @type {Promise<boolean> | null} main's answer to the drag this window started, until the mouse comes up */
+let tabDragStart = null;
+
+/**
+ * A tab pulled out of the strip: main makes it a window that follows the mouse. A window's only tab
+ * stays put and main moves the window itself; any other tab leaves this window now.
+ */
+function startTabDrag(tab, grab) {
+  if (!tab) return false;
+  if (tab === active) tab.state = view.state;
+  const single = tabs.length === 1;
+  const info = { ...grab, tab: transferSnapshot(tab), name: tabTitle(tab), dirty: tab.dirty, single };
+  tabDragStart = api.tabDrag.start(info).catch(() => false);
+  if (!single) releaseTab(tab);
+  return tabDragStart;
+}
+
+// A tab dragged in from another window: shown where it would land, opened there when let go.
+const dropZone = createTabDropZone($('#tabbar'));
+api.tabDrag.onHover((h) => dropZone.hover(h));
+api.tabDrag.onLeave(() => dropZone.leave());
+api.tabDrag.onDrop(async ({ tab }) => {
+  const index = dropZone.take();
+  await receiveTab({ ...tab, index: index === null ? tabs.length : index });
+  if (view) view.focus();
+});
+// Main needs to know where the tab strip is, to tell when a dragged tab is over it.
+const reportStrip = () => { const r = $('#tabbar').getBoundingClientRect(); api.tabDrag.strip({ y: r.top, height: r.height }); };
+new ResizeObserver(reportStrip).observe($('#tabbar'));
 
 const preview = createPreview({ getView: () => view, getActive: () => active, getBaseDir: () => (active && active.path ? dirOf(active.path) : null), t: () => t });
 const popups = createPopups({ focusEditor: () => { if (view) view.focus(); } });
@@ -383,7 +415,13 @@ async function restoreTab(c) {
     if (tab) place = false; // already open again: leave it where it is
     else { await openPaths([c.path]); tab = findTab(c.path); }
     if (!tab) return null;
+    // Unsaved changes moved along from another window: they stay unsaved here.
+    if (typeof c.text === 'string' && c.text !== docFor(tab).toString()) {
+      activateTab(tab);
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: c.text } });
+    }
   } else {
+    if (!(c.text || '').trim()) return null;
     // Replace a pristine untitled tab, as opening a file does.
     if (active && !active.path && !active.dirty && docFor(active).length === 0 && tabs.length === 1) tabs = [];
     tab = makeTab({ text: c.text, kind: c.kind || 'md', draftId: c.draftId || null });
@@ -444,22 +482,46 @@ function cycleTab(delta) {
   activateTab(tabs[(idx + delta + tabs.length) % tabs.length]);
 }
 
-/** Lossa en flik till ett eget fönster. Sparad fil: öppnas via path i nytt
- * fönster. Osparad text: flyttas via draft-systemet (draftId ägs över). */
-async function detachTabToWindow(tab) {
+/** Move a tab to a new window of its own (its right-click menu). */
+function detachTabToWindow(tab) {
   if (!tab) return;
-  if (tab === active) { tab.state = view.state; void flushPending(tab); }
-  if (tab.dirty && tab.path && !(await resolveUnsaved(tab))) return;
-  if (!tab.path) { await flushPending(tab); await writeDraft(tab); }
-  api.detachTab({ path: tab.path || null, draftId: tab.draftId || null });
+  if (tab === active) tab.state = view.state;
+  api.detachTab(transferSnapshot(tab));
+  releaseTab(tab);
+}
+
+/**
+ * What a tab needs to open in another window as it is now: a file by its path, with its text when
+ * it has unsaved changes (they go along, still unsaved); untitled text with its draft, which the
+ * other window takes over.
+ */
+function transferSnapshot(tab) {
+  const state = tab === active ? view.state : tab.state;
+  const { anchor, head } = state.selection.main;
+  if (tab.path) return tab.dirty ? { path: tab.path, text: state.doc.toString(), anchor, head } : { path: tab.path, anchor, head };
+  return { text: state.doc.toString(), kind: tab.kind, draftId: tab.draftId, anchor, head };
+}
+
+/** Take a tab out of this window, its unsaved work handed on (transferSnapshot), not closed. */
+function releaseTab(tab) {
   clearTimeout(tab.autosaveTimer); tab.autosaveTimer = null;
   clearTimeout(tab.draftTimer); tab.draftTimer = null;
-  if (tab.path) void dropDraft(tab); // sparad fil: draften ska bort; draft-fallet ägs av nya fönstret
   const idx = tabs.indexOf(tab);
+  if (idx < 0) return;
   tabs.splice(idx, 1);
   if (tabs.length === 0) newTab();
   else if (tab === active) activateTab(tabs[Math.min(idx, tabs.length - 1)]);
   else renderTabs();
+  if (sidebar) sidebar.render();
+}
+
+/** Open a tab moved here from another window (transferSnapshot) at index. */
+async function receiveTab(c) {
+  if (c.path || (c.text || '').trim()) { await restoreTab(c); return; }
+  const tab = newTab({ kind: c.kind || 'md' });
+  tabs.splice(tabs.indexOf(tab), 1);
+  tabs.splice(Math.min(c.index ?? tabs.length, tabs.length), 0, tab);
+  renderTabs();
 }
 
 // ---------- files ----------
@@ -1326,12 +1388,6 @@ async function boot() {
   if (b.update) updates.onStatus(b.update);
   const restored = b.restoreDrafts ? await restoreDrafts() : 0;
   if (b.filesToOpen.length) { await openPaths(b.filesToOpen); if (!tabs.length) newTab(); }
-  else if (b.pendingTab) {
-    const drafts = await api.listDrafts();
-    const d = drafts.find((x) => x.id === b.pendingTab);
-    if (d && d.text && d.text.trim()) newTab({ text: d.text, kind: d.kind || 'md', draftId: d.id });
-    else newTab();
-  }
   else if (b.reopen) await restoreWindow(b.reopen);
   else if (restored) activateTab(tabs[0]);
   else newTab();

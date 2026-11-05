@@ -43,6 +43,14 @@ contextBridge.exposeInMainWorld('notera', {
   newWindow: () => ipcRenderer.send('window:new'),
   reopenClosedWindow: () => ipcRenderer.send('window:reopenClosed'),
   detachTab: (args) => ipcRenderer.send('tab:detach', args),
+  tabDrag: {
+    strip: (rect) => ipcRenderer.send('tabs:strip', rect),
+    start: (info) => ipcRenderer.invoke('tabdrag:start', info),
+    end: () => ipcRenderer.send('tabdrag:end'),
+    onHover: (cb) => on('tabdrag:hover', cb),
+    onLeave: (cb) => on('tabdrag:leave', cb),
+    onDrop: (cb) => on('tabdrag:drop', cb)
+  },
   print: () => ipcRenderer.invoke('window:print'),
   openExternal: (url) => ipcRenderer.send('shell:openExternal', url),
   showInFolder: (p) => ipcRenderer.invoke('shell:showInFolder', p),

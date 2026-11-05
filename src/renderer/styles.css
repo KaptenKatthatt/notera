@@ -874,3 +874,6 @@ html.fx-vignette #fx-overlay::after {
 .qp-detail { flex: none; color: var(--fg-muted); font-size: 12px; }
 .qp-keys { flex: none; font-family: var(--ui-font), var(--emoji-font); font-size: 11px; color: var(--fg-muted); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
 .qp-empty { padding: 10px 14px; color: var(--fg-muted); }
+/* A tab dragged in from another window, shown where it would land. */
+.tab.phantom { pointer-events: none; flex: none; }
+.tab.phantom .close { display: grid; place-items: center; width: 20px; height: 20px; }
