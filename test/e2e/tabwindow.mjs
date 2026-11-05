@@ -56,6 +56,8 @@ await win.waitForFunction(() => window.__notera.tabs.length === 1);
 assert.deepEqual(await order(win), ['Ett.md'], 'only Ett left');
 console.log('ok   untitled text moves along');
 
+assert.equal(await w3.evaluate(() => window.__notera.active.dirty), true, 'untitled text stays unsaved');
 assert.deepEqual(errors, []);
-await app.close();
+// The unsaved tab would ask before closing.
+await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
 console.log('tabwindow e2e ok');

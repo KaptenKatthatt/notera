@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell, nativeTheme, clipboard, session, protocol } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell, nativeTheme, clipboard, session, protocol, screen } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const { Settings } = require('./settings');
@@ -18,6 +18,7 @@ const { createNotesStore, FOLDER_NAMES } = require('./notes');
 const { createHistory } = require('./history');
 const { createImageServer, saveImage, importImage } = require('./images');
 const { IMAGE_SCHEME, slugOf } = require('../shared/imageLinks');
+const { createTabDrag } = require('./tabDrag');
 
 const isDev = !app.isPackaged;
 // Tests point this at a scratch directory so they never touch real settings.
@@ -29,7 +30,6 @@ let locale;
 // högerklicket) och notifieringar ska knytas till appens identitet i Windows.
 app.setAppUserModelId('se.jonasolson.notera');
 const pendingFiles = new Map(); // webContents.id -> string[]
-const pendingTabs = new Map(); // webContents.id -> draftId (flik lossad till nytt fönster)
 const pendingSessions = new Map(); // webContents.id -> a closed window's tabs (Reopen closed window)
 const closeConfirmed = new WeakSet(); // windows whose renderer has settled unsaved work, so close() may go ahead
 let draftsClaimed = false; // only the first window restores drafts, or a second window would duplicate them
@@ -414,10 +414,15 @@ const MAX_CLOSED_WINDOWS = 10;
 
 function reopenClosedWindow() {
   const w = closedWindows.pop();
-  if (w) createWindow([], null, null, w);
+  if (w) createWindow([], null, w);
 }
 
-function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null, reopen = null) {
+/**
+ * reopen: tabs to open in the window (a closed window's, or a tab moved here from another window),
+ * with the window's bounds if it had any. opts.inactive shows it without taking focus, so the
+ * window a tab is being dragged from keeps the mouse.
+ */
+function createWindow(filesToOpen = [], sourceWin = null, reopen = null, opts = {}) {
   const srcBounds = sourceWin && !sourceWin.isDestroyed() ? sourceWin.getNormalBounds() : null;
   const bounds = reopen && reopen.bounds ? reopen.bounds
     : srcBounds
@@ -431,6 +436,7 @@ function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null,
     minWidth: 480,
     minHeight: 320,
     title: t('appName'),
+    show: !opts.inactive,
     backgroundColor: themeBackground(),
     autoHideMenuBar: false,
     icon: path.join(__dirname, '../../build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
@@ -443,10 +449,14 @@ function createWindow(filesToOpen = [], pendingDraftId = null, sourceWin = null,
     }
   });
   if (bounds.maximized) win.maximize();
+  if (opts.inactive) win.showInactive();
   applyMenuBar(win, settings.get('writingMode'));
-  pendingFiles.set(win.webContents.id, filesToOpen);
-  if (pendingDraftId) pendingTabs.set(win.webContents.id, pendingDraftId);
-  if (reopen) pendingSessions.set(win.webContents.id, reopen);
+  const wcId = win.webContents.id;
+  pendingFiles.set(wcId, filesToOpen);
+  if (reopen) pendingSessions.set(wcId, reopen);
+  win.on('focus', () => tabDrag.focused(win));
+  win.on('closed', () => { tabDrag.forget(win, wcId); pendingFiles.delete(wcId); pendingSessions.delete(wcId); });
+  if (!opts.inactive) tabDrag.focused(win);
 
   win.webContents.on('context-menu', (_e, p) => showEditContextMenu(win, p));
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -484,14 +494,12 @@ function fileFilters(kind) {
 ipcMain.handle('app:bootstrap', (e) => {
   const list = pendingFiles.get(e.sender.id) || [];
   pendingFiles.delete(e.sender.id);
-  const pendingTab = pendingTabs.get(e.sender.id) || null;
-  pendingTabs.delete(e.sender.id);
   const reopen = pendingSessions.get(e.sender.id) || null;
   pendingSessions.delete(e.sender.id);
   const restoreDrafts = !draftsClaimed;
   draftsClaimed = true;
   return {
-    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, pendingTab, reopen, platform: process.platform, isDev,
+    settings: settings.get(), locale, version: app.getVersion(), filesToOpen: list, reopen, platform: process.platform, isDev,
     dark: nativeTheme.shouldUseDarkColors, theme: themeMessage(), restoreDrafts, update: updater ? { ...updater.getState(), reason: updater.reason() } : null
   };
 });
@@ -765,12 +773,19 @@ ipcMain.on('window:closeConfirmed', (e, session) => {
 });
 ipcMain.on('window:new', () => createWindow());
 ipcMain.on('window:reopenClosed', () => reopenClosedWindow());
-ipcMain.on('tab:detach', (e, p = {}) => {
-  const src = BrowserWindow.fromWebContents(e.sender);
-  const files = typeof p.path === 'string' && p.path ? [p.path] : [];
-  const draftId = typeof p.draftId === 'string' && p.draftId ? p.draftId : null;
-  createWindow(files, draftId, src);
+// A tab moved out of its window (its right-click menu): it opens in a new window next to it.
+ipcMain.on('tab:detach', (e, tab) => {
+  if (!tab || typeof tab !== 'object') return;
+  createWindow([], BrowserWindow.fromWebContents(e.sender), { tabs: [tab], active: 0 });
 });
+// Dragging a tab out of its window and into another one (tabDrag.js).
+const tabDrag = createTabDrag({
+  BrowserWindow, screen, createWindow,
+  discardWindow: (w) => { if (w.isDestroyed()) return; closeConfirmed.add(w); w.close(); }
+});
+ipcMain.on('tabs:strip', (e, r) => tabDrag.setStrip(e.sender.id, r));
+ipcMain.handle('tabdrag:start', (e, info) => tabDrag.start(e.sender, info));
+ipcMain.on('tabdrag:end', (e) => tabDrag.end(e.sender));
 ipcMain.on('shell:openExternal', (_e, url) => { if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url); });
 // Opens the file manager on the folder a file lives in, with the file selected. A file deleted
 // behind Notera's back falls back to its folder, if that still exists.
