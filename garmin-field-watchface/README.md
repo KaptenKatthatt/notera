@@ -25,7 +25,16 @@ Den har ett eget app-id, så du kan ha båda installerade och växla mellan dem 
 
 ## Bygga och installera
 
-Samma steg som för `garmin-marathon-watchface`, se dess README. Kort version:
+1. Installera [Connect IQ SDK Manager](https://developer.garmin.com/connect-iq/sdk/), logga in
+   med ditt Garmin-konto och ladda ner senaste SDK:n plus enheten **Instinct 2S**.
+2. Installera tillägget **Monkey C** i VS Code.
+3. Kör `Monkey C: Generate a Developer Key` (görs en gång).
+4. Öppna den här mappen och kör `Monkey C: Run`, välj `instinct2s`. Simulatorn startar.
+5. För att installera på klockan: kör `Monkey C: Build for Device`, koppla klockan med USB
+   och kopiera `.prg`-filen till mappen `GARMIN/APPS` på klockan.
+6. På klockan: håll inne **MENU**, välj **Watch Face**, sedan urtavlan och **Apply**.
+
+Från kommandoraden:
 
 ```sh
 # Mörk version
@@ -36,5 +45,3 @@ monkeyc -f monkey-light.jungle -d instinct2s -y /sökväg/till/developer_key.der
 
 I VS Code väljer du vilken jungle-fil som gäller under inställningen **Monkey C: Jungle Files**
 (`monkey.jungle` eller `monkey-light.jungle`).
-
-Kopiera sedan `.prg`-filen eller filerna till `GARMIN/APPS` på klockan.
