@@ -6,7 +6,7 @@ En analog urtavla i klassisk militär fältklocke-stil för Connect IQ.
 
 *Förhandsbilden är ritad med samma geometri som koden men med ungefärliga typsnitt.*
 
-- Siffrorna 1–12 och en inre 24-timmarsring (13–24)
+- Siffrorna 1–12
 - Hålade timmarkeringar och minutstreck
 - Ihåliga visare och en tunn sekundvisare med pilspets, som syns när du tittar på klockan
 - Veckodag och datumfönster i det runda fönstret uppe till höger
@@ -21,7 +21,6 @@ Den har ett eget app-id, så du kan ha båda installerade och växla mellan dem 
 ## Inställningar
 
 - **Ljus urtavla**: mörkt på ljust i stället för ljust på mörkt (av som standard).
-- **Visa 24-timmarsring** (på som standard). Ringen döljs också automatiskt om typsnittet är för stort för skärmen.
 
 ## Bygga och installera
 

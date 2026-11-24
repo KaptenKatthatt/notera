@@ -8,14 +8,13 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 // Military field-watch style analog face for Instinct 2S:
-// 12-hour numerals, inner 24-hour ring, hollow "lume" hour bars,
+// 12-hour numerals, hollow "lume" hour bars,
 // hollow baton hands, arrow-tipped seconds hand (while awake)
 // and the date window in the round subscreen.
 class FieldView extends WatchUi.WatchFace {
 
     private var _fg as Number = Graphics.COLOR_WHITE;
     private var _bg as Number = Graphics.COLOR_BLACK;
-    private var _show24h as Boolean = true;
     private var _awake as Boolean = true;
 
     // Layout (computed in onLayout); geometry is designed for 156 px and scaled by _k
@@ -29,8 +28,6 @@ class FieldView extends WatchUi.WatchFace {
     private var _ssW as Number = 57;
     private var _ssH as Number = 57;
     private var _numFont as FontDefinition = Graphics.FONT_TINY;
-    private var _ringFont as FontDefinition = Graphics.FONT_XTINY;
-    private var _ringFits as Boolean = true;
     private var _dateFont as FontDefinition = Graphics.FONT_TINY;
 
     function initialize() {
@@ -40,7 +37,6 @@ class FieldView extends WatchUi.WatchFace {
 
     function loadSettings() as Void {
         var invert = Application.Properties.getValue("InvertColors");
-        var ring = Application.Properties.getValue("Show24h");
         if (invert instanceof Boolean && invert) {
             _fg = Graphics.COLOR_BLACK;
             _bg = Graphics.COLOR_WHITE;
@@ -48,7 +44,6 @@ class FieldView extends WatchUi.WatchFace {
             _fg = Graphics.COLOR_WHITE;
             _bg = Graphics.COLOR_BLACK;
         }
-        _show24h = !(ring instanceof Boolean) || ring;
     }
 
     function onLayout(dc as Dc) as Void {
@@ -75,8 +70,6 @@ class FieldView extends WatchUi.WatchFace {
         }
 
         _numFont = pickFont(dc, [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY], (_h * 0.17).toNumber());
-        _ringFont = pickFont(dc, [Graphics.FONT_TINY, Graphics.FONT_XTINY], (_h * 0.11).toNumber());
-        _ringFits = dc.getFontHeight(_ringFont) <= (_h * 0.13).toNumber();
         _dateFont = pickFont(dc, [Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY], (_ssH * 0.36).toNumber());
     }
 
@@ -156,12 +149,6 @@ class FieldView extends WatchUi.WatchFace {
             var p = polar(a, 55.0);
             if (!inSub(p, 7.0)) {
                 dc.drawText(p[0], p[1], _numFont, n.toString(), just);
-            }
-            if (_show24h && _ringFits) {
-                var q = polar(a, 39.0);
-                if (!inSub(q, 5.0)) {
-                    dc.drawText(q[0], q[1], _ringFont, (n + 12).toString(), just);
-                }
             }
         }
     }
