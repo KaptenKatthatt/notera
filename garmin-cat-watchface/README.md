@@ -9,7 +9,9 @@ långa armen minuter.
 *Förhandsbilden är ritad med samma geometri som koden men med ungefärliga typsnitt.*
 
 - Siffrorna 1–12 med minutstreck
-- Armar med pekande handskar som visare och en tunn sekundvisare som syns när du tittar på klockan
+- **Timvisare:** kort, tjock arm med svart handske
+- **Minutvisare:** lång, smal arm med vit handske och långt pekfinger
+- Tunn sekundvisare som syns när du tittar på klockan
 - Veckodag och datum i det runda fönstret uppe till höger
 
 ## Inställningar

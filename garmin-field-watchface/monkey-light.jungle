@@ -1,0 +1,5 @@
+# Light (inverted) variant: same source, its own app id, name and
+# default "light dial" setting, so it can be installed next to the dark one.
+project.manifest = manifest-light.xml
+base.resourcePath = resources/drawables;resources-light
+base.lang.swe = resources-light-swe
