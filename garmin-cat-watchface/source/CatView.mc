@@ -88,10 +88,8 @@ class CatView extends WatchUi.WatchFace {
         var clock = System.getClockTime();
         var hourAngle = ((clock.hour % 12) + clock.min / 60.0) * Math.PI / 6.0;
         var minAngle = (clock.min + clock.sec / 60.0) * Math.PI / 30.0;
-        // Hours: short, thick arm with a black glove.
-        // Minutes: long, thin arm with a white glove and a long pointing finger.
-        drawArm(dc, hourAngle, 24.0, 6.0, 8.0, 7.0, true);
-        drawArm(dc, minAngle, 42.0, 3.0, 6.5, 12.0, false);
+        drawArm(dc, hourAngle, 30.0);
+        drawArm(dc, minAngle, 40.0);
 
         if (_awake) {
             var a = clock.sec * Math.PI / 30.0;
@@ -204,36 +202,33 @@ class CatView extends WatchUi.WatchFace {
     }
 
     // Arm from the shoulders ending in a pointing glove
-    private function drawArm(dc as Dc, angle as Numeric, length as Numeric, thick as Numeric,
-                             palm as Numeric, fingerLen as Numeric, solid as Boolean) as Void {
+    private function drawArm(dc as Dc, angle as Numeric, length as Numeric) as Void {
         var sx = Math.sin(angle);
         var sy = -Math.cos(angle);
         var l = length * _k;
 
         dc.setColor(_fg, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(px(thick));
+        dc.setPenWidth(px(4));
         dc.drawLine(_cx, _cy, _cx + sx * l, _cy + sy * l);
 
         // Cuff
-        var c = (length - 4) * _k;
-        var cw = (thick / 2.0 + 3) * _k;
+        var c = (length - 5) * _k;
+        var cw = 4 * _k;
         dc.setPenWidth(px(2));
         dc.drawLine(_cx + sx * c - sy * cw, _cy + sy * c + sx * cw, _cx + sx * c + sy * cw, _cy + sy * c - sx * cw);
         dc.setPenWidth(1);
 
-        // Glove: black silhouette; the minute glove gets a smaller white fill -> outlined glove
+        // Glove: black silhouette, then a smaller white fill -> outlined glove
         var g = (length + 2) * _k;
         var gx = _cx + sx * g;
         var gy = _cy + sy * g;
-        drawGlove(dc, gx, gy, sx, sy, palm, 3.2, fingerLen, _fg);
-        if (!solid) {
-            drawGlove(dc, gx, gy, sx, sy, palm - 1.5, 1.8, fingerLen, _bg);
-        }
+        drawGlove(dc, gx, gy, sx, sy, 7.0, 3.2, _fg);
+        drawGlove(dc, gx, gy, sx, sy, 5.5, 1.8, _bg);
     }
 
     private function drawGlove(dc as Dc, gx as Numeric, gy as Numeric, sx as Numeric, sy as Numeric,
-                               palm as Numeric, finger as Numeric, fingerLen as Numeric, color as Number) as Void {
-        var f = fingerLen * _k;
+                               palm as Numeric, finger as Numeric, color as Number) as Void {
+        var f = 11 * _k;
         var w = finger * _k;
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.fillCircle(gx, gy, palm * _k);
